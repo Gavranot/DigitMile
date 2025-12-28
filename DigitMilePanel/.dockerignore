@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+.env.*
+!.env.template
+db.sqlite3
+.git/
+.gitignore
+*.md
+.coverage
+htmlcov/
+.pytest_cache/
+staticfiles/

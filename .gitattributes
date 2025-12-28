@@ -1,0 +1,2 @@
+DigitMile/game/Build/*.data filter=lfs diff=lfs merge=lfs -text
+DigitMile/game/Build/*.wasm filter=lfs diff=lfs merge=lfs -text
