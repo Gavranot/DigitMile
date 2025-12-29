@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: digitmile-postgres
+    environment:
+      POSTGRES_DB: digitmile
+      POSTGRES_USER: digitmile_user
+      POSTGRES_PASSWORD: digitmile_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - digitmile-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U digitmile_user -d digitmile"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Django Backend (DigitMilePanel)
+  backend:
+    build:
+      context: ./DigitMilePanel
+      dockerfile: Dockerfile.compose
+    container_name: digitmile-backend
+    env_file:
+      - ./DigitMilePanel/.env
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - digitmile-network
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             gunicorn digitmile.wsgi:application --bind 0.0.0.0:8000 --workers 3"
+
+  # Nginx Frontend (DigitMile Game)
+  frontend:
+    build:
+      context: ./DigitMile
+      dockerfile: Dockerfile
+    container_name: digitmile-game
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - digitmile-network
+
+networks:
+  digitmile-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

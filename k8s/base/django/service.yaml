@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: django-backend
+  namespace: digitmile
+spec:
+  selector:
+    app: django-backend
+  ports:
+    - port: 80
+      targetPort: 8000

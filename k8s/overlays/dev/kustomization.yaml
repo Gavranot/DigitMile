@@ -1,0 +1,35 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Pull in all the base manifests
+resources:
+  - ../../base
+  - secrets.yaml
+  - ingress.yaml
+
+# Override the namespace for all resources
+namespace: digitmile-dev
+
+# Patch the Django deployment with dev-specific settings
+patches:
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+    target:
+      kind: Deployment
+      name: django-backend
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+    target:
+      kind: Deployment
+      name: game
+
+# Override image tags for dev
+images:
+  - name: gashmurble/digitmile-backend
+    newTag: latest
+  - name: gashmurble/digitmile-game
+    newTag: latest

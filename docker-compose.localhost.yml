@@ -1,0 +1,31 @@
+version: '3.8'
+
+# Docker Compose for LOCALHOST with self-signed SSL
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.localhost.yml up
+
+services:
+  # NGINX Reverse Proxy (localhost with self-signed SSL)
+  nginx-proxy:
+    build:
+      context: ./nginx-proxy
+      dockerfile: Dockerfile
+    container_name: digitmile-nginx-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx-proxy/nginx.conf.localhost:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx-proxy/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - digitmile-network
+
+  # Remove port exposure from frontend (accessed via proxy)
+  frontend:
+    ports: []
+
+  # Remove port exposure from backend (accessed via proxy)
+  backend:
+    ports: []

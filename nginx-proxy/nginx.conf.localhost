@@ -1,0 +1,99 @@
+# NGINX Reverse Proxy Configuration - LOCALHOST (self-signed SSL)
+# For local development/testing without a domain
+
+# Upstream for Django backend
+upstream backend {
+    server backend:8000;
+}
+
+# Upstream for game frontend
+upstream game {
+    server frontend:80;
+}
+
+# HTTP server (for local dev without SSL)
+server {
+    listen 80;
+    server_name localhost;
+
+    # Backend API routes
+    location /panel/ {
+        proxy_pass http://backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Backend static files
+    location /panel/static/ {
+        proxy_pass http://backend;
+        proxy_set_header Host $host;
+    }
+
+    # Backend admin
+    location /admin/ {
+        proxy_pass http://backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Game frontend (everything else)
+    location / {
+        proxy_pass http://game;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# HTTPS server (with self-signed certificate)
+server {
+    listen 443 ssl http2;
+    server_name localhost;
+
+    # Self-signed SSL Configuration
+    ssl_certificate /etc/nginx/ssl/nginx-selfsigned.crt;
+    ssl_certificate_key /etc/nginx/ssl/nginx-selfsigned.key;
+
+    # SSL Settings
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+
+    # Backend API routes
+    location /panel/ {
+        proxy_pass http://backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Backend static files
+    location /panel/static/ {
+        proxy_pass http://backend;
+        proxy_set_header Host $host;
+    }
+
+    # Backend admin
+    location /admin/ {
+        proxy_pass http://backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Game frontend (everything else)
+    location / {
+        proxy_pass http://game;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

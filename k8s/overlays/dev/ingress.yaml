@@ -1,0 +1,30 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: digitmile-ingress
+  namespace: digitmile-dev
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  rules:
+    # Use nip.io with your server IP, or just use the IP directly
+    - http:
+        paths:
+          # /game and /game/anything → webgl-game service
+          - path: /game(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: game
+                port:
+                  number: 80
+          # Django backend (includes /panel and /panel/static/)
+          - path: /panel(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: django-backend
+                port:
+                  number: 80

@@ -20,10 +20,14 @@ from .serializers import (
 )
 from django.core.mail import send_mail
 from django.conf import settings
+from django.http import JsonResponse
 import logging
 
 # Set up logger for email operations
 logger = logging.getLogger(__name__)
+
+def health_check(request):
+    return JsonResponse({"status": "healthy"})
 
 def send_school_approval_email(school):
     """Send approval notification email to school contact person"""

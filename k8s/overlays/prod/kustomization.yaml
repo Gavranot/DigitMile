@@ -1,0 +1,33 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+  - secrets.yaml
+  - ingress.yaml
+
+namespace: digitmile-prod
+
+# Production gets more replicas
+patches:
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 3
+    target:
+      kind: Deployment
+      name: django-backend
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 2
+    target:
+      kind: Deployment
+      name: game
+      
+# Use specific image tags in production (not latest!)
+images:
+  - name: gashmurble/digitmile-backend
+    newTag: v1.0.0
+  - name: gashmurble/digitmile-webgl-game
+    newTag: v1.0.0

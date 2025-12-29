@@ -24,6 +24,7 @@ CORS_ALLOW_ALL_ORIGINS=True
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
+# FORCE_SCRIPT_NAME = '/panel'
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-)bpw(3%nq@n54q!qfc=stwjs8^-2nar(%=s*@-f9dbm4__0h@s'
@@ -33,6 +34,11 @@ DEBUG = True
 
 SERVER_IP = os.getenv('SERVER_IP')
 ALLOWED_HOSTS = [SERVER_IP, '127.0.0.1', 'localhost']
+# ALLOWED_HOSTS += [
+#     '10.1.0.*',
+#     'django-backend',
+#     'django-backend.digitmile-dev.svc.cluster.local',
+# ]
 
 APPEND_SLASH=False
 
@@ -52,6 +58,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'digitmileapi.middleware.HealthCheckMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -62,6 +69,8 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+
 
 ROOT_URLCONF = 'digitmile.urls'
 
@@ -153,7 +162,6 @@ USE_TZ = True
 # Static files with WhiteNoise
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
@@ -179,41 +187,31 @@ LOGGING = {
     'disable_existing_loggers': False,
     'formatters': {
         'verbose': {
-            'format': '[{levelname}] {asctime} {name} {module}.{funcName}: {message}',
-            'style': '{',
-        },
-        'simple': {
-            'format': '[{levelname}] {message}',
+            'format': '{levelname} {asctime} {module} {message}',
             'style': '{',
         },
     },
     'handlers': {
+        # Log to console (stdout) instead of files
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'verbose',
         },
-        'file': {
-            'class': 'logging.FileHandler',
-            'filename': BASE_DIR / 'logs' / 'email.log',
-            'formatter': 'verbose',
-        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
     },
     'loggers': {
-        # Root logger - catches everything
-        '': {
+        'django': {
             'handlers': ['console'],
             'level': 'INFO',
-        },
-        # Django email backend logging
-        'django.core.mail': {
-            'handlers': ['console', 'file'],
-            'level': 'DEBUG',
             'propagate': False,
         },
-        # Our custom email functions
-        'digitmileapi.views': {
-            'handlers': ['console', 'file'],
-            'level': 'DEBUG',
+        # Add any custom loggers you had pointing to 'file' handler
+        'email': {
+            'handlers': ['console'],
+            'level': 'INFO',
             'propagate': False,
         },
     },

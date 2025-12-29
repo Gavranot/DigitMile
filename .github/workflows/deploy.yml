@@ -1,0 +1,136 @@
+name: Deploy to Server
+
+on:
+  workflow_call:
+    inputs:
+      TARGET_ENV:
+        required: true
+        type: string
+      REF:
+        required: false
+        type: string
+        default: "master"
+
+jobs:
+  deploy-configuration:
+    name: Upload Configuration Files
+    runs-on: ubuntu-latest
+    env:
+      HOST: ${{ vars[format('{0}_HOST', inputs.TARGET_ENV)] }}
+      USERNAME: ${{ vars[format('{0}_USERNAME', inputs.TARGET_ENV)] }}
+      PORT: ${{ vars[format('{0}_PORT', inputs.TARGET_ENV)] }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.REF }}
+          fetch-depth: 1
+
+      - name: Create deployment package
+        run: |
+          mkdir -p deploy
+          cp docker-compose.yml deploy/
+          cp docker-compose.prod.yml deploy/
+          cp -r nginx-proxy deploy/
+
+      - name: Upload files to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ env.HOST }}
+          username: ${{ env.USERNAME }}
+          port: ${{ env.PORT }}
+          key: ${{ secrets[format('{0}_SSH_PRIVATE_KEY', inputs.TARGET_ENV)] }}
+          source: "deploy/*"
+          target: /var/www/digitmile
+          strip_components: 1
+
+  deploy-containers:
+    name: Deploy Docker Containers
+    needs: deploy-configuration
+    runs-on: ubuntu-latest
+    env:
+      HOST: ${{ vars[format('{0}_HOST', inputs.TARGET_ENV)] }}
+      USERNAME: ${{ vars[format('{0}_USERNAME', inputs.TARGET_ENV)] }}
+      PORT: ${{ vars[format('{0}_PORT', inputs.TARGET_ENV)] }}
+
+    steps:
+      - name: Deploy and Start Containers
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.HOST }}
+          username: ${{ env.USERNAME }}
+          port: ${{ env.PORT }}
+          key: ${{ secrets[format('{0}_SSH_PRIVATE_KEY', inputs.TARGET_ENV)] }}
+          script: |
+            cd /var/www/digitmile
+
+            # Login to Docker Hub
+            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login --username ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
+
+            # Pull latest images
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/digitmile-game:${{ inputs.TARGET_ENV }}-latest
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/digitmile-backend:${{ inputs.TARGET_ENV }}-latest
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/digitmile-nginx-proxy:${{ inputs.TARGET_ENV }}-latest
+
+            # Stop and remove old containers
+            docker-compose -f docker-compose.yml -f docker-compose.prod.yml down
+
+            # Start new containers
+            docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+            # Run database migrations
+            docker-compose exec -T backend python manage.py migrate
+
+            # Collect static files
+            docker-compose exec -T backend python manage.py collectstatic --noinput
+
+            # Clean up old images
+            docker image prune -af
+
+            echo "Deployment complete!"
+
+  setup-ssl:
+    name: Initialize SSL Certificates (First Deploy Only)
+    needs: deploy-containers
+    runs-on: ubuntu-latest
+    if: inputs.TARGET_ENV == 'prod'
+    env:
+      HOST: ${{ vars[format('{0}_HOST', inputs.TARGET_ENV)] }}
+      USERNAME: ${{ vars[format('{0}_USERNAME', inputs.TARGET_ENV)] }}
+      PORT: ${{ vars[format('{0}_PORT', inputs.TARGET_ENV)] }}
+      DOMAIN: ${{ vars.DOMAIN }}
+      EMAIL: ${{ vars.SSL_EMAIL }}
+
+    steps:
+      - name: Setup Let's Encrypt SSL
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.HOST }}
+          username: ${{ env.USERNAME }}
+          port: ${{ env.PORT }}
+          key: ${{ secrets[format('{0}_SSH_PRIVATE_KEY', inputs.TARGET_ENV)] }}
+          script: |
+            cd /var/www/digitmile
+
+            # Check if certificate already exists
+            if [ ! -d "certbot/conf/live/${{ env.DOMAIN }}" ]; then
+              echo "Initializing Let's Encrypt certificate..."
+
+              # Update nginx config with domain
+              sed -i "s/your-domain.com/${{ env.DOMAIN }}/g" nginx-proxy/nginx.conf.production
+
+              # Request certificate
+              docker-compose run --rm certbot certonly --webroot \
+                --webroot-path=/var/www/certbot \
+                --email ${{ env.EMAIL }} \
+                --agree-tos \
+                --no-eff-email \
+                -d ${{ env.DOMAIN }} -d www.${{ env.DOMAIN }}
+
+              # Reload nginx
+              docker-compose restart nginx-proxy
+
+              echo "SSL certificate obtained successfully!"
+            else
+              echo "SSL certificate already exists, skipping..."
+            fi

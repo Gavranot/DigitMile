@@ -22,6 +22,7 @@ from digitmileapi import views as api_views
 urlpatterns = [
     path('', api_views.home_view, name='home'),
     path('admin/', admin.site.urls),
+    path('health/', api_views.health_check),
     path('api/', include('digitmileapi.urls')),  # This line tells Django to look at myapi.urls for paths starting with 'api/'
     path('register/school/', api_views.register_school_view, name='register_school'),
     path('register/teacher/', api_views.register_teacher_view, name='register_teacher'),

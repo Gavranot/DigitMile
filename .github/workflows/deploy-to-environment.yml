@@ -1,0 +1,37 @@
+name: Deploy to Environment
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch or Tag to deploy'
+        required: true
+        default: 'master'
+        type: string
+      environment:
+        description: 'The deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - development
+          - staging
+          - prod
+
+jobs:
+  build:
+    name: Build Docker Images
+    uses: ./.github/workflows/build.yml
+    with:
+      TARGET_ENV: ${{ github.event.inputs.environment }}
+      REF: ${{ github.event.inputs.ref }}
+    secrets: inherit
+
+  deploy:
+    name: Deploy to Server
+    needs: build
+    uses: ./.github/workflows/deploy.yml
+    with:
+      TARGET_ENV: ${{ github.event.inputs.environment }}
+      REF: ${{ github.event.inputs.ref }}
+    secrets: inherit

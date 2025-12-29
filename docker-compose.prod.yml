@@ -1,0 +1,63 @@
+version: '3.8'
+
+# Production Docker Compose with Let's Encrypt SSL
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up
+
+services:
+  # NGINX Reverse Proxy (production with Let's Encrypt)
+  nginx-proxy:
+    build:
+      context: ./nginx-proxy
+      dockerfile: Dockerfile
+    container_name: digitmile-nginx-proxy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx-proxy/nginx.conf.production:/etc/nginx/conf.d/default.conf:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - digitmile-network
+
+  # Certbot for Let's Encrypt SSL
+  certbot:
+    image: certbot/certbot:latest
+    container_name: digitmile-certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    networks:
+      - digitmile-network
+
+  db:
+    # In production, you might use a managed database service instead
+    restart: always
+    # Remove port exposure in production (only backend needs access)
+    ports: []
+
+  backend:
+    restart: always
+    # Use pre-built image from Docker Hub/Registry
+    image: ${DOCKERHUB_USERNAME:-your-username}/digitmile-backend:${TARGET_ENV:-prod}-latest
+    # Override build - pull from registry instead
+    build: {}
+    # Keep env_file - .env stays on server only
+    env_file:
+      - ./DigitMilePanel/.env
+    # Remove port exposure - use reverse proxy in production
+    ports: []
+
+  frontend:
+    restart: always
+    # Use pre-built image from Docker Hub/Registry
+    image: ${DOCKERHUB_USERNAME:-your-username}/digitmile-game:${TARGET_ENV:-prod}-latest
+    # Override build - pull from registry instead
+    build: {}
+    # Remove port exposure - use reverse proxy
+    ports: []

@@ -1,0 +1,32 @@
+name: WebGL Game CI/CD
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'DigitMile/**'
+      - '.github/workflows/game.yml'
+
+env:
+  IMAGE_NAME: gashmurble/digitmile-game  # Change this
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./DigitMile
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.IMAGE_NAME }}:latest

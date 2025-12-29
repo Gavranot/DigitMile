@@ -1,0 +1,140 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: django-backend
+  namespace: digitmile
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: django-backend
+  template:
+    metadata:
+      labels:
+        app: django-backend
+    spec:
+      initContainers:
+        - name: run-migrations
+          image: gashmurble/digitmile-backend:latest
+          imagePullPolicy: Always
+          command: 
+          - /bin/sh
+          - -c
+          - |
+            echo "Running migrations..."
+            python manage.py migrate --noinput
+            echo "Creating superuser if needed..."
+            python manage.py create_superuser
+            echo "Init container complete"
+          env: &django-env
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: django-secret
+                  key: secret-key
+            - name: DJANGO_SUPERUSER_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: django-secret
+                  key: superuser-username
+            - name: DJANGO_SUPERUSER_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: django-secret
+                  key: superuser-email
+            - name: DJANGO_SUPERUSER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: django-secret
+                  key: superuser-password
+            - name: EMAIL_HOST_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: django-secret
+                  key: email_host_password
+            - name: GOOGLE_MAPS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: django-secret
+                  key: google_maps_api_key
+            - name: EMAIL_BACKEND
+              valueFrom:
+                configMapKeyRef:
+                  name: django-config
+                  key: email_backend
+            - name: EMAIL_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: django-config
+                  key: email_host
+            - name: EMAIL_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: django-config
+                  key: email_port
+            - name: EMAIL_USE_TLS
+              valueFrom:
+                configMapKeyRef:
+                  name: django-config
+                  key: email_use_tls
+            - name: EMAIL_HOST_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: django-config
+                  key: email_host_user
+            - name: DEFAULT_FROM_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: django-config
+                  key: default_from_url
+            - name: SITE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: django-config
+                  key: site_url       
+            - name: DEBUG
+              value: "false"
+            - name: ALLOWED_HOSTS
+              value: "panel.yourdomain.com,django-backend"
+            - name: DB_NAME
+              value: digitmile_db
+            - name: DB_HOST
+              value: postgresql
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql-secret
+                  key: username
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: postgresql-secret
+                  key: password
+      containers:
+        - name: django
+          image: gashmurble/digitmile-backend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          env: *django-env
+          readinessProbe:
+            httpGet:
+              path: /health/
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health/
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"

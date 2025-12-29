@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: django-config
+data:
+  email_backend : "django.core.mail.backends.smtp.EmailBackend"  # Change to smtp.EmailBackend to send real emails
+  email_host : "smtp.gmail.com"  # SMTP server (Gmail)
+  email_port : "587"  # TLS port for Gmail (use 465 for SSL)
+  email_use_tls : "True"  # Use TLS encryption
+  email_host_user : "noreplydigitmile@gmail.com"  # Your Gmail address
+  default_from_url : "noreplydigitmile@gmail.com"  # Sender email shown in emails
+  site_url : "http://localhost:8000"  # Your site URL (for email links)
