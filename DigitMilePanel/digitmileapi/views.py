@@ -29,6 +29,47 @@ logger = logging.getLogger(__name__)
 def health_check(request):
     return JsonResponse({"status": "healthy"})
 
+def find_similar_emails(email, model_class, exclude_id=None):
+    """
+    Find records with similar emails (case-insensitive match but different case).
+    Returns a list of records that have the same email in different case.
+
+    Args:
+        email: The email to check
+        model_class: School or Teacher model class
+        exclude_id: ID to exclude from search (the current record)
+
+    Returns:
+        List of records with similar emails
+    """
+    if not email:
+        return []
+
+    # Find all records with case-insensitive email match
+    from django.db.models import Q
+    similar = model_class.objects.filter(
+        Q(status__in=['PENDING', 'APPROVED'])
+    )
+
+    # Filter by email field depending on model
+    if model_class == School:
+        similar = similar.filter(school_email__iexact=email)
+    elif model_class == Teacher:
+        similar = similar.filter(email__iexact=email)
+
+    # Exclude the current record if provided
+    if exclude_id:
+        similar = similar.exclude(id=exclude_id)
+
+    # Only return records where the case is actually different
+    results = []
+    for record in similar:
+        record_email = record.school_email if model_class == School else record.email
+        if record_email != email:  # Case-sensitive comparison
+            results.append(record)
+
+    return results
+
 def send_school_approval_email(school):
     """Send approval notification email to school contact person"""
     logger.info(f"Attempting to send approval email to school: {school.name} ({school.contact_person_email})")
@@ -384,7 +425,29 @@ from django.contrib.auth.decorators import user_passes_test
 def pending_registrations_view(request):
     pending_schools = School.objects.pending()
     pending_teachers = Teacher.objects.pending()
+
+    # Add similar email warnings for schools
+    schools_with_warnings = []
+    for school in pending_schools:
+        similar_emails = find_similar_emails(school.school_email, School, exclude_id=school.id)
+        schools_with_warnings.append({
+            'school': school,
+            'similar_emails': similar_emails
+        })
+
+    # Add similar email warnings for teachers
+    teachers_with_warnings = []
+    for teacher in pending_teachers:
+        similar_emails = find_similar_emails(teacher.email, Teacher, exclude_id=teacher.id)
+        teachers_with_warnings.append({
+            'teacher': teacher,
+            'similar_emails': similar_emails
+        })
+
     context = {
+        'schools_with_warnings': schools_with_warnings,
+        'teachers_with_warnings': teachers_with_warnings,
+        # Keep original for backwards compatibility if needed
         'pending_schools': pending_schools,
         'pending_teachers': pending_teachers,
     }

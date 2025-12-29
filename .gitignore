@@ -1,2 +1,3 @@
 workflows_examples/*
 .env
+.claude/*

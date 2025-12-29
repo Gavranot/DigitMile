@@ -25,7 +25,7 @@ class School(models.Model):
     region = models.CharField(max_length=255, default="RegionPlaceholder")
     latitude = models.FloatField(null=True, blank=True)
     longitude = models.FloatField(null=True, blank=True)
-    address = models.CharField(max_length=500, blank=True, default='')
+    address = models.CharField(max_length=500)  # Required for uniqueness
     google_maps_address = models.CharField(max_length=500, blank=True, default='')
     website = models.URLField(max_length=255, blank=True, default='')
 
@@ -35,9 +35,9 @@ class School(models.Model):
     contact_person_phone = models.CharField(max_length=50, blank=True, default='')
 
     # Official school information
-    director_name = models.CharField(max_length=255, blank=True, default='')
+    director_name = models.CharField(max_length=255)  # Required for uniqueness
     director_email = models.EmailField(blank=True, default='')
-    school_email = models.EmailField(blank=True, default='')
+    school_email = models.EmailField()  # Required for uniqueness
     school_phone = models.CharField(max_length=50, blank=True, default='')
 
     # Status tracking

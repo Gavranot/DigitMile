@@ -1,5 +1,39 @@
 {% extends "admin/base_site.html" %}
 {% block content %}
+<style>
+    .email-warning {
+        background-color: #fff3cd;
+        border: 1px solid #ffc107;
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 4px;
+    }
+    .email-warning strong {
+        color: #856404;
+    }
+    .similar-email-list {
+        margin-top: 5px;
+        font-size: 0.9em;
+        color: #856404;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 30px;
+    }
+    th, td {
+        border: 1px solid #ddd;
+        padding: 12px;
+        text-align: left;
+    }
+    th {
+        background-color: #f4f4f4;
+    }
+    .warning-cell {
+        background-color: #fff9e6;
+    }
+</style>
+
 <h2>Pending School Registrations</h2>
 <table>
     <thead>
@@ -9,20 +43,39 @@
             <th>Region</th>
             <th>Contact Name</th>
             <th>Contact Email</th>
+            <th>School Email</th>
+            <th>Director</th>
             <th>Actions</th>
         </tr>
     </thead>
     <tbody>
-        {% for school in pending_schools %}
+        {% for item in schools_with_warnings %}
         <tr>
-            <td>{{ school.name }}</td>
-            <td>{{ school.municipality }}</td>
-            <td>{{ school.region }}</td>
-            <td>{{ school.contact_person_name }}</td>
-            <td>{{ school.contact_person_email }}</td>
+            <td>{{ item.school.name }}</td>
+            <td>{{ item.school.municipality }}</td>
+            <td>{{ item.school.region }}</td>
+            <td>{{ item.school.contact_person_name }}</td>
+            <td>{{ item.school.contact_person_email }}</td>
+            <td {% if item.similar_emails %}class="warning-cell"{% endif %}>
+                {{ item.school.school_email }}
+                {% if item.similar_emails %}
+                <div class="email-warning">
+                    <strong>⚠️ Similar Email Alert</strong>
+                    <div class="similar-email-list">
+                        Similar school email(s) found (different case):
+                        <ul>
+                        {% for similar in item.similar_emails %}
+                            <li>{{ similar.school_email }} - {{ similar.name }} ({{ similar.get_status_display }})</li>
+                        {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+                {% endif %}
+            </td>
+            <td>{{ item.school.director_name }}</td>
             <td>
-                <a href="{% url 'approve_school' school.id %}">Approve</a>
-                <a href="{% url 'reject_school' school.id %}">Reject</a>
+                <a href="{% url 'approve_school' item.school.id %}">Approve</a>
+                <a href="{% url 'reject_school' item.school.id %}">Reject</a>
             </td>
         </tr>
         {% endfor %}
@@ -35,19 +88,38 @@
         <tr>
             <th>Full Name</th>
             <th>Email</th>
-            <th>School</th>
+            <th>Schools</th>
             <th>Actions</th>
         </tr>
     </thead>
     <tbody>
-        {% for teacher in pending_teachers %}
+        {% for item in teachers_with_warnings %}
         <tr>
-            <td>{{ teacher.full_name }}</td>
-            <td>{{ teacher.email }}</td>
-            <td>{{ teacher.school }}</td>
+            <td>{{ item.teacher.full_name }}</td>
+            <td {% if item.similar_emails %}class="warning-cell"{% endif %}>
+                {{ item.teacher.email }}
+                {% if item.similar_emails %}
+                <div class="email-warning">
+                    <strong>⚠️ Similar Email Alert</strong>
+                    <div class="similar-email-list">
+                        Similar teacher email(s) found (different case):
+                        <ul>
+                        {% for similar in item.similar_emails %}
+                            <li>{{ similar.email }} - {{ similar.full_name }} ({{ similar.get_status_display }})</li>
+                        {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+                {% endif %}
+            </td>
             <td>
-                <a href="{% url 'approve_teacher' teacher.id %}">Approve</a>
-                <a href="{% url 'reject_teacher' teacher.id %}">Reject</a>
+                {% for assignment in item.teacher.school_assignments.all %}
+                    {{ assignment.school.name }}{% if not forloop.last %}, {% endif %}
+                {% endfor %}
+            </td>
+            <td>
+                <a href="{% url 'approve_teacher' item.teacher.id %}">Approve</a>
+                <a href="{% url 'reject_teacher' item.teacher.id %}">Reject</a>
             </td>
         </tr>
         {% endfor %}

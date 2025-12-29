@@ -5,10 +5,13 @@ services:
   db:
     image: postgres:16-alpine
     container_name: digitmile-postgres
+    env_file:
+      - .env
     environment:
-      POSTGRES_DB: digitmile
-      POSTGRES_USER: digitmile_user
-      POSTGRES_PASSWORD: digitmile_password
+      # PostgreSQL uses these specific env vars to create the initial user/database
+      POSTGRES_DB: ${DB_NAME:-digitmile}
+      POSTGRES_USER: ${DB_USER:-digitmile}
+      POSTGRES_PASSWORD: ${DB_PASS:-changeme}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -16,7 +19,7 @@ services:
     networks:
       - digitmile-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U digitmile_user -d digitmile"]
+      test: ["CMD-SHELL", "pg_isready -U digitmile -d digitmile"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -28,7 +31,10 @@ services:
       dockerfile: Dockerfile.compose
     container_name: digitmile-backend
     env_file:
-      - ./DigitMilePanel/.env
+      - .env
+    volumes:
+      # Mount code for development (changes reflect immediately without rebuild)
+      - ./DigitMilePanel:/app
     ports:
       - "8000:8000"
     depends_on:
@@ -39,6 +45,7 @@ services:
     command: >
       sh -c "python manage.py migrate &&
              python manage.py collectstatic --noinput &&
+             python manage.py create_superuser &&
              gunicorn digitmile.wsgi:application --bind 0.0.0.0:8000 --workers 3"
 
   # Nginx Frontend (DigitMile Game)
