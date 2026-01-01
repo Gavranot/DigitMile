@@ -169,17 +169,20 @@ jobs:
             EMAIL_HOST_USER=${{ vars.EMAIL_HOST_USER }}
             EMAIL_BACKEND=${{ vars.EMAIL_BACKEND }}
             EMAIL_USE_TLS=${{ vars.EMAIL_USE_TLS }}
+          MISC_VARS: |
+            GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }}
+            DEBUG=${{ vars.DEBUG }}
         with:
           host: ${{ env.HOST }}
           username: ${{ env.USERNAME }}
           port: ${{ env.PORT }}
           key: ${{ secrets[format('{0}_SSH_PRIVATE_KEY', inputs.TARGET_ENV)] }}
-          envs: DOCKER_VARS,DB_VARS,DJANGO_VARS,EMAIL_VARS
+          envs: DOCKER_VARS,DB_VARS,DJANGO_VARS,EMAIL_VARS,MISC_VARS
           script: |
             cd /var/www/digitmile
             
             # Create the .env file by printing the pre-formatted blocks
-            printf "%s\n%s\n%s\n%s\n" "$DOCKER_VARS" "$DB_VARS" "$DJANGO_VARS" "$EMAIL_VARS" > .env
+            printf "%s\n%s\n%s\n%s\n" "$DOCKER_VARS" "$DB_VARS" "$DJANGO_VARS" "$EMAIL_VARS" "$MISC_VARS" > .env
 
             # Login to Docker Hub
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login --username ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
