@@ -157,26 +157,35 @@ jobs:
           script: |
             cd /var/www/digitmile
 
-            # Check if certificate already exists
             if [ ! -d "certbot/conf/live/${{ env.DOMAIN }}" ]; then
-              echo "Initializing Let's Encrypt certificate for ${{ env.DOMAIN }}..."
-
-              # Ensure certbot directories exist
+              echo "Initializing Let's Encrypt certificate..."
+              
               mkdir -p certbot/conf certbot/www
-
-              # Request certificate (use both compose files)
-              docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm -T certbot certonly --webroot \
+              
+              # Create dummy certificate so nginx can start
+              mkdir -p certbot/conf/live/${{ env.DOMAIN }}
+              openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
+                -keyout certbot/conf/live/${{ env.DOMAIN }}/privkey.pem \
+                -out certbot/conf/live/${{ env.DOMAIN }}/fullchain.pem \
+                -subj '/CN=localhost'
+              
+              # Restart nginx with dummy cert
+              docker compose -f docker-compose.yml -f docker-compose.prod.yml restart nginx-proxy
+              
+              # Wait for nginx to be ready
+              sleep 15
+              
+              # Now request the real certificate
+              docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm certbot certonly --webroot \
                 --webroot-path=/var/www/certbot \
                 --email ${{ env.EMAIL }} \
                 --agree-tos \
                 --no-eff-email \
                 --non-interactive \
                 -d ${{ env.DOMAIN }} -d www.${{ env.DOMAIN }}
-
-              # Reload nginx with SSL
+              
+              # Reload nginx with real cert
               docker compose -f docker-compose.yml -f docker-compose.prod.yml restart nginx-proxy
-
-              echo "✓ SSL certificate obtained successfully!"
-            else
-              echo "✓ SSL certificate already exists for ${{ env.DOMAIN }}, skipping..."
+              
+              echo "✓ SSL certificate obtained!"
             fi
