@@ -1,3 +1,4 @@
 workflows_examples/*
 .env
+.env.production
 .claude/*

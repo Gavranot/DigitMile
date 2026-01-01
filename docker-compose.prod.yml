@@ -47,9 +47,9 @@ services:
     image: ${DOCKERHUB_USERNAME:-your-username}/digitmile-backend:${TARGET_ENV:-prod}-latest
     # Override build - pull from registry instead
     build: {}
-    # Keep env_file - .env stays on server only
+    # Keep env_file - .env stays on server only (root directory)
     env_file:
-      - ./DigitMilePanel/.env
+      - .env
     # Remove port exposure - use reverse proxy in production
     ports: []
 

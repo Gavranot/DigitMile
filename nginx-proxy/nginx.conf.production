@@ -14,7 +14,7 @@ upstream game {
 # HTTP → HTTPS redirect
 server {
     listen 80;
-    server_name your-domain.com www.your-domain.com;
+    server_name digit.mile.mk www.digit.mile.mk;
 
     # Allow Let's Encrypt ACME challenge
     location /.well-known/acme-challenge/ {
@@ -30,11 +30,11 @@ server {
 # HTTPS server
 server {
     listen 443 ssl http2;
-    server_name your-domain.com www.your-domain.com;
+    server_name digit.mile.mk www.digit.mile.mk;
 
     # SSL Configuration (Let's Encrypt)
-    ssl_certificate /etc/letsencrypt/live/your-domain.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/digit.mile.mk/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/digit.mile.mk/privkey.pem;
 
     # SSL Security Settings (Mozilla Intermediate)
     ssl_protocols TLSv1.2 TLSv1.3;
