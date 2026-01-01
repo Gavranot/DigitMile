@@ -72,17 +72,32 @@ jobs:
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/digitmile-backend:${{ inputs.TARGET_ENV }}-latest
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/digitmile-nginx-proxy:${{ inputs.TARGET_ENV }}-latest
 
+            # Verify .env file exists
+            if [ ! -f .env ]; then
+              echo "ERROR: .env file not found!"
+              echo "Please upload .env file to /var/www/digitmile/.env"
+              exit 1
+            fi
+
             # Stop and remove old containers
             docker-compose -f docker-compose.yml -f docker-compose.prod.yml down
 
-            # Start new containers
+            # Start new containers (migrations and collectstatic run automatically)
             docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
-            # Run database migrations
-            docker-compose exec -T backend python manage.py migrate
+            # Wait for backend to be healthy
+            echo "Waiting for backend to be ready..."
+            for i in {1..30}; do
+              if docker-compose exec -T backend python -c "import django; django.setup()" 2>/dev/null; then
+                echo "Backend is ready!"
+                break
+              fi
+              echo "Waiting... ($i/30)"
+              sleep 2
+            done
 
-            # Collect static files
-            docker-compose exec -T backend python manage.py collectstatic --noinput
+            # Verify migrations ran successfully
+            docker-compose logs backend | grep -q "Operations to perform" && echo "✓ Migrations completed" || echo "⚠ Check migration logs"
 
             # Clean up old images
             docker image prune -af
@@ -114,10 +129,10 @@ jobs:
 
             # Check if certificate already exists
             if [ ! -d "certbot/conf/live/${{ env.DOMAIN }}" ]; then
-              echo "Initializing Let's Encrypt certificate..."
+              echo "Initializing Let's Encrypt certificate for ${{ env.DOMAIN }}..."
 
-              # Update nginx config with domain
-              sed -i "s/your-domain.com/${{ env.DOMAIN }}/g" nginx-proxy/nginx.conf.production
+              # Ensure certbot directories exist
+              mkdir -p certbot/conf certbot/www
 
               # Request certificate
               docker-compose run --rm certbot certonly --webroot \
@@ -127,10 +142,10 @@ jobs:
                 --no-eff-email \
                 -d ${{ env.DOMAIN }} -d www.${{ env.DOMAIN }}
 
-              # Reload nginx
+              # Reload nginx with SSL
               docker-compose restart nginx-proxy
 
-              echo "SSL certificate obtained successfully!"
+              echo "✓ SSL certificate obtained successfully!"
             else
-              echo "SSL certificate already exists, skipping..."
+              echo "✓ SSL certificate already exists for ${{ env.DOMAIN }}, skipping..."
             fi

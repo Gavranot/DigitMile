@@ -49,17 +49,17 @@ Go to your GitHub repo → Settings → Secrets and variables → Actions
 
 | Variable Name | Description | Example |
 |--------------|-------------|---------|
-| `development_HOST` | Dev server IP/hostname | `dev.digitmile.com` |
+| `development_HOST` | Dev server IP/hostname | `dev.digit.mile.mk` |
 | `development_USERNAME` | SSH username for dev | `ubuntu` |
 | `development_PORT` | SSH port for dev | `22` |
-| `staging_HOST` | Staging server IP/hostname | `staging.digitmile.com` |
+| `staging_HOST` | Staging server IP/hostname | `staging.digit.mile.mk` |
 | `staging_USERNAME` | SSH username for staging | `ubuntu` |
 | `staging_PORT` | SSH port for staging | `22` |
-| `prod_HOST` | Production server IP/hostname | `digitmile.com` |
+| `prod_HOST` | Production server IP/hostname | `digit.mile.mk` |
 | `prod_USERNAME` | SSH username for production | `ubuntu` |
 | `prod_PORT` | SSH port for production | `22` |
-| `DOMAIN` | Your production domain | `digitmile.com` |
-| `SSL_EMAIL` | Email for Let's Encrypt | `admin@digitmile.com` |
+| `DOMAIN` | Your production domain | `digit.mile.mk` |
+| `SSL_EMAIL` | Email for Let's Encrypt | `admin@digit.mile.mk` |
 
 ## SSH Key Setup
 
@@ -112,15 +112,17 @@ sudo mkdir -p /var/www/digitmile
 sudo chown $USER:$USER /var/www/digitmile
 cd /var/www/digitmile
 
-# Create .env file with secrets
-nano DigitMilePanel/.env
+# Create .env file with secrets (ROOT directory, not DigitMilePanel!)
+nano .env
 ```
 
-**DigitMilePanel/.env template:**
+**IMPORTANT:** The `.env` file must be in the **ROOT** directory (`/var/www/digitmile/.env`), not in `DigitMilePanel/`.
+
+**.env template:**
 ```env
 # Database
 DB_NAME=digitmile
-DB_USER=digitmile_user
+DB_USER=digitmile
 DB_PASS=<generate-strong-password>
 DB_HOST=db
 DB_PORT=5432
@@ -128,11 +130,21 @@ DB_PORT=5432
 # Django
 DEBUG=False
 SECRET_KEY=<generate-strong-secret-key>
-ALLOWED_HOSTS=your-domain.com,www.your-domain.com
+SERVER_IP=digit.mile.mk
+ALLOWED_HOSTS=digit.mile.mk,www.digit.mile.mk
 
-# Add your API keys and secrets
-# API_KEY=...
-# EMAIL_HOST_PASSWORD=...
+# API Keys
+GOOGLE_MAPS_API_KEY=your-api-key-here
+
+# Email Configuration
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=your-email@gmail.com
+EMAIL_HOST_PASSWORD=your-gmail-app-password
+DEFAULT_FROM_EMAIL=noreply@digit.mile.mk
+SITE_URL=https://digit.mile.mk
 ```
 
 **Generate secure secrets:**
