@@ -37,24 +37,24 @@ services:
     # In production, you might use a managed database service instead
     restart: always
     # Remove port exposure in production (only backend needs access)
-    ports: []
+    ports: !override []
 
   backend:
     restart: always
     # Use pre-built image from Docker Hub/Registry
     image: ${DOCKERHUB_USERNAME:-your-username}/digitmile-backend:${TARGET_ENV:-prod}-latest
     # Override volumes - don't mount source code in production
-    volumes: []
+    volumes: !override []
     # Keep env_file - .env stays on server only (root directory)
     env_file:
       - .env
     # Remove port exposure - use reverse proxy in production
-    ports: []
+    ports: !override []
 
   frontend:
     restart: always
     # Use pre-built image from Docker Hub/Registry
     image: ${DOCKERHUB_USERNAME:-your-username}/digitmile-game:${TARGET_ENV:-prod}-latest
     # Remove port exposure - use reverse proxy
-    ports: []
+    ports: !override []
 
