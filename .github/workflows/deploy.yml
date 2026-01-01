@@ -44,10 +44,79 @@ jobs:
           target: /var/www/digitmile
           strip_components: 1
 
-  deploy-containers:
-    name: Deploy Docker Containers
+  setup-ssl:
+    name: Initialize SSL Certificates (First Deploy Only)
     needs: deploy-configuration
     runs-on: ubuntu-latest
+    if: inputs.TARGET_ENV == 'prod'
+    env:
+      HOST: ${{ vars[format('{0}_HOST', inputs.TARGET_ENV)] }}
+      USERNAME: ${{ vars[format('{0}_USERNAME', inputs.TARGET_ENV)] }}
+      PORT: ${{ vars[format('{0}_PORT', inputs.TARGET_ENV)] }}
+      DOMAIN: ${{ vars.DOMAIN }}
+      EMAIL: ${{ vars.SSL_EMAIL }}
+
+    steps:
+      - name: Setup Let's Encrypt SSL
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.HOST }}
+          username: ${{ env.USERNAME }}
+          port: ${{ env.PORT }}
+          key: ${{ secrets[format('{0}_SSH_PRIVATE_KEY', inputs.TARGET_ENV)] }}
+          script: |
+            cd /var/www/digitmile
+
+            # Check if a valid Let's Encrypt certificate already exists
+            if [ -d "certbot/conf/live/${{ env.DOMAIN }}" ] && \
+               [ -f "certbot/conf/live/${{ env.DOMAIN }}/fullchain.pem" ] && \
+               ! openssl x509 -in "certbot/conf/live/${{ env.DOMAIN }}/fullchain.pem" -noout -issuer 2>/dev/null | grep -q "CN=localhost"; then
+              echo "✓ Valid SSL certificate already exists for ${{ env.DOMAIN }}, skipping..."
+              exit 0
+            fi
+
+            echo "Initializing Let's Encrypt certificate for ${{ env.DOMAIN }}..."
+
+            # Ensure certbot directories exist
+            mkdir -p certbot/conf certbot/www
+
+            # Clean up any dummy/invalid certificates
+            rm -rf certbot/conf/live/${{ env.DOMAIN }}
+            rm -rf certbot/conf/archive/${{ env.DOMAIN }}
+            rm -rf certbot/conf/renewal/${{ env.DOMAIN }}.conf
+
+            # Stop all containers to free port 80
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml down 2>/dev/null || true
+
+            # Also stop any standalone containers that might be using port 80
+            docker stop $(docker ps -q --filter "publish=80") 2>/dev/null || true
+
+            # Use standalone mode - certbot runs its own temporary webserver
+            # This avoids the chicken-and-egg problem with nginx needing certs to start
+            docker run --rm \
+              -p 80:80 \
+              -v "$(pwd)/certbot/conf:/etc/letsencrypt" \
+              -v "$(pwd)/certbot/www:/var/www/certbot" \
+              certbot/certbot certonly --standalone \
+              --email ${{ env.EMAIL }} \
+              --agree-tos \
+              --no-eff-email \
+              --non-interactive \
+              -d ${{ env.DOMAIN }} -d www.${{ env.DOMAIN }}
+
+            # Verify certificate was obtained
+            if [ -f "certbot/conf/live/${{ env.DOMAIN }}/fullchain.pem" ]; then
+              echo "✓ SSL certificate obtained successfully!"
+            else
+              echo "✗ Failed to obtain SSL certificate"
+              exit 1
+            fi
+
+  deploy-containers:
+    name: Deploy Docker Containers
+    needs: setup-ssl
+    runs-on: ubuntu-latest
+    if: always() && needs.deploy-configuration.result == 'success'
     env:
       HOST: ${{ vars[format('{0}_HOST', inputs.TARGET_ENV)] }}
       USERNAME: ${{ vars[format('{0}_USERNAME', inputs.TARGET_ENV)] }}
@@ -57,7 +126,6 @@ jobs:
       - name: Deploy and Start Containers
         uses: appleboy/ssh-action@v1.0.3
         env:
-          # Using YAML | keeps the newlines exactly as typed, forming valid .env blocks
           DOCKER_VARS: |
             DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
             DOCKERHUB_TOKEN=${{ secrets.DOCKERHUB_TOKEN }}
@@ -87,7 +155,6 @@ jobs:
           username: ${{ env.USERNAME }}
           port: ${{ env.PORT }}
           key: ${{ secrets[format('{0}_SSH_PRIVATE_KEY', inputs.TARGET_ENV)] }}
-          # Pass the multi-line blocks to the server
           envs: DOCKER_VARS,DB_VARS,DJANGO_VARS,EMAIL_VARS
           script: |
             cd /var/www/digitmile
@@ -95,7 +162,7 @@ jobs:
             # Create the .env file by printing the pre-formatted blocks
             printf "%s\n%s\n%s\n%s\n" "$DOCKER_VARS" "$DB_VARS" "$DJANGO_VARS" "$EMAIL_VARS" > .env
 
-            # Login to Docker Hub using the variables we just injected
+            # Login to Docker Hub
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login --username ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
 
             # Pull latest images
@@ -133,59 +200,3 @@ jobs:
             docker image prune -af
 
             echo "Deployment complete!"
-
-  setup-ssl:
-    name: Initialize SSL Certificates (First Deploy Only)
-    needs: deploy-containers
-    runs-on: ubuntu-latest
-    if: inputs.TARGET_ENV == 'prod'
-    env:
-      HOST: ${{ vars[format('{0}_HOST', inputs.TARGET_ENV)] }}
-      USERNAME: ${{ vars[format('{0}_USERNAME', inputs.TARGET_ENV)] }}
-      PORT: ${{ vars[format('{0}_PORT', inputs.TARGET_ENV)] }}
-      DOMAIN: ${{ vars.DOMAIN }}
-      EMAIL: ${{ vars.SSL_EMAIL }}
-
-    steps:
-      - name: Setup Let's Encrypt SSL
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ env.HOST }}
-          username: ${{ env.USERNAME }}
-          port: ${{ env.PORT }}
-          key: ${{ secrets[format('{0}_SSH_PRIVATE_KEY', inputs.TARGET_ENV)] }}
-          script: |
-            cd /var/www/digitmile
-
-            if [ ! -d "certbot/conf/live/${{ env.DOMAIN }}" ]; then
-              echo "Initializing Let's Encrypt certificate..."
-              
-              mkdir -p certbot/conf certbot/www
-              
-              # Create dummy certificate so nginx can start
-              mkdir -p certbot/conf/live/${{ env.DOMAIN }}
-              openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
-                -keyout certbot/conf/live/${{ env.DOMAIN }}/privkey.pem \
-                -out certbot/conf/live/${{ env.DOMAIN }}/fullchain.pem \
-                -subj '/CN=localhost'
-              
-              # Restart nginx with dummy cert
-              docker compose -f docker-compose.yml -f docker-compose.prod.yml restart nginx-proxy
-              
-              # Wait for nginx to be ready
-              sleep 15
-              
-              # Now request the real certificate
-              docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm certbot certonly --webroot \
-                --webroot-path=/var/www/certbot \
-                --email ${{ env.EMAIL }} \
-                --agree-tos \
-                --no-eff-email \
-                --non-interactive \
-                -d ${{ env.DOMAIN }} -d www.${{ env.DOMAIN }}
-              
-              # Reload nginx with real cert
-              docker compose -f docker-compose.yml -f docker-compose.prod.yml restart nginx-proxy
-              
-              echo "✓ SSL certificate obtained!"
-            fi
