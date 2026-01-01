@@ -14,7 +14,7 @@ upstream game {
 # HTTP → HTTPS redirect
 server {
     listen 80;
-    server_name digit.mile.mk www.digit.mile.mk;
+    server_name digit.mile.mk;
 
     # Allow Let's Encrypt ACME challenge
     location /.well-known/acme-challenge/ {
@@ -30,7 +30,7 @@ server {
 # HTTPS server
 server {
     listen 443 ssl http2;
-    server_name digit.mile.mk www.digit.mile.mk;
+    server_name digit.mile.mk;
 
     # SSL Configuration (Let's Encrypt)
     ssl_certificate /etc/letsencrypt/live/digit.mile.mk/fullchain.pem;
@@ -51,7 +51,11 @@ server {
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-XSS-Protection "1; mode=block" always;
 
-    # Backend API routes
+    # ===========================================
+    # Django Backend Routes (under /panel/)
+    # ===========================================
+    
+    # Django panel - all routes
     location /panel/ {
         proxy_pass http://backend;
         proxy_set_header Host $host;
@@ -65,13 +69,13 @@ server {
         proxy_read_timeout 60s;
     }
 
-    # Backend static files
-    location /panel/static/ {
+    # Django static files (served by Django/gunicorn or whitenoise)
+    location /static/ {
         proxy_pass http://backend;
         proxy_set_header Host $host;
     }
 
-    # Backend admin
+    # Django admin (also under backend)
     location /admin/ {
         proxy_pass http://backend;
         proxy_set_header Host $host;
@@ -80,12 +84,20 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # Game frontend (everything else)
+    # ===========================================
+    # Unity WebGL Game (everything else)
+    # ===========================================
+    
     location / {
         proxy_pass http://game;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # CRITICAL: Pass through Content-Encoding header from upstream
+        # This allows the Unity WebGL compressed files to work correctly
+        proxy_pass_header Content-Encoding;
+        proxy_pass_header Content-Type;
     }
 }

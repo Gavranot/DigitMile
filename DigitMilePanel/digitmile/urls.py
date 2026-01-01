@@ -19,14 +19,19 @@ from django.urls import path
 from django.urls import path, include # Make sure include is imported
 from digitmileapi import views as api_views
 
-urlpatterns = [
+# Your existing URL patterns
+panel_patterns = [
     path('', api_views.home_view, name='home'),
-    path('admin/', admin.site.urls),
     path('health/', api_views.health_check),
-    path('api/', include('digitmileapi.urls')),  # This line tells Django to look at myapi.urls for paths starting with 'api/'
+    path('api/', include('digitmileapi.urls')),
     path('register/school/', api_views.register_school_view, name='register_school'),
     path('register/teacher/', api_views.register_teacher_view, name='register_teacher'),
     path('registration-success/', api_views.registration_success, name='registration_success'),
     path('teacher/statistics/', api_views.teacher_statistics_dashboard, name='teacher_statistics'),
     path('captcha/', include('captcha.urls')),
+]
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('panel/', include(panel_patterns)),
 ]
