@@ -80,15 +80,15 @@ jobs:
             fi
 
             # Stop and remove old containers
-            docker-compose -f docker-compose.yml -f docker-compose.prod.yml down
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml down
 
             # Start new containers (migrations and collectstatic run automatically)
-            docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
             # Wait for backend to be healthy
             echo "Waiting for backend to be ready..."
             for i in {1..30}; do
-              if docker-compose exec -T backend python -c "import django; django.setup()" 2>/dev/null; then
+              if docker compose exec -T backend python -c "import django; django.setup()" 2>/dev/null; then
                 echo "Backend is ready!"
                 break
               fi
@@ -97,7 +97,7 @@ jobs:
             done
 
             # Verify migrations ran successfully
-            docker-compose logs backend | grep -q "Operations to perform" && echo "✓ Migrations completed" || echo "⚠ Check migration logs"
+            docker compose logs backend | grep -q "Operations to perform" && echo "✓ Migrations completed" || echo "⚠ Check migration logs"
 
             # Clean up old images
             docker image prune -af
@@ -135,7 +135,7 @@ jobs:
               mkdir -p certbot/conf certbot/www
 
               # Request certificate
-              docker-compose run --rm certbot certonly --webroot \
+              docker compose run --rm certbot certonly --webroot \
                 --webroot-path=/var/www/certbot \
                 --email ${{ env.EMAIL }} \
                 --agree-tos \
@@ -143,7 +143,7 @@ jobs:
                 -d ${{ env.DOMAIN }} -d www.${{ env.DOMAIN }}
 
               # Reload nginx with SSL
-              docker-compose restart nginx-proxy
+              docker compose restart nginx-proxy
 
               echo "✓ SSL certificate obtained successfully!"
             else
