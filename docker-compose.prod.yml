@@ -6,9 +6,9 @@ version: '3.8'
 services:
   # NGINX Reverse Proxy (production with Let's Encrypt)
   nginx-proxy:
+    image: ${DOCKERHUB_USERNAME:-your-username}/digitmile-nginx-proxy:${TARGET_ENV:-prod}-latest
     build:
-      context: ./nginx-proxy
-      dockerfile: Dockerfile
+      context: .
     container_name: digitmile-nginx-proxy
     restart: always
     ports:
@@ -66,8 +66,3 @@ services:
     # Remove port exposure - use reverse proxy
     ports: []
 
-  nginx-proxy:
-    # Override to use pre-built image in production
-    image: ${DOCKERHUB_USERNAME:-your-username}/digitmile-nginx-proxy:${TARGET_ENV:-prod}-latest
-    build:
-      context: .
