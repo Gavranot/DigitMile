@@ -56,15 +56,46 @@ jobs:
     steps:
       - name: Deploy and Start Containers
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          # Using YAML | keeps the newlines exactly as typed, forming valid .env blocks
+          DOCKER_VARS: |
+            DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
+            DOCKERHUB_TOKEN=${{ secrets.DOCKERHUB_TOKEN }}
+          DB_VARS: |
+            DB_USER=${{ secrets.DB_USER }}
+            DB_PASS=${{ secrets.DB_PASS }}
+            DB_HOST=${{ vars.DB_HOST }}
+            DB_NAME=${{ vars.DB_NAME }}
+            DB_PORT=${{ vars.DB_PORT }}
+          DJANGO_VARS: |
+            DJANGO_SUPERUSER_USERNAME=${{ secrets.DJANGO_SUPERUSER_USERNAME }}
+            DJANGO_SUPERUSER_PASSWORD=${{ secrets.DJANGO_SUPERUSER_PASSWORD }}
+            DJANGO_SUPERUSER_EMAIL=${{ secrets.DJANGO_SUPERUSER_EMAIL }}
+            DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}
+            SITE_URL=${{ vars.SITE_URL }}
+            ALLOWED_HOSTS=${{ vars.ALLOWED_HOSTS }}
+            SERVER_IP=${{ vars.SERVER_IP }}
+          EMAIL_VARS: |
+            EMAIL_HOST_PASSWORD=${{ secrets.EMAIL_HOST_PASSWORD }}
+            EMAIL_HOST=${{ vars.EMAIL_HOST }}
+            EMAIL_PORT=${{ vars.EMAIL_PORT }}
+            EMAIL_HOST_USER=${{ vars.EMAIL_HOST_USER }}
+            EMAIL_BACKEND=${{ vars.EMAIL_BACKEND }}
+            EMAIL_USE_TLS=${{ vars.EMAIL_USE_TLS }}
         with:
           host: ${{ env.HOST }}
           username: ${{ env.USERNAME }}
           port: ${{ env.PORT }}
           key: ${{ secrets[format('{0}_SSH_PRIVATE_KEY', inputs.TARGET_ENV)] }}
+          # Pass the multi-line blocks to the server
+          envs: DOCKER_VARS,DB_VARS,DJANGO_VARS,EMAIL_VARS
           script: |
             cd /var/www/digitmile
+            
+            # Create the .env file by printing the pre-formatted blocks
+            printf "%s\n%s\n%s\n%s\n" "$DOCKER_VARS" "$DB_VARS" "$DJANGO_VARS" "$EMAIL_VARS" > .env
 
-            # Login to Docker Hub
+            # Login to Docker Hub using the variables we just injected
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login --username ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
 
             # Pull latest images
@@ -72,17 +103,16 @@ jobs:
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/digitmile-backend:${{ inputs.TARGET_ENV }}-latest
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/digitmile-nginx-proxy:${{ inputs.TARGET_ENV }}-latest
 
-            # Verify .env file exists
+            # Verify .env file creation
             if [ ! -f .env ]; then
-              echo "ERROR: .env file not found!"
-              echo "Please upload .env file to /var/www/digitmile/.env"
+              echo "ERROR: .env file was not generated!"
               exit 1
             fi
 
             # Stop and remove old containers
             docker compose -f docker-compose.yml -f docker-compose.prod.yml down
 
-            # Start new containers (migrations and collectstatic run automatically)
+            # Start new containers
             docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
             # Wait for backend to be healthy

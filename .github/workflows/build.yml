@@ -10,6 +10,11 @@ on:
         required: false
         type: string
         default: "master"
+    secrets:
+      DOCKERHUB_USERNAME:
+        required: true
+      DOCKERHUB_TOKEN:
+        required: true
 
 jobs:
   build_game_docker:
@@ -78,6 +83,7 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+        if: "${{ secrets.DOCKERHUB_USERNAME != '' }}" # Only run if secret exists
 
       - name: Extract metadata
         id: meta
@@ -92,7 +98,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./DigitMilePanel
-          file: ./DigitMilePanel/Dockerfile
+          file: ./DigitMilePanel/Dockerfile.compose
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

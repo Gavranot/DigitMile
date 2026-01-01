@@ -27,7 +27,7 @@ spec:
             python manage.py create_superuser
             echo "Init container complete"
           env: &django-env
-            - name: SECRET_KEY
+            - name: DJANGO_SECRET_KEY
               valueFrom:
                 secretKeyRef:
                   name: django-secret

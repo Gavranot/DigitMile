@@ -27,7 +27,7 @@ CORS_ALLOW_ALL_ORIGINS=True
 # FORCE_SCRIPT_NAME = '/panel'
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-)bpw(3%nq@n54q!qfc=stwjs8^-2nar(%=s*@-f9dbm4__0h@s')
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-)bpw(3%nq@n54q!qfc=stwjs8^-2nar(%=s*@-f9dbm4__0h@s')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
