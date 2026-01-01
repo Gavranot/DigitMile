@@ -33,9 +33,17 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-)bpw(3%nq@n54q!qfc=
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 SERVER_IP = os.getenv('SERVER_IP')
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'digit.mile.mk,localhost,127.0.0.1').split(',')
 if SERVER_IP:
     ALLOWED_HOSTS.append(SERVER_IP)
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://digit.mile.mk",
+]
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+
 # ALLOWED_HOSTS += [
 #     '10.1.0.*',
 #     'django-backend',
