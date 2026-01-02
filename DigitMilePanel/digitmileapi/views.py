@@ -4,10 +4,13 @@ from .serializers import ClassroomBasicSerializer # To serialize classroom data
 from .serializers import SchoolSerializer # Ensure SchoolSerializer is imported
 from .serializers import RunStatisticsSerializer # Ensure RunStatisticsSerializer is imported
 from rest_framework import viewsets, permissions
+from rest_framework.authentication import SessionAuthentication # Add this to be explicit
+from rest_framework.throttling import AnonRateThrottle
 from .serializers import TeacherStudentManagementSerializer # Add this new serializer
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.urls import reverse_lazy
+from django.middleware.csrf import get_token
 from .forms import SchoolRegistrationForm, TeacherRegistrationForm
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -25,6 +28,21 @@ import logging
 
 # Set up logger for email operations
 logger = logging.getLogger(__name__)
+
+class UnsafeSessionAuthentication(SessionAuthentication):
+    def enforce_csrf(self, request):
+        return  # To not perform the csrf check previously happening
+    
+class FetchCSRFTokenView(APIView):
+
+    throttle_classes = [AnonRateThrottle]
+    permission_classes = [permissions.AllowAny]
+
+    authentication_classes = [UnsafeSessionAuthentication]
+
+    def get(self, request, *args, **kwargs):
+        token = get_token(request)
+        return JsonResponse({'csrfToken': token})
 
 def health_check(request):
     return JsonResponse({"status": "healthy"})
@@ -175,6 +193,8 @@ class CheckClassroomKeyView(APIView):
     """
     Checks if a classroom key exists and returns classroom, teacher, and student data.
     """
+    throttle_classes = [AnonRateThrottle] 
+
     def post(self, request, *args, **kwargs):
         classroom_key_from_request = request.data.get("classroomKey")
 
@@ -220,6 +240,8 @@ class InsertLevelStatisticsView(APIView):
     """
     Inserts run statistics for a student in a given classroom.
     """
+    throttle_classes = [AnonRateThrottle] 
+
     def post(self, request, *args, **kwargs):
         input_serializer = LevelStatisticsInputSerializer(data=request.data)
         if not input_serializer.is_valid():

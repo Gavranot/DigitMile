@@ -21,6 +21,7 @@ from digitmileapi import views as api_views
 
 # Your existing URL patterns
 panel_patterns = [
+    path('admin/', admin.site.urls),
     path('', api_views.home_view, name='home'),
     path('health/', api_views.health_check),
     path('api/', include('digitmileapi.urls')),
@@ -32,6 +33,5 @@ panel_patterns = [
 ]
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
     path('panel/', include(panel_patterns)),
 ]

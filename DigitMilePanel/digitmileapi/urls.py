@@ -2,6 +2,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
+    FetchCSRFTokenView,
     CheckClassroomKeyView,
     InsertLevelStatisticsView,
     pending_registrations_view,
@@ -23,6 +24,7 @@ router.register(r'teacher/students', TeacherStudentViewSet, basename='teacher-st
 # urlpatterns will include both the manually defined paths and the router's paths.
 urlpatterns = [
     # Manually defined paths
+    path("fetchCSRFToken/", FetchCSRFTokenView.as_view(), name="fetch_csrf_token"),
     path('checkClassroomKey/', CheckClassroomKeyView.as_view(), name='check_classroom_key'),
     path('insertLevelStatistics/', InsertLevelStatisticsView.as_view(), name='insert_level_statistics'),
     path('pending-registrations/', pending_registrations_view, name='pending_registrations'),
