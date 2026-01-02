@@ -63,36 +63,31 @@ class School(models.Model):
         return self.status == 'APPROVED'
 
     def save(self, *args, **kwargs):
-        """Override save to handle status changes to REJECTED with cascade logic"""
+        """Override save to handle status changes to REJECTED - disables access without deleting data"""
         # Check if this is an existing instance and status is changing to REJECTED
         if self.pk:
             try:
                 old_instance = School.objects.get(pk=self.pk)
                 if old_instance.status != 'REJECTED' and self.status == 'REJECTED':
-                    # Need to save first, then cascade
-                    # But we need to track teachers before save
-                    teachers_to_reject = []
-
-                    # Find all teachers assigned to this school
-                    from .models import Teacher, Classroom
-                    teachers_at_school = Teacher.objects.filter(schools=self)
-
-                    for teacher in teachers_at_school:
-                        # Check if this is the teacher's ONLY school
-                        if teacher.schools.count() == 1:
-                            teachers_to_reject.append(teacher)
-
                     # Save school first
                     super().save(*args, **kwargs)
 
-                    # Now cascade to teachers
-                    for teacher in teachers_to_reject:
-                        # Delete all classrooms (cascades to students and run statistics)
-                        Classroom.objects.filter(teacher=teacher).delete()
-                        # Set teacher status to REJECTED
-                        teacher.status = 'REJECTED'
-                        # Save without triggering cascade again
-                        Teacher.objects.filter(pk=teacher.pk).update(status='REJECTED')
+                    # Find all teachers assigned to this school
+                    from .models import Teacher
+                    teachers_at_school = Teacher.objects.filter(schools=self)
+
+                    # Reject teachers who ONLY have this school (data is preserved)
+                    for teacher in teachers_at_school:
+                        # Check if this is the teacher's ONLY school
+                        if teacher.schools.count() == 1:
+                            # Set teacher status to REJECTED (no data deletion)
+                            teacher.status = 'REJECTED'
+                            # Disable user login if user exists
+                            if teacher.user:
+                                teacher.user.is_active = False
+                                teacher.user.save()
+                            # Save without triggering cascade again
+                            Teacher.objects.filter(pk=teacher.pk).update(status='REJECTED')
 
                     return  # Already saved above
             except School.DoesNotExist:
@@ -174,19 +169,19 @@ class Teacher(models.Model):
         return self.status == 'APPROVED'
 
     def save(self, *args, **kwargs):
-        """Override save to handle status changes to REJECTED with cascade logic"""
+        """Override save to handle status changes to REJECTED - disables access without deleting data"""
         # Check if this is an existing instance and status is changing to REJECTED
         if self.pk:
             try:
                 old_instance = Teacher.objects.get(pk=self.pk)
                 if old_instance.status != 'REJECTED' and self.status == 'REJECTED':
-                    # Save teacher first
+                    # Disable user login if user account exists
+                    if self.user:
+                        self.user.is_active = False
+                        self.user.save()
+
+                    # Save teacher (no data deletion)
                     super().save(*args, **kwargs)
-
-                    # Delete all classrooms (cascades to students and run statistics)
-                    from .models import Classroom
-                    Classroom.objects.filter(teacher=self).delete()
-
                     return  # Already saved above
             except Teacher.DoesNotExist:
                 pass

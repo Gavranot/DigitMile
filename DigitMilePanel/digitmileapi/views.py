@@ -340,14 +340,15 @@ def register_teacher_view(request):
 class IsTeacher(permissions.BasePermission):
     """
     Custom permission to only allow users in the 'Teachers' group
-    and who have a teacher_profile.
+    who have an APPROVED teacher_profile (not REJECTED).
     """
     def has_permission(self, request, view):
         return (
             request.user and
             request.user.is_authenticated and
             request.user.groups.filter(name='Teachers').exists() and
-            hasattr(request.user, 'teacher_profile')
+            hasattr(request.user, 'teacher_profile') and
+            request.user.teacher_profile.status == 'APPROVED'
         )
 
 class TeacherStudentViewSet(viewsets.ModelViewSet):
@@ -497,7 +498,7 @@ def approve_school(request, school_id):
 def reject_school(request, school_id):
     """
     Reject a school registration and cascade rejection to teachers who ONLY have this school.
-    Deletes all classrooms, students, and run statistics for rejected teachers.
+    Disables login access for rejected teachers while preserving all data.
     """
     school = get_object_or_404(School, id=school_id, status='PENDING')
 
@@ -512,31 +513,20 @@ def reject_school(request, school_id):
             # This is their only school, they will be rejected
             teachers_to_reject.append(teacher)
 
-    # Update status to REJECTED
+    # Update status to REJECTED (cascade handled in School.save())
     school.status = 'REJECTED'
     school.save()
 
-    # Reject teachers who only have this school
-    rejected_teacher_names = []
-    for teacher in teachers_to_reject:
-        # Delete all classrooms (cascades to students and run statistics)
-        Classroom.objects.filter(teacher=teacher).delete()
-
-        # Set teacher status to REJECTED
-        teacher.status = 'REJECTED'
-        teacher.save()
-
-        rejected_teacher_names.append(teacher.full_name)
-
     # Build message
+    rejected_teacher_names = [t.full_name for t in teachers_to_reject]
     if rejected_teacher_names:
-        teachers_msg = f" The following teachers were also rejected and their data deleted: {', '.join(rejected_teacher_names)}"
+        teachers_msg = f" The following teachers were also rejected and had login access disabled: {', '.join(rejected_teacher_names)}"
     else:
         teachers_msg = " No teachers were affected (they have assignments to other schools)."
 
     messages.warning(
         request,
-        f"School '{school.name}' has been rejected.{teachers_msg}"
+        f"School '{school.name}' has been rejected.{teachers_msg} All data has been preserved for audit purposes."
     )
     return redirect('pending_registrations')
 
@@ -578,21 +568,21 @@ def approve_teacher(request, teacher_id):
 def reject_teacher(request, teacher_id):
     """
     Reject a teacher registration.
-    Deletes all classrooms, students, and run statistics created by this teacher.
+    Disables login access while preserving all classrooms, students, and run statistics for audit purposes.
     """
     teacher = get_object_or_404(Teacher, id=teacher_id, status='PENDING')
 
-    # Delete all classrooms (cascades to students and run statistics)
-    classrooms_deleted = Classroom.objects.filter(teacher=teacher).count()
-    Classroom.objects.filter(teacher=teacher).delete()
+    # Count classrooms for informational message
+    classrooms_count = Classroom.objects.filter(teacher=teacher).count()
 
-    # Set teacher status to REJECTED
+    # Set teacher status to REJECTED (user login disabled in Teacher.save())
     teacher.status = 'REJECTED'
     teacher.save()
 
     messages.warning(
         request,
-        f"Teacher '{teacher.full_name}' has been rejected. {classrooms_deleted} classroom(s) and all associated data were deleted."
+        f"Teacher '{teacher.full_name}' has been rejected and login access disabled. "
+        f"{classrooms_count} classroom(s) and all associated data have been preserved for audit purposes."
     )
     return redirect('pending_registrations')
 
@@ -694,11 +684,12 @@ def calculate_consistency_score(values):
     return max(0, min(1, consistency))  # Clamp between 0 and 1
 
 @login_required
-@user_passes_test(lambda u: hasattr(u, 'teacher_profile'))
+@user_passes_test(lambda u: hasattr(u, 'teacher_profile') and u.teacher_profile.status == 'APPROVED')
 def teacher_statistics_dashboard(request):
     """
     Enhanced dashboard for teachers to view comprehensive student performance statistics.
     Includes learning curves, top/bottom performers, attention/reward panels.
+    Only accessible to APPROVED teachers.
     """
     teacher = request.user.teacher_profile
 

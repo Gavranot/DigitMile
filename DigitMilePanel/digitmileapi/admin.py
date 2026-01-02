@@ -26,19 +26,19 @@ class SchoolAdmin(admin.ModelAdmin):
         }),
         ('Status', {
             'fields': ('status', 'created_at', 'updated_at'),
-            'description': '<strong style="color: #d63031;">⚠️ WARNING:</strong> Changing status to REJECTED will cascade to teachers! '
-                          'Teachers who ONLY have this school will be REJECTED and all their classrooms, students, '
-                          'and run statistics will be permanently DELETED.'
+            'description': '<strong style="color: #ff9f43;">⚠️ WARNING:</strong> Changing status to REJECTED will cascade to teachers! '
+                          'Teachers who ONLY have this school will be REJECTED and have their login access disabled. '
+                          'All data (classrooms, students, run statistics) will be preserved for audit purposes.'
         }),
     )
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
         if request.user.is_superuser:
-            return qs  # Superusers see all schools
+            return qs  # Superusers see all schools including REJECTED
         if hasattr(request.user, 'teacher_profile'):
-            # Teachers see only their assigned schools
-            return qs.filter(teachers=request.user.teacher_profile, status='APPROVED')
+            # Teachers see only their assigned schools (exclude REJECTED)
+            return qs.filter(teachers=request.user.teacher_profile).exclude(status='REJECTED')
         return qs.none()
 
     def get_readonly_fields(self, request, obj=None):
@@ -93,7 +93,8 @@ class SchoolAdmin(admin.ModelAdmin):
             messages.warning(
                 request,
                 f"School '{obj.name}' status changed to REJECTED. "
-                f"CASCADE EXECUTED: {len(affected_teachers)} teacher(s) were rejected and their data deleted: {teacher_details}"
+                f"CASCADE EXECUTED: {len(affected_teachers)} teacher(s) were rejected and had login access disabled: {teacher_details}. "
+                f"All data has been preserved for audit purposes."
             )
         elif status_changing_to_rejected:
             messages.info(
@@ -138,15 +139,25 @@ class TeacherAdmin(admin.ModelAdmin):
         }),
         ('Status', {
             'fields': ('status', 'created_at', 'updated_at'),
-            'description': '<strong style="color: #d63031;">⚠️ WARNING:</strong> Changing status to REJECTED will permanently DELETE '
-                          'all classrooms, students, and run statistics created by this teacher!'
+            'description': '<strong style="color: #ff9f43;">⚠️ WARNING:</strong> Changing status to REJECTED will disable login access for this teacher. '
+                          'All classrooms, students, and run statistics will be preserved for audit purposes.'
         }),
     )
 
     def get_schools(self, obj):
         schools = obj.schools.all()
-        return ", ".join([f"{s.name} ({'PENDING' if s.is_pending else 'APPROVED'})" for s in schools])
+        return ", ".join([f"{s.name} ({s.get_status_display()})" for s in schools])
     get_schools.short_description = 'Schools'
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs  # Superusers see all teachers including REJECTED
+        if hasattr(request.user, 'teacher_profile'):
+            # Teachers should not see other teachers in admin
+            # But if they do have access somehow, exclude REJECTED
+            return qs.exclude(status='REJECTED')
+        return qs.none()
 
     def save_model(self, request, obj, form, change):
         """Override to show notification of cascade effects when status changes to REJECTED"""
@@ -165,13 +176,23 @@ class TeacherAdmin(admin.ModelAdmin):
         # Save the model (cascade will happen in Teacher.save())
         super().save_model(request, obj, form, change)
 
-        # Show warning message if cascade happened
+        # Show warning message if status changed to rejected
         if status_changing_to_rejected:
-            messages.warning(
-                request,
-                f"Teacher '{obj.full_name}' status changed to REJECTED. "
-                f"CASCADE EXECUTED: {classrooms_to_delete} classroom(s) and all associated students and run statistics were permanently deleted."
-            )
+            # Disable user login
+            if obj.user:
+                obj.user.is_active = False
+                obj.user.save()
+                messages.warning(
+                    request,
+                    f"Teacher '{obj.full_name}' status changed to REJECTED and login access disabled. "
+                    f"{classrooms_to_delete} classroom(s) and all associated data have been preserved for audit purposes."
+                )
+            else:
+                messages.warning(
+                    request,
+                    f"Teacher '{obj.full_name}' status changed to REJECTED. "
+                    f"{classrooms_to_delete} classroom(s) and all associated data have been preserved for audit purposes."
+                )
 
 @admin.register(TeacherSchoolAssignment)
 class TeacherSchoolAssignmentAdmin(admin.ModelAdmin):
@@ -294,12 +315,15 @@ class ClassroomAdmin(admin.ModelAdmin):
         """Filter school and teacher choices based on permissions"""
         if db_field.name == "school":
             if not request.user.is_superuser and hasattr(request.user, 'teacher_profile'):
-                # Limit to schools assigned to this teacher (including PENDING)
+                # Limit to schools assigned to this teacher (exclude REJECTED)
                 kwargs["queryset"] = request.user.teacher_profile.schools.exclude(status='REJECTED')
+            elif request.user.is_superuser:
+                # Superusers can see all schools but should prefer non-rejected
+                kwargs["queryset"] = School.objects.exclude(status='REJECTED')
         if db_field.name == "teacher":
             # Only superusers see this field (see get_fields)
             if request.user.is_superuser:
-                # Superusers can assign to any approved teacher
+                # Superusers can assign to approved teachers only (exclude REJECTED)
                 kwargs["queryset"] = Teacher.objects.filter(status='APPROVED')
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
