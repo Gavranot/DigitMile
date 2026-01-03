@@ -24,8 +24,8 @@ services:
 
   # Remove port exposure from frontend (accessed via proxy)
   frontend:
-    ports: []
+    ports: !override []
 
   # Remove port exposure from backend (accessed via proxy)
   backend:
-    ports: []
+    ports: !override []

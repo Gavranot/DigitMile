@@ -43,6 +43,159 @@ class FetchCSRFTokenView(APIView):
     def get(self, request, *args, **kwargs):
         token = get_token(request)
         return JsonResponse({'csrfToken': token})
+    
+class CheckStudentCredentialsView(APIView):
+    """
+    Checks the student's birth date to authorize the player
+    """
+    throttle_classes = [AnonRateThrottle]
+
+    def post(self, request, *args, **kwargs):
+        student_name_from_request = request.data.get("studentName")
+        date_of_birth_from_request = request.data.get("studentBirthDate")
+
+        if not student_name_from_request or not date_of_birth_from_request:
+            return Response({"error": "Invalid input: either student name or date of birth are missing"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Parse the date of birth (format: Year/Month/Day)
+        try:
+            from datetime import datetime
+            # Try parsing Year/Month/Day format (e.g., "2015/03/25")
+            parsed_date = datetime.strptime(date_of_birth_from_request, "%Y/%m/%d").date()
+        except ValueError:
+            try:
+                # Fallback: Try YYYY-MM-DD format (e.g., "2015-03-25")
+                parsed_date = datetime.strptime(date_of_birth_from_request, "%Y-%m-%d").date()
+            except ValueError:
+                return Response({"error": "Invalid date format. Expected YYYY/MM/DD or YYYY-MM-DD"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if student exists with matching name and date of birth
+        try:
+            student = Student.objects.get(
+                full_name=student_name_from_request,
+                date_of_birth=parsed_date
+            )
+
+            # Student credentials are valid
+            return Response({
+                "message": "Student credentials verified successfully",
+                "student_id": student.id,
+                "student_name": student.full_name,
+                "classroom": student.classroom.classroom_name,
+                "grade": student.grade
+            }, status=status.HTTP_200_OK)
+
+        except Student.DoesNotExist:
+            # Student not found with those credentials
+            return Response({
+                "error": "Student credentials verification failed. Student not found with the provided name and date of birth."
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        except Student.MultipleObjectsReturned:
+            # Multiple students found (shouldn't happen due to unique_together, but handle it)
+            return Response({
+                "error": "Multiple students found with those credentials. Please contact your teacher."
+            }, status=status.HTTP_409_CONFLICT)
+
+class CheckClassroomKeyView(APIView):
+    """
+    Checks if a classroom key exists and returns classroom, teacher, and student data.
+    """
+    throttle_classes = [AnonRateThrottle] 
+
+    def post(self, request, *args, **kwargs):
+        classroom_key_from_request = request.data.get("classroomKey")
+
+        if not classroom_key_from_request:
+            return Response({"error": "Invalid input: classroomKey missing"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Fetch the classroom using its unique classroom_key
+            # select_related fetches related Teacher objects in the same DB query
+            print(Classroom.objects.count())
+
+            classroom = Classroom.objects.select_related('teacher').get(classroom_key=classroom_key_from_request)
+
+            # Now you can safely access classroom attributes
+            print(f"Found classroom: ID={classroom.id}, Key={classroom.classroom_key}, Teacher={classroom.teacher.full_name}")
+
+            # ... (rest of your logic to prepare response_data)
+            students_queryset = Student.objects.filter(classroom=classroom)
+            student_names = [student.full_name for student in students_queryset]
+
+            # Get the school directly from the classroom
+            school = classroom.school
+
+            response_data = {
+                'school': school,
+                'teacher_data': classroom.teacher.full_name,
+                'students': student_names
+            }
+            serializer = CheckClassroomResponseSerializer(response_data) # Ensure this serializer is defined
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        except Classroom.DoesNotExist:
+            print(f"Classroom with key '{classroom_key_from_request}' does not exist.") # More informative print
+            return Response({"message": "Classroom key verification failed or classroom not found"}, status=status.HTTP_404_NOT_FOUND) # 404 is often more appropriate here
+        except Exception as e:
+            # Catch any other unexpected errors
+            print(f"An unexpected error occurred: {e}")
+            import traceback
+            traceback.print_exc()
+            return Response({"error": "An internal server error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class InsertLevelStatisticsView(APIView):
+    """
+    Inserts run statistics for a student in a given classroom.
+    """
+    throttle_classes = [AnonRateThrottle] 
+
+    def post(self, request, *args, **kwargs):
+        input_serializer = LevelStatisticsInputSerializer(data=request.data)
+        if not input_serializer.is_valid():
+            return Response(input_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        data = input_serializer.validated_data
+        classroom_key = data["classroomKey"]
+        user_full_name = data["user"]
+        level_statistics = data['levelStatistics']
+
+        try:
+            classroom = Classroom.objects.get(classroom_key=classroom_key)
+        except Classroom.DoesNotExist:
+            return Response({"error": "Classroom not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            student = Student.objects.get(full_name=user_full_name, classroom=classroom)
+        except Student.DoesNotExist:
+            return Response({"error": "User (Student) not found in this classroom"}, status=status.HTTP_404_NOT_FOUND)
+
+        player_won = level_statistics.get('place') == 1
+
+        try:
+            # Create RunStatistics instance using Django ORM
+            run_stat = RunStatistics.objects.create(
+                student=student,
+                player_won=player_won,
+                level=level_statistics.get('level'),
+                score=level_statistics.get('score'),
+                place=level_statistics.get('place'),
+                correct_moves=level_statistics.get('correctMoves'),
+                wrong_moves=level_statistics.get('wrongMoves'),
+                time_elapsed=level_statistics.get('timeElapsed')
+            )
+            # Optionally, serialize and return the created object if needed by the frontend
+            # run_stat_serializer = RunStatisticsSerializer(run_stat)
+            # return Response(run_stat_serializer.data, status=status.HTTP_201_CREATED)
+            return Response({"message": "Data inserted successfully"}, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            # Log the exception for server-side debugging
+            print(f"Error inserting run statistics: {e}")
+            import traceback
+            traceback.print_exc()
+            return Response({"error": "Internal server error while saving statistics"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 def health_check(request):
     return JsonResponse({"status": "healthy"})
@@ -189,104 +342,7 @@ DigitMile Team
         logger.error(f"Error message: {str(e)}")
         logger.exception("Full traceback:")
 
-class CheckClassroomKeyView(APIView):
-    """
-    Checks if a classroom key exists and returns classroom, teacher, and student data.
-    """
-    throttle_classes = [AnonRateThrottle] 
 
-    def post(self, request, *args, **kwargs):
-        classroom_key_from_request = request.data.get("classroomKey")
-
-        if not classroom_key_from_request:
-            return Response({"error": "Invalid input: classroomKey missing"}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            # Fetch the classroom using its unique classroom_key
-            # select_related fetches related Teacher objects in the same DB query
-            print(Classroom.objects.count())
-
-            classroom = Classroom.objects.select_related('teacher').get(classroom_key=classroom_key_from_request)
-
-            # Now you can safely access classroom attributes
-            print(f"Found classroom: ID={classroom.id}, Key={classroom.classroom_key}, Teacher={classroom.teacher.full_name}")
-
-            # ... (rest of your logic to prepare response_data)
-            students_queryset = Student.objects.filter(classroom=classroom)
-            student_names = [student.full_name for student in students_queryset]
-
-            # Get the school directly from the classroom
-            school = classroom.school
-
-            response_data = {
-                'school': school,
-                'teacher_data': classroom.teacher.full_name,
-                'students': student_names
-            }
-            serializer = CheckClassroomResponseSerializer(response_data) # Ensure this serializer is defined
-            return Response(serializer.data, status=status.HTTP_200_OK)
-
-        except Classroom.DoesNotExist:
-            print(f"Classroom with key '{classroom_key_from_request}' does not exist.") # More informative print
-            return Response({"message": "Classroom key verification failed or classroom not found"}, status=status.HTTP_404_NOT_FOUND) # 404 is often more appropriate here
-        except Exception as e:
-            # Catch any other unexpected errors
-            print(f"An unexpected error occurred: {e}")
-            import traceback
-            traceback.print_exc()
-            return Response({"error": "An internal server error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-class InsertLevelStatisticsView(APIView):
-    """
-    Inserts run statistics for a student in a given classroom.
-    """
-    throttle_classes = [AnonRateThrottle] 
-
-    def post(self, request, *args, **kwargs):
-        input_serializer = LevelStatisticsInputSerializer(data=request.data)
-        if not input_serializer.is_valid():
-            return Response(input_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        data = input_serializer.validated_data
-        classroom_key = data["classroomKey"]
-        user_full_name = data["user"]
-        level_statistics = data['levelStatistics']
-
-        try:
-            classroom = Classroom.objects.get(classroom_key=classroom_key)
-        except Classroom.DoesNotExist:
-            return Response({"error": "Classroom not found"}, status=status.HTTP_404_NOT_FOUND)
-
-        try:
-            student = Student.objects.get(full_name=user_full_name, classroom=classroom)
-        except Student.DoesNotExist:
-            return Response({"error": "User (Student) not found in this classroom"}, status=status.HTTP_404_NOT_FOUND)
-
-        player_won = level_statistics.get('place') == 1
-
-        try:
-            # Create RunStatistics instance using Django ORM
-            run_stat = RunStatistics.objects.create(
-                student=student,
-                player_won=player_won,
-                level=level_statistics.get('level'),
-                score=level_statistics.get('score'),
-                place=level_statistics.get('place'),
-                correct_moves=level_statistics.get('correctMoves'),
-                wrong_moves=level_statistics.get('wrongMoves'),
-                time_elapsed=level_statistics.get('timeElapsed')
-            )
-            # Optionally, serialize and return the created object if needed by the frontend
-            # run_stat_serializer = RunStatisticsSerializer(run_stat)
-            # return Response(run_stat_serializer.data, status=status.HTTP_201_CREATED)
-            return Response({"message": "Data inserted successfully"}, status=status.HTTP_201_CREATED)
-
-        except Exception as e:
-            # Log the exception for server-side debugging
-            print(f"Error inserting run statistics: {e}")
-            import traceback
-            traceback.print_exc()
-            return Response({"error": "Internal server error while saving statistics"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 import os
 
