@@ -342,8 +342,113 @@ DigitMile Team
         logger.error(f"Error message: {str(e)}")
         logger.exception("Full traceback:")
 
+def send_teacher_registration_email(email, username, password, teacher):
+    """Send registration notification email with credentials to teacher (PENDING status)"""
+    logger.info(f"Attempting to send registration email to teacher: {teacher.full_name} ({email})")
 
-        
+    subject = 'Teacher Registration Received - Login Credentials'
+    message = f'''Dear {teacher.full_name},
+
+Thank you for registering as a teacher with DigitMile!
+
+Your registration is currently pending approval. However, you can start using the system right away with the following credentials:
+
+Your login credentials:
+- Username: {username}
+- Password: {password}
+
+Please login at: {settings.SITE_URL if hasattr(settings, 'SITE_URL') else 'your login URL'}/admin/
+
+For security reasons, please change your password after your first login.
+
+Schools you're assigned to:
+{chr(10).join([f"- {assignment.school.name} ({assignment.years_at_school} years)" for assignment in teacher.school_assignments.all()])}
+
+Note: Your account is pending approval by an administrator. You will be notified once your account has been reviewed.
+
+Best regards,
+DigitMile Team
+'''
+
+    # Log email configuration
+    logger.info(f"Email backend: {settings.EMAIL_BACKEND}")
+    logger.info(f"Email host: {settings.EMAIL_HOST}")
+    logger.info(f"From email: {settings.DEFAULT_FROM_EMAIL}")
+    logger.info(f"To email: {email}")
+
+    try:
+        result = send_mail(
+            subject,
+            message,
+            settings.DEFAULT_FROM_EMAIL,
+            [email],
+            fail_silently=False,
+        )
+        logger.info(f"Email sent successfully to {email}. Result: {result}")
+
+        # Warn if using console backend (emails won't actually be sent)
+        if 'console' in settings.EMAIL_BACKEND.lower():
+            logger.warning(
+                f"⚠️  Using console backend - email was printed to console but NOT sent to inbox. "
+                f"To send real emails, configure SMTP settings in .env"
+            )
+    except Exception as e:
+        logger.error(f"Failed to send teacher registration email to {email}")
+        logger.error(f"Error type: {type(e).__name__}")
+        logger.error(f"Error message: {str(e)}")
+        logger.exception("Full traceback:")
+
+def send_school_approval_email_for_teacher(teacher):
+    """Send approval notification email to teacher (without credentials, since they already have them)"""
+    logger.info(f"Attempting to send approval notification to teacher: {teacher.full_name} ({teacher.email})")
+
+    subject = 'Teacher Registration Approved'
+    message = f'''Dear {teacher.full_name},
+
+Great news! Your teacher registration has been approved!
+
+You can continue using your existing login credentials to access the system.
+
+Please login at: {settings.SITE_URL if hasattr(settings, 'SITE_URL') else 'your login URL'}/admin/
+
+Schools you're assigned to:
+{chr(10).join([f"- {assignment.school.name} ({assignment.years_at_school} years)" for assignment in teacher.school_assignments.all()])}
+
+Thank you for being part of DigitMile!
+
+Best regards,
+DigitMile Team
+'''
+
+    # Log email configuration
+    logger.info(f"Email backend: {settings.EMAIL_BACKEND}")
+    logger.info(f"Email host: {settings.EMAIL_HOST}")
+    logger.info(f"From email: {settings.DEFAULT_FROM_EMAIL}")
+    logger.info(f"To email: {teacher.email}")
+
+    try:
+        result = send_mail(
+            subject,
+            message,
+            settings.DEFAULT_FROM_EMAIL,
+            [teacher.email],
+            fail_silently=False,
+        )
+        logger.info(f"Email sent successfully to {teacher.email}. Result: {result}")
+
+        # Warn if using console backend (emails won't actually be sent)
+        if 'console' in settings.EMAIL_BACKEND.lower():
+            logger.warning(
+                f"⚠️  Using console backend - email was printed to console but NOT sent to inbox. "
+                f"To send real emails, configure SMTP settings in .env"
+            )
+    except Exception as e:
+        logger.error(f"Failed to send teacher approval notification to {teacher.email}")
+        logger.error(f"Error type: {type(e).__name__}")
+        logger.error(f"Error message: {str(e)}")
+        logger.exception("Full traceback:")
+
+
 import os
 
 def register_school_view(request):
@@ -369,6 +474,9 @@ def register_teacher_view(request):
     if request.method == 'POST':
         form = TeacherRegistrationForm(request.POST)
         if form.is_valid():
+            from django.contrib.auth.models import User, Group
+            from django.utils.crypto import get_random_string
+
             # Create the Teacher instance with PENDING status
             teacher = Teacher.objects.create(
                 full_name=form.cleaned_data['full_name'],
@@ -388,7 +496,29 @@ def register_teacher_view(request):
                     years_at_school=int(years_at_school) if years_at_school and years_at_school.isdigit() else None
                 )
 
-            messages.success(request, 'Teacher registration submitted for approval.')
+            # Create user account immediately (even though status is PENDING)
+            username = teacher.email.split('@')[0]
+            random_password = get_random_string(length=12)
+
+            user = User.objects.create_user(
+                username=username,
+                email=teacher.email,
+                password=random_password,
+                is_staff=True  # Allow access to Django admin
+            )
+
+            # Add user to Teachers group
+            teachers_group, created = Group.objects.get_or_create(name='Teachers')
+            user.groups.add(teachers_group)
+
+            # Link user to teacher
+            teacher.user = user
+            teacher.save()
+
+            # Send registration email with credentials
+            send_teacher_registration_email(teacher.email, username, random_password, teacher)
+
+            messages.success(request, 'Teacher registration submitted. Login credentials have been sent to your email.')
             return redirect('registration_success')
     else:
         form = TeacherRegistrationForm()
@@ -396,7 +526,7 @@ def register_teacher_view(request):
 class IsTeacher(permissions.BasePermission):
     """
     Custom permission to only allow users in the 'Teachers' group
-    who have an APPROVED teacher_profile (not REJECTED).
+    who have a PENDING or APPROVED teacher_profile (not REJECTED).
     """
     def has_permission(self, request, view):
         return (
@@ -404,7 +534,7 @@ class IsTeacher(permissions.BasePermission):
             request.user.is_authenticated and
             request.user.groups.filter(name='Teachers').exists() and
             hasattr(request.user, 'teacher_profile') and
-            request.user.teacher_profile.status == 'APPROVED'
+            request.user.teacher_profile.status in ['PENDING', 'APPROVED']
         )
 
 class TeacherStudentViewSet(viewsets.ModelViewSet):
@@ -592,32 +722,44 @@ def approve_teacher(request, teacher_id):
 
     teacher = get_object_or_404(Teacher, id=teacher_id, status='PENDING')
 
-    # Create a new user for the teacher
-    username = teacher.email.split('@')[0]
-    # Generate a random password
-    from django.utils.crypto import get_random_string
-    random_password = get_random_string(length=12)
+    # Check if user already exists (created during registration)
+    if teacher.user:
+        # User already exists, just update status to APPROVED
+        teacher.status = 'APPROVED'
+        teacher.save()
 
-    user = User.objects.create_user(
-        username=username,
-        email=teacher.email,
-        password=random_password,
-        is_staff=True  # Allow access to Django admin
-    )
+        # Send approval notification (without credentials, they already have them)
+        send_school_approval_email_for_teacher(teacher)
 
-    # Add user to Teachers group
-    teachers_group, created = Group.objects.get_or_create(name='Teachers')
-    user.groups.add(teachers_group)
+        messages.success(request, f"Teacher '{teacher.full_name}' has been approved and notified via email.")
+    else:
+        # User doesn't exist (old pending teacher), create it now
+        username = teacher.email.split('@')[0]
+        # Generate a random password
+        from django.utils.crypto import get_random_string
+        random_password = get_random_string(length=12)
 
-    # Link user to teacher and update status
-    teacher.user = user
-    teacher.status = 'APPROVED'
-    teacher.save()
+        user = User.objects.create_user(
+            username=username,
+            email=teacher.email,
+            password=random_password,
+            is_staff=True  # Allow access to Django admin
+        )
 
-    # Send approval email with credentials to teacher
-    send_teacher_approval_email(teacher.email, username, random_password, teacher)
+        # Add user to Teachers group
+        teachers_group, created = Group.objects.get_or_create(name='Teachers')
+        user.groups.add(teachers_group)
 
-    messages.success(request, f"Teacher '{teacher.full_name}' has been approved and credentials sent via email.")
+        # Link user to teacher and update status
+        teacher.user = user
+        teacher.status = 'APPROVED'
+        teacher.save()
+
+        # Send approval email with credentials to teacher
+        send_teacher_approval_email(teacher.email, username, random_password, teacher)
+
+        messages.success(request, f"Teacher '{teacher.full_name}' has been approved and credentials sent via email.")
+
     return redirect('pending_registrations')
 
 @user_passes_test(lambda u: u.is_superuser)
@@ -740,12 +882,12 @@ def calculate_consistency_score(values):
     return max(0, min(1, consistency))  # Clamp between 0 and 1
 
 @login_required
-@user_passes_test(lambda u: hasattr(u, 'teacher_profile') and u.teacher_profile.status == 'APPROVED')
+@user_passes_test(lambda u: hasattr(u, 'teacher_profile') and u.teacher_profile.status in ['PENDING', 'APPROVED'])
 def teacher_statistics_dashboard(request):
     """
     Enhanced dashboard for teachers to view comprehensive student performance statistics.
     Includes learning curves, top/bottom performers, attention/reward panels.
-    Only accessible to APPROVED teachers.
+    Accessible to PENDING and APPROVED teachers.
     """
     teacher = request.user.teacher_profile
 
