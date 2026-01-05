@@ -357,9 +357,7 @@ Your login credentials:
 - Username: {username}
 - Password: {password}
 
-Please login at: {settings.SITE_URL if hasattr(settings, 'SITE_URL') else 'your login URL'}/admin/
-
-For security reasons, please change your password after your first login.
+Please login at: {settings.SITE_URL if hasattr(settings, 'SITE_URL') else 'your login URL'}panel/admin/
 
 Schools you're assigned to:
 {chr(10).join([f"- {assignment.school.name} ({assignment.years_at_school} years)" for assignment in teacher.school_assignments.all()])}
