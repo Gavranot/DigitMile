@@ -363,6 +363,7 @@
                 <div class="form-group {% if form.contact_person_name.errors %}error{% endif %}">
                     <label for="{{ form.contact_person_name.id_for_label }}">
                         {{ form.contact_person_name.label }}
+                        <span class="required">*</span>
                     </label>
                     {{ form.contact_person_name }}
                     {% if form.contact_person_name.help_text %}<span class="help-text">{{ form.contact_person_name.help_text }}</span>{% endif %}
@@ -374,6 +375,7 @@
                 <div class="form-group {% if form.contact_person_email.errors %}error{% endif %}">
                     <label for="{{ form.contact_person_email.id_for_label }}">
                         {{ form.contact_person_email.label }}
+                        <span class="required">*</span>
                     </label>
                     {{ form.contact_person_email }}
                     {% if form.contact_person_email.help_text %}<span class="help-text">{{ form.contact_person_email.help_text }}</span>{% endif %}

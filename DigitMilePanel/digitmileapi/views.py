@@ -660,6 +660,34 @@ def pending_registrations_view(request):
     }
     return render(request, 'digitmileapi/pending_registrations.html', context)
 def home_view(request):
+    """
+    Home page with integrated login form.
+    If user is already authenticated, redirect to admin panel.
+    """
+    from django.contrib.auth import authenticate, login
+
+    # If user is already logged in, redirect to admin panel
+    if request.user.is_authenticated:
+        return redirect('/panel/admin/')
+
+    # Handle login form submission
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+
+        if username and password:
+            user = authenticate(request, username=username, password=password)
+
+            if user is not None:
+                login(request, user)
+                # Redirect to admin panel after successful login
+                next_url = request.GET.get('next', '/panel/admin/')
+                return redirect(next_url)
+            else:
+                messages.error(request, 'Invalid username or password. Please try again.')
+        else:
+            messages.error(request, 'Please enter both username and password.')
+
     return render(request, 'digitmileapi/home.html')
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User

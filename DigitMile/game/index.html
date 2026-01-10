@@ -6,21 +6,288 @@
     <title>Unity WebGL Player | Digit Mile</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
     <link rel="stylesheet" href="TemplateData/style.css">
+    <style>
+      /* Page Layout Wrapper */
+      body {
+        background: #f5f5f5;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      }
+
+      .page-wrapper {
+        max-width: 1800px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+
+      /* Header Section */
+      .game-header {
+        text-align: center;
+        margin-bottom: 30px;
+        padding: 30px 20px;
+        background: linear-gradient(135deg, #417690 0%, #5a9fb8 100%);
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      .game-header h1 {
+        margin: 0;
+        color: white;
+        font-size: 48px;
+        font-weight: 600;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      }
+
+      .game-header p {
+        margin: 10px 0 0 0;
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 18px;
+      }
+
+      /* Main Game Section with Sidebars */
+      .game-section {
+        display: grid;
+        grid-template-columns: 1fr 1280px 1fr;
+        gap: 30px;
+        margin-bottom: 30px;
+        align-items: start;
+      }
+
+      .sidebar {
+        background: white;
+        padding: 25px;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      .sidebar h2 {
+        margin: 0 0 20px 0;
+        color: #2c3e50;
+        font-size: 24px;
+        font-weight: 600;
+        border-bottom: 3px solid #417690;
+        padding-bottom: 12px;
+      }
+
+      .sidebar h3 {
+        margin: 20px 0 10px 0;
+        color: #417690;
+        font-size: 18px;
+        font-weight: 600;
+      }
+
+      .sidebar p, .sidebar ul {
+        color: #666;
+        font-size: 15px;
+        line-height: 1.7;
+      }
+
+      .sidebar ul {
+        padding-left: 20px;
+      }
+
+      .sidebar li {
+        margin-bottom: 10px;
+      }
+
+      .info-box {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin-top: 20px;
+        border-left: 4px solid #417690;
+      }
+
+      .info-box strong {
+        color: #2c3e50;
+        display: block;
+        margin-bottom: 5px;
+      }
+
+      /* Unity Container Wrapper */
+      .unity-wrapper {
+        position: relative;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+        overflow: hidden;
+      }
+
+      /* Description Section */
+      .game-description {
+        background: white;
+        padding: 40px;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        text-align: center;
+      }
+
+      .game-description h2 {
+        margin: 0 0 20px 0;
+        color: #2c3e50;
+        font-size: 32px;
+        font-weight: 600;
+      }
+
+      .game-description p {
+        color: #666;
+        font-size: 16px;
+        line-height: 1.8;
+        max-width: 900px;
+        margin: 0 auto 15px;
+      }
+
+      /* Responsive Design */
+      @media (max-width: 1400px) {
+        .game-section {
+          grid-template-columns: 250px 1fr 250px;
+        }
+
+        #unity-container.unity-desktop canvas {
+          width: 100% !important;
+          height: auto !important;
+        }
+      }
+
+      @media (max-width: 1024px) {
+        .game-section {
+          grid-template-columns: 1fr;
+        }
+
+        .sidebar {
+          order: 2;
+        }
+
+        .unity-wrapper {
+          order: 1;
+        }
+
+        .game-header h1 {
+          font-size: 36px;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .page-wrapper {
+          padding: 10px;
+        }
+
+        .game-header {
+          padding: 20px 15px;
+        }
+
+        .game-header h1 {
+          font-size: 28px;
+        }
+
+        .game-description {
+          padding: 25px 20px;
+        }
+
+        .sidebar {
+          padding: 20px;
+        }
+      }
+    </style>
   </head>
   <body>
-    <div id="unity-container" class="unity-desktop">
-      <canvas id="unity-canvas" width=1280 height=720 tabindex="-1"></canvas>
-      <div id="unity-loading-bar">
-        <div id="unity-logo"></div>
-        <div id="unity-progress-bar-empty">
-          <div id="unity-progress-bar-full"></div>
+    <div class="page-wrapper">
+      <!-- Header with Title -->
+      <div class="game-header">
+        <h1>DigitMile Game</h1>
+        <p>An Interactive Educational Experience</p>
+      </div>
+
+      <!-- Main Game Section with Sidebars -->
+      <div class="game-section">
+        <!-- Left Sidebar: How to Play -->
+        <div class="sidebar">
+          <h2>How to Play</h2>
+          <p>DigitMile is an educational game designed to help students improve their mathematical skills through interactive gameplay.</p>
+
+          <h3>Getting Started</h3>
+          <ul>
+            <li>Ask your teacher for your classroom key</li>
+            <li>Enter the classroom key when prompted</li>
+            <li>Select your name from the student list</li>
+            <li>Start playing and learning!</li>
+          </ul>
+
+          <h3>Game Controls</h3>
+          <ul>
+            <li>Use your mouse to interact with game elements</li>
+            <li>Follow on-screen instructions</li>
+            <li>Complete challenges to earn points</li>
+          </ul>
+
+          <div class="info-box">
+            <strong>Need Help?</strong>
+            Contact your teacher if you're having trouble accessing the game or if you forgot your classroom key.
+          </div>
+        </div>
+
+        <!-- Unity Game Container -->
+        <div class="unity-wrapper">
+          <div id="unity-container" class="unity-desktop">
+            <canvas id="unity-canvas" width=1280 height=720 tabindex="-1"></canvas>
+            <div id="unity-loading-bar">
+              <div id="unity-logo"></div>
+              <div id="unity-progress-bar-empty">
+                <div id="unity-progress-bar-full"></div>
+              </div>
+            </div>
+            <div id="unity-warning"> </div>
+            <div id="unity-footer">
+              <div id="unity-webgl-logo"></div>
+              <div id="unity-fullscreen-button"></div>
+              <div id="unity-build-title">Digit Mile</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Sidebar: Access Information -->
+        <div class="sidebar">
+          <h2>Access Information</h2>
+          <p>This game is part of the DigitMile educational platform managed by your teacher.</p>
+
+          <h3>For Students</h3>
+          <ul>
+            <li>You must be registered by your teacher</li>
+            <li>Use the classroom key provided by your teacher</li>
+            <li>Your progress is automatically tracked</li>
+            <li>Teachers can view your statistics and performance</li>
+          </ul>
+
+          <h3>For Teachers</h3>
+          <ul>
+            <li>Log in to the teacher panel to manage classrooms</li>
+            <li>Create classrooms and add students</li>
+            <li>Generate classroom keys for student access</li>
+            <li>View detailed statistics and progress reports</li>
+          </ul>
+
+          <div class="info-box">
+            <strong>Teacher Portal</strong>
+            Teachers can access the management panel at /panel/ to create classrooms and track student progress.
+          </div>
         </div>
       </div>
-      <div id="unity-warning"> </div>
-      <div id="unity-footer">
-        <div id="unity-webgl-logo"></div>
-        <div id="unity-fullscreen-button"></div>
-        <div id="unity-build-title">Digit Mile</div>
+
+      <!-- Description Section -->
+      <div class="game-description">
+        <h2>About DigitMile</h2>
+        <p>
+          DigitMile combines engaging gameplay with educational content to create a fun learning environment.
+          Students progress through various levels, solving mathematical challenges while competing in an interactive game format.
+        </p>
+        <p>
+          Teachers can monitor student progress in real-time, viewing detailed statistics including accuracy rates,
+          completion times, and learning curves. This data-driven approach helps identify students who may need
+          additional support or are ready for more advanced challenges.
+        </p>
+        <p>
+          The game is designed to be accessible and enjoyable for students of all skill levels, adapting to individual
+          learning paces while maintaining engagement through competitive elements and achievement tracking.
+        </p>
       </div>
     </div>
     <script>
