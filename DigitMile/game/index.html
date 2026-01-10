@@ -109,7 +109,22 @@
         background: white;
         border-radius: 12px;
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-        overflow: hidden;
+        overflow: visible;
+        min-height: 720px;
+      }
+
+      /* Override Unity's absolute positioning to work within wrapper */
+      .unity-wrapper #unity-container {
+        position: relative !important;
+        left: auto !important;
+        top: auto !important;
+        transform: none !important;
+      }
+
+      .unity-wrapper #unity-container.unity-desktop {
+        width: 1280px;
+        height: 720px;
+        margin: 0 auto;
       }
 
       /* Description Section */
