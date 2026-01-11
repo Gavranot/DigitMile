@@ -1,4 +1,5 @@
 {% extends "admin/base_site.html" %}
+{% load i18n %}
 {% block content %}
 <style>
     * {
@@ -262,33 +263,29 @@
 
 <div class="registration-container">
     <div class="page-header">
-        <h1>School Registration</h1>
-        <p>Register your school to join the DigitMile educational network</p>
+        <h1>{% trans "School Registration" %}</h1>
+        <p>{% trans "Register your school to join the DigitMile educational network" %}</p>
     </div>
 
-    <!-- Map Section -->
     <div class="map-section">
-        <h3>Locate Your School</h3>
-        <input id="pac-input" type="text" placeholder="Search for your school by name or address...">
+        <h3>{% trans "Locate Your School" %}</h3>
+        <input id="pac-input" type="text" placeholder="{% trans 'Search for your school...' %}">
         <div id="map"></div>
     </div>
 
-    <!-- Registration Form -->
     <form method="post" novalidate>
         {% csrf_token %}
 
-        <!-- Display non-field errors -->
         {% if form.non_field_errors %}
         <div class="form-errors">
             {{ form.non_field_errors }}
         </div>
         {% endif %}
 
-        <!-- Basic School Information -->
         <div class="form-card">
             <div class="section-header">
-                <h3>School Information</h3>
-                <p>Basic details about your educational institution</p>
+                <h3>{% trans "School Information" %}</h3>
+                <p>{% trans "Basic details about your educational institution" %}</p>
             </div>
 
             <div class="form-row">
@@ -346,17 +343,15 @@
                 </div>
             </div>
 
-            <!-- Hidden location fields -->
             {{ form.latitude }}
             {{ form.longitude }}
             {{ form.google_maps_address }}
         </div>
 
-        <!-- Contact Person Information -->
         <div class="form-card">
             <div class="section-header">
-                <h3>Contact Person</h3>
-                <p>Information about the person submitting this registration</p>
+                <h3>{% trans "Contact Person" %}</h3>
+                <p>{% trans "Information about the person submitting this registration" %}</p>
             </div>
 
             <div class="form-row single">
@@ -393,11 +388,10 @@
             </div>
         </div>
 
-        <!-- Official School Information -->
         <div class="form-card">
             <div class="section-header">
-                <h3>Official School Details</h3>
-                <p>Official contact information and administration</p>
+                <h3>{% trans "Official School Details" %}</h3>
+                <p>{% trans "Official contact information and administration" %}</p>
             </div>
 
             <div class="form-row single">
@@ -445,16 +439,15 @@
             </div>
         </div>
 
-        <!-- Captcha Verification -->
         <div class="form-card">
             <div class="captcha-group">
-                <label>Security Verification</label>
+                <label>{% trans "Security Verification" %}</label>
                 {{ form.captcha }}
                 {{ form.captcha.errors }}
             </div>
 
             <div class="submit-section">
-                <button type="submit" class="btn-submit">Submit Registration</button>
+                <button type="submit" class="btn-submit">{% trans "Submit Registration" %}</button>
             </div>
         </div>
     </form>
@@ -490,7 +483,7 @@
         const input = document.getElementById('pac-input');
         autocomplete = new google.maps.places.Autocomplete(input, {
             componentRestrictions: { country: 'mk' }, // Restrict to North Macedonia
-            types: ['school'], // Focus on schools only (establishment cannot be mixed with other types)
+            types: ['school'], // Focus on schools only
             fields: ['place_id', 'geometry', 'name', 'formatted_address', 'address_components']
         });
 
@@ -502,7 +495,7 @@
             const place = autocomplete.getPlace();
 
             if (!place.geometry || !place.geometry.location) {
-                window.alert("No details available for: '" + place.name + "'");
+                window.alert("{% trans 'No details available for:' %} '" + place.name + "'");
                 return;
             }
 

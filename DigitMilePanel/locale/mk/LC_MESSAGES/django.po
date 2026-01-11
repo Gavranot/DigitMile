@@ -1,0 +1,773 @@
+# Translation for DigitMile
+# Language: Macedonian (mk)
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-01-11 00:09+0000\n"
+"PO-Revision-Date: 2026-01-11 01:15+0100\n"
+"Last-Translator: Gemini\n"
+"Language-Team: Macedonian\n"
+"Language: mk\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n % 10 == 1 && n % 100 != 11) ? 0 : 1;\n"
+
+#: digitmileapi/templates/digitmileapi/home.html:275
+msgid "Teacher Login"
+msgstr "Најава за наставници"
+
+#: digitmileapi/templates/digitmileapi/home.html:276
+msgid "Access your DigitMile dashboard"
+msgstr "Пристапете до вашата DigitMile контролна табла"
+
+#: digitmileapi/templates/digitmileapi/home.html:289
+msgid "Username"
+msgstr "Корисничко име"
+
+#: digitmileapi/templates/digitmileapi/home.html:294
+msgid "Password"
+msgstr "Лозинка"
+
+#: digitmileapi/templates/digitmileapi/home.html:298
+msgid "Sign In"
+msgstr "Најави се"
+
+#: digitmileapi/templates/digitmileapi/home.html:304
+msgid "Welcome to DigitMile"
+msgstr "Добредојдовте во DigitMile"
+
+#: digitmileapi/templates/digitmileapi/home.html:306
+msgid ""
+"\n"
+"            DigitMile is an educational platform that helps teachers create "
+"classrooms, track student progress,\n"
+"            and manage learning through an interactive game-based "
+"experience.\n"
+"            "
+msgstr ""
+"\n"
+"            DigitMile е едукативна платформа која им помага на наставниците да креираат училници, да го следат напредокот на учениците,\n"
+"            и да управуваат со учењето преку интерактивно искуство базирано на игри.\n"
+"            "
+
+#: digitmileapi/templates/digitmileapi/home.html:313
+msgid "For Teachers"
+msgstr "За наставници"
+
+#: digitmileapi/templates/digitmileapi/home.html:315
+msgid ""
+"\n"
+"                If you're a teacher and want to use DigitMile, you need to "
+"register first. Make sure your school\n"
+"                is already registered in our system. If not, contact your "
+"school administration to register\n"
+"                the school before you sign up.\n"
+"                "
+msgstr ""
+"\n"
+"                Доколку сте наставник и сакате да го користите DigitMile, треба прво да се регистрирате. Осигурајте се дека вашето училиште\n"
+"                е веќе регистрирано во нашиот систем. Доколку не е, контактирајте со администрацијата на училиштето за да го регистрирате\n"
+"                училиштето пред да се пријавите.\n"
+"                "
+
+#: digitmileapi/templates/digitmileapi/home.html:324
+msgid "For School Administrators"
+msgstr "За училишни администратори"
+
+#: digitmileapi/templates/digitmileapi/home.html:326
+msgid ""
+"\n"
+"                School administrators can register their institution to "
+"enable teachers to join the platform.\n"
+"                Once approved, your teachers will be able to create "
+"classrooms and add students.\n"
+"                "
+msgstr ""
+"\n"
+"                Училишните администратори можат да ја регистрираат својата институција за да им овозможат на наставниците да се приклучат на платформата.\n"
+"                Откако ќе биде одобрено, вашите наставници ќе можат да креираат училници и да додаваат ученици.\n"
+"                "
+
+#: digitmileapi/templates/digitmileapi/home.html:334
+msgid "Create Classrooms & Add Students"
+msgstr "Креирајте училници и додајте ученици"
+
+#: digitmileapi/templates/digitmileapi/home.html:336
+msgid ""
+"\n"
+"                Once you're logged in as a teacher, you can create "
+"classrooms and add students. Each student\n"
+"                will be automatically registered in the system and can start "
+"playing the game to learn and improve\n"
+"                their skills. You'll be able to track their progress through "
+"detailed statistics.\n"
+"                "
+msgstr ""
+"\n"
+"                Откако ќе се најавите како наставник, можете да креирате училници и да додавате ученици. Секој ученик\n"
+"                ќе биде автоматски регистриран во системот и може да почне да ја игра играта за да учи и да ги подобрува\n"
+"                своите вештини. Ќе можете да го следите нивниот напредок преку детална статистика.\n"
+"                "
+
+#: digitmileapi/templates/digitmileapi/home.html:347
+msgid "Register School"
+msgstr "Регистрирај училиште"
+
+#: digitmileapi/templates/digitmileapi/home.html:348
+msgid "Register as Teacher"
+msgstr "Регистрирај се како наставник"
+
+#: digitmileapi/templates/digitmileapi/pending_registrations.html:42
+msgid "Name"
+msgstr "Име"
+
+#: digitmileapi/templates/digitmileapi/pending_registrations.html:43
+msgid "Municipality"
+msgstr "Општина"
+
+#: digitmileapi/templates/digitmileapi/pending_registrations.html:44
+msgid "Region"
+msgstr "Регион"
+
+#: digitmileapi/templates/digitmileapi/pending_registrations.html:45
+msgid "Contact Name"
+msgstr "Име на контакт"
+
+#: digitmileapi/templates/digitmileapi/pending_registrations.html:46
+msgid "Contact Email"
+msgstr "Е-пошта на контакт"
+
+#: digitmileapi/templates/digitmileapi/pending_registrations.html:47
+msgid "School Email"
+msgstr "Е-пошта на училиште"
+
+#: digitmileapi/templates/digitmileapi/pending_registrations.html:48
+msgid "Director"
+msgstr "Директор"
+
+#: digitmileapi/templates/digitmileapi/pending_registrations.html:49
+#: digitmileapi/templates/digitmileapi/pending_registrations.html:93
+msgid "Actions"
+msgstr "Акции"
+
+#: digitmileapi/templates/digitmileapi/pending_registrations.html:64
+#: digitmileapi/templates/digitmileapi/pending_registrations.html:104
+msgid "Similar Email Alert"
+msgstr "Предупредување за слична е-пошта"
+
+#: digitmileapi/templates/digitmileapi/pending_registrations.html:66
+msgid "Similar school email(s) found (different case)"
+msgstr "Пронајдени се слични е-пошти на училиштето (различни букви)"
+
+#: digitmileapi/templates/digitmileapi/pending_registrations.html:86
+msgid "Pending Teacher Registrations"
+msgstr "Регистрации на наставници во исчекување"
+
+#: digitmileapi/templates/digitmileapi/pending_registrations.html:90
+msgid "Full Name"
+msgstr "Целосно име"
+
+#: digitmileapi/templates/digitmileapi/pending_registrations.html:91
+msgid "Email"
+msgstr "Е-пошта"
+
+#: digitmileapi/templates/digitmileapi/pending_registrations.html:92
+msgid "Schools"
+msgstr "Училишта"
+
+#: digitmileapi/templates/digitmileapi/pending_registrations.html:106
+msgid "Similar teacher email(s) found (different case)"
+msgstr "Пронајдени се слични е-пошти на наставници (различни букви)"
+
+#: digitmileapi/templates/digitmileapi/register_school.html:266
+msgid "School Registration"
+msgstr "Регистрација на училиште"
+
+#: digitmileapi/templates/digitmileapi/register_school.html:267
+msgid "Register your school to join the DigitMile educational network"
+msgstr "Регистрирајте го вашето училиште за да се приклучите на едукативната мрежа DigitMile"
+
+#: digitmileapi/templates/digitmileapi/register_school.html:271
+msgid "Locate Your School"
+msgstr "Лоцирајте го вашето училиште"
+
+#: digitmileapi/templates/digitmileapi/register_school.html:272
+msgid "Search for your school..."
+msgstr "Пребарајте го вашето училиште..."
+
+#: digitmileapi/templates/digitmileapi/register_school.html:287
+msgid "School Information"
+msgstr "Информации за училиштето"
+
+#: digitmileapi/templates/digitmileapi/register_school.html:288
+msgid "Basic details about your educational institution"
+msgstr "Основни детали за вашата образовна институција"
+
+#: digitmileapi/templates/digitmileapi/register_school.html:353
+msgid "Contact Person"
+msgstr "Лице за контакт"
+
+#: digitmileapi/templates/digitmileapi/register_school.html:354
+msgid "Information about the person submitting this registration"
+msgstr "Информации за лицето кое ја поднесува оваа регистрација"
+
+#: digitmileapi/templates/digitmileapi/register_school.html:393
+msgid "Official School Details"
+msgstr "Официјални детали за училиштето"
+
+#: digitmileapi/templates/digitmileapi/register_school.html:394
+msgid "Official contact information and administration"
+msgstr "Официјални контакт информации и администрација"
+
+#: digitmileapi/templates/digitmileapi/register_school.html:444
+msgid "Security Verification"
+msgstr "Безбедносна проверка"
+
+#: digitmileapi/templates/digitmileapi/register_school.html:450
+msgid "Submit Registration"
+msgstr "Поднеси регистрација"
+
+#: digitmileapi/templates/digitmileapi/register_school.html:498
+msgid "No details available for:"
+msgstr "Нема достапни детали за:"
+
+#: digitmileapi/templates/digitmileapi/register_teacher.html:119
+#: digitmileapi/templates/digitmileapi/register_teacher.html:211
+msgid "Register Teacher"
+msgstr "Регистрирај наставник"
+
+#: digitmileapi/templates/digitmileapi/register_teacher.html:169
+msgid "Select Schools (minimum 1, maximum 3):"
+msgstr "Изберете училишта (минимум 1, максимум 3):"
+
+#: digitmileapi/templates/digitmileapi/register_teacher.html:170
+msgid ""
+"Select the schools where you work. You can select up to 3 schools total."
+msgstr "Изберете ги училиштата каде што работите. Можете да изберете вкупно до 3 училишта."
+
+#: digitmileapi/templates/digitmileapi/register_teacher.html:171
+#: digitmileapi/templates/digitmileapi/register_teacher.html:222
+msgid "Selected"
+msgstr "Избрано"
+
+#: digitmileapi/templates/digitmileapi/register_teacher.html:181
+msgid "Pending"
+msgstr "Во исчекување"
+
+#: digitmileapi/templates/digitmileapi/register_teacher.html:182
+msgid "This school is pending approval by an administrator"
+msgstr "Ова училиште чека одобрување од администратор"
+
+#: digitmileapi/templates/digitmileapi/register_teacher.html:188
+msgid "Years at this school:"
+msgstr "Години во ова училиште:"
+
+#: digitmileapi/templates/digitmileapi/register_teacher.html:189
+msgid "Years"
+msgstr "Години"
+
+#: digitmileapi/templates/digitmileapi/register_teacher.html:194
+msgid "No schools available."
+msgstr "Нема достапни училишта."
+
+#: digitmileapi/templates/digitmileapi/register_teacher.html:263
+msgid "Please select at least one school."
+msgstr "Ве молиме изберете барем едно училиште."
+
+#: digitmileapi/templates/digitmileapi/register_teacher.html:269
+msgid "You can select a maximum of 3 schools."
+msgstr "Можете да изберете максимум 3 училишта."
+
+#: digitmileapi/templates/digitmileapi/registration_success.html:4
+msgid "Registration Submitted"
+msgstr "Регистрацијата е поднесена"
+
+#: digitmileapi/templates/digitmileapi/registration_success.html:5
+msgid ""
+"Your registration has been submitted for approval. You will be notified once "
+"it has been reviewed."
+msgstr "Вашата регистрација е поднесена за одобрување. Ќе бидете известени откако ќе биде прегледана."
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:6
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:93
+msgid "Teacher Statistics Dashboard"
+msgstr "Контролна табла со статистика за наставници"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:94
+msgid "Welcome,"
+msgstr "Добредојдовте,"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:96
+msgid "Admin Panel"
+msgstr "Админ панел"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:97
+msgid "Home"
+msgstr "Почетна"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:102
+msgid "Filters"
+msgstr "Филтри"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:106
+msgid "Student Grade"
+msgstr "Одделение на ученикот"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:108
+msgid "All Grades"
+msgstr "Сите одделенија"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:111
+msgid "Grade"
+msgstr "Одделение"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:118
+msgid "Classroom"
+msgstr "Училница"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:120
+msgid "All Classrooms"
+msgstr "Сите училници"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:135
+msgid "Total Students"
+msgstr "Вкупно ученици"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:139
+msgid "Total Games"
+msgstr "Вкупно игри"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:143
+msgid "Average Accuracy"
+msgstr "Просечна прецизност"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:147
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:568
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:646
+msgid "Average Score"
+msgstr "Просечен резултат"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:155
+msgid "Students Needing Attention"
+msgstr "Ученици на кои им е потребно внимание"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:156
+msgid ""
+"These students may be struggling and could benefit from additional support"
+msgstr "Овие ученици можеби имаат потешкотии и би можеле да имаат корист од дополнителна поддршка"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:163
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:186
+msgid "Classroom:"
+msgstr "Училница:"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:163
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:186
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:364
+msgid "Accuracy:"
+msgstr "Прецизност:"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:169
+msgid "Great! No students currently need urgent attention."
+msgstr "Одлично! Во моментов на ниту еден ученик не му е потребно итно внимание."
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:178
+msgid "Students Ready for Rewards"
+msgstr "Ученици подготвени за награди"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:179
+msgid ""
+"These students have shown exceptional performance and deserve recognition"
+msgstr "Овие ученици покажаа исклучителни резултати и заслужуваат признание"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:192
+msgid "Students will appear here when they achieve exceptional performance."
+msgstr "Учениците ќе се појават овде кога ќе постигнат исклучителни резултати."
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:201
+msgid "Top Performing Students"
+msgstr "Ученици со најдобри резултати"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:202
+msgid "Students with the highest performance metrics"
+msgstr "Ученици со највисоки мерливи резултати"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:206
+msgid "By Accuracy"
+msgstr "Според прецизност"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:207
+msgid "By Improvement"
+msgstr "Според подобрување"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:228
+msgid "Not enough data yet"
+msgstr "Сè уште нема доволно податоци"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:245
+msgid "Need at least 10 games per student to calculate improvement"
+msgstr "Потребни се најмалку 10 игри по ученик за да се пресмета подобрувањето"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:254
+msgid "Students Who May Need Help"
+msgstr "Ученици на кои можеби им е потребна помош"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:255
+msgid "Identify students who are struggling or not improving"
+msgstr "Идентификувајте ученици кои имаат потешкотии или не се подобруваат"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:259
+msgid "Low Accuracy"
+msgstr "Ниска прецизност"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:260
+msgid "Flat/Declining Curve"
+msgstr "Рамна/опаѓачка крива"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:276
+msgid "No students with low accuracy"
+msgstr "Нема ученици со ниска прецизност"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:294
+msgid "Need at least 7 games per student for learning curve analysis"
+msgstr "Потребни се најмалку 7 игри по ученик за анализа на кривата на учење"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:302
+msgid "Classroom Performance Comparison"
+msgstr "Споредба на резултатите на училниците"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:303
+msgid "Compare average performance across your classrooms"
+msgstr "Споредете го просечниот резултат помеѓу вашите училници"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:313
+msgid "Multi-Classroom Radar Comparison"
+msgstr "Радарска споредба на повеќе училници"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:314
+msgid ""
+"Compare 2-5 classrooms across multiple performance metrics simultaneously"
+msgstr "Споредете 2-5 училници низ повеќе мерливи резултати истовремено"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:319
+msgid "Select Classrooms to Compare (2-5)"
+msgstr "Изберете училници за споредба (2-5)"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:333
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:601
+msgid "classrooms selected"
+msgstr "избрани училници"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:341
+msgid "Normalized (Per Student)"
+msgstr "Нормализирано (по ученик)"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:345
+msgid "Raw Data (Totals)"
+msgstr "Сурови податоци (вкупно)"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:348
+msgid "Tip:"
+msgstr "Совет:"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:348
+msgid ""
+"Normalized view is better for fair comparison between different class sizes"
+msgstr "Нормализираниот приказ е подобар за фер споредба помеѓу училници со различна големина"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:354
+msgid ""
+"Select 2-5 classrooms to compare their performance across multiple metrics"
+msgstr "Изберете 2-5 училници за да ги споредите нивните резултати низ повеќе параметри"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:362
+msgid "Understanding the Metrics"
+msgstr "Разбирање на параметрите"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:364
+msgid "Average percentage of correct moves across all games"
+msgstr "Просечен процент на точни потези низ сите игри"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:365
+msgid "Average Score:"
+msgstr "Просечен резултат:"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:365
+msgid "Mean score achieved per game"
+msgstr "Среден резултат постигнат по игра"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:366
+msgid "Win Rate:"
+msgstr "Стапка на победи:"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:366
+msgid "Percentage of games where students achieved first place"
+msgstr "Процент на игри каде учениците го освоиле првото место"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:367
+msgid "Decision Speed:"
+msgstr "Брзина на донесување одлуки:"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:367
+msgid "Average time per move (inverted: faster = higher on chart)"
+msgstr "Просечно време по потез (инвертирано: побрзо = повисоко на графиконот)"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:368
+msgid "Engagement:"
+msgstr "Ангажираност:"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:368
+msgid "Number of games played per student (higher = more engaged)"
+msgstr "Број на одиграни игри по ученик (повисоко = поангажирано)"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:371
+msgid "Interpretation:"
+msgstr "Интерпретација:"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:371
+msgid ""
+"Larger radar areas indicate better overall performance. Look for classrooms "
+"that excel in specific metrics versus those with well-rounded performance "
+"across all areas."
+msgstr "Поголемите радарски површини укажуваат на подобри севкупни резултати. Барајте училници кои се истакнуваат во специфични параметри наспроти оние со добро избалансирани резултати во сите области."
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:381
+msgid "Cross-Level Learning Transfer"
+msgstr "Трансфер на знаење помеѓу нивоа"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:382
+msgid "Compare performance across levels to identify skill transfer"
+msgstr "Споредете ги резултатите помеѓу нивоата за да идентификувате трансфер на вештини"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:387
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:436
+msgid "Select Student"
+msgstr "Изберете ученик"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:389
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:438
+msgid "Choose a student"
+msgstr "Изберете ученик"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:399
+msgid "First Level"
+msgstr "Прво ниво"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:401
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:408
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:450
+msgid "Select student first"
+msgstr "Прво изберете ученик"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:406
+msgid "Second Level"
+msgstr "Второ ниво"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:414
+msgid "Select a student and two levels to compare learning transfer"
+msgstr "Изберете ученик и две нивоа за споредба на трансферот на учење"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:430
+msgid "Student Learning Curves by Level"
+msgstr "Криви на учење кај учениците по нивоа"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:431
+msgid "Track how students improve on specific levels over multiple attempts"
+msgstr "Следете како учениците се подобруваат на специфични нивоа низ повеќе обиди"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:448
+msgid "Select Level"
+msgstr "Изберете ниво"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:456
+msgid "Select a student and level to view learning curves"
+msgstr "Изберете ученик и ниво за да ги видите кривите на учење"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:476
+msgid "Student Head-to-Head Comparison"
+msgstr "Директна споредба на ученици"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:477
+msgid "Compare 2-5 students across all performance metrics"
+msgstr "Споредете 2-5 ученици низ сите мерливи резултати"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:482
+msgid "Select Students to Compare (2-5)"
+msgstr "Изберете ученици за споредба (2-5)"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:500
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:680
+msgid "students selected"
+msgstr "избрани ученици"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:507
+msgid "Select 2-5 students to compare their performance"
+msgstr "Изберете 2-5 ученици за да ги споредите нивните резултати"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:515
+msgid "Performance Progression Over Time"
+msgstr "Напредок на резултатите низ времето"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:532
+msgid "No Student Data Available"
+msgstr "Нема достапни податоци за учениците"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:533
+msgid "Students will appear here once they start playing the game."
+msgstr "Учениците ќе се појават овде штом почнат да ја играат играта."
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:575
+#, python-format
+msgid "Win Rate (%%)"
+msgstr "Стапка на победи (%%)"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:646
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:707
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:718
+msgid "Accuracy"
+msgstr "Прецизност"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:646
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:707
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:720
+msgid "Win Rate"
+msgstr "Стапка на победи"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:646
+msgid "Decision Speed"
+msgstr "Брзина на одлучување"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:646
+msgid "Engagement"
+msgstr "Ангажираност"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:652
+msgid "Multi-Classroom Performance Comparison"
+msgstr "Споредба на резултатите на повеќе училници"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:652
+msgid "Normalized"
+msgstr "Нормализирано"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:652
+msgid "Raw Data"
+msgstr "Сурови податоци"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:660
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:719
+msgid "pts"
+msgstr "поени"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:661
+msgid "actual:"
+msgstr "реално:"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:662
+msgid "games"
+msgstr "игри"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:707
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:763
+msgid "Score"
+msgstr "Резултат"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:707
+msgid "Speed"
+msgstr "Брзина"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:707
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:722
+msgid "Improvement"
+msgstr "Подобрување"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:707
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:723
+msgid "Consistency"
+msgstr "Конзистентност"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:710
+msgid "Student Performance Comparison - All Metrics"
+msgstr "Споредба на резултатите на учениците - Сите параметри"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:719
+msgid "Avg Score"
+msgstr "Просечен резултат"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:721
+msgid "Decision Time"
+msgstr "Време на одлучување"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:727
+msgid "Metric"
+msgstr "Параметар"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:742
+msgid "★ = Best in group"
+msgstr "★ = Најдобар во групата"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:750
+msgid "Game"
+msgstr "Игра"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:762
+msgid "Accuracy Progression Comparison"
+msgstr "Споредба на напредокот во прецизноста"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:762
+#, python-format
+msgid "Accuracy (%%)"
+msgstr "Прецизност (%%)"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:763
+msgid "Score Progression Comparison"
+msgstr "Споредба на напредокот во резултатите"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:764
+msgid "Decision Speed Progression Comparison"
+msgstr "Споредба на напредокот во брзината на одлучување"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:764
+msgid "Time (seconds)"
+msgstr "Време (секунди)"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:775
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:793
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:815
+msgid "Level"
+msgstr "Ниво"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:775
+msgid "attempts"
+msgstr "обиди"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:776
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:815
+msgid "Select level"
+msgstr "Изберете ниво"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:795
+msgid "Initial Performance"
+msgstr "Почетен резултат"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:796
+msgid "Final Performance"
+msgstr "Краен резултат"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:803
+msgid "Learning Transfer Analysis"
+msgstr "Анализа на трансферот на знаење"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:804
+msgid "✓ Excellent Transfer: Skill transfer detected between levels."
+msgstr "✓ Одличен трансфер: Детектиран е трансфер на вештини помеѓу нивоата."
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:805
+msgid "Moderate or Limited Transfer detected."
+msgstr "Детектиран е умерен или ограничен трансфер."
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:829
+msgid "Accuracy Over Time"
+msgstr "Прецизност низ времето"

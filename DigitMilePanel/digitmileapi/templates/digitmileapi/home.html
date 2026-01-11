@@ -1,4 +1,5 @@
 {% extends "admin/base_site.html" %}
+{% load i18n %}
 {% block content %}
 <style>
     * {
@@ -271,8 +272,8 @@
 <div class="home-container">
     <!-- Left Section: Login Form -->
     <div class="login-section">
-        <h1>Teacher Login</h1>
-        <p class="subtitle">Access your DigitMile dashboard</p>
+        <h1>{% trans "Teacher Login" %}</h1>
+        <p class="subtitle">{% trans "Access your DigitMile dashboard" %}</p>
 
         {% if messages %}
             {% for message in messages %}
@@ -285,58 +286,66 @@
         <form method="post" action="{% url 'home' %}">
             {% csrf_token %}
             <div class="form-group">
-                <label for="username">Username</label>
+                <label for="username">{% trans "Username" %}</label>
                 <input type="text" id="username" name="username" required autofocus>
             </div>
 
             <div class="form-group">
-                <label for="password">Password</label>
+                <label for="password">{% trans "Password" %}</label>
                 <input type="password" id="password" name="password" required>
             </div>
 
-            <button type="submit" class="btn-login">Sign In</button>
+            <button type="submit" class="btn-login">{% trans "Sign In" %}</button>
         </form>
     </div>
 
     <!-- Right Section: Information -->
     <div class="info-section">
-        <h2>Welcome to DigitMile</h2>
+        <h2>{% trans "Welcome to DigitMile" %}</h2>
         <p class="intro-text">
+            {% blocktrans %}
             DigitMile is an educational platform that helps teachers create classrooms, track student progress,
             and manage learning through an interactive game-based experience.
+            {% endblocktrans %}
         </p>
 
         <div class="flow-step">
-            <h3>For Teachers</h3>
+            <h3>{% trans "For Teachers" %}</h3>
             <p>
+                {% blocktrans %}
                 If you're a teacher and want to use DigitMile, you need to register first. Make sure your school
                 is already registered in our system. If not, contact your school administration to register
                 the school before you sign up.
+                {% endblocktrans %}
             </p>
         </div>
 
         <div class="flow-step">
-            <h3>For School Administrators</h3>
+            <h3>{% trans "For School Administrators" %}</h3>
             <p>
+                {% blocktrans %}
                 School administrators can register their institution to enable teachers to join the platform.
                 Once approved, your teachers will be able to create classrooms and add students.
+                {% endblocktrans %}
             </p>
         </div>
 
         <div class="flow-step">
-            <h3>Create Classrooms & Add Students</h3>
+            <h3>{% trans "Create Classrooms & Add Students" %}</h3>
             <p>
+                {% blocktrans %}
                 Once you're logged in as a teacher, you can create classrooms and add students. Each student
                 will be automatically registered in the system and can start playing the game to learn and improve
                 their skills. You'll be able to track their progress through detailed statistics.
+                {% endblocktrans %}
             </p>
         </div>
 
         <div class="divider"></div>
 
         <div class="action-buttons">
-            <a href="{% url 'register_school' %}" class="btn-register">Register School</a>
-            <a href="{% url 'register_teacher' %}" class="btn-register">Register as Teacher</a>
+            <a href="{% url 'register_school' %}" class="btn-register">{% trans "Register School" %}</a>
+            <a href="{% url 'register_teacher' %}" class="btn-register">{% trans "Register as Teacher" %}</a>
         </div>
     </div>
 </div>

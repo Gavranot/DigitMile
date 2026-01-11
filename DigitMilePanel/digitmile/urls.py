@@ -17,6 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from django.urls import path, include # Make sure include is imported
+from django.views.i18n import set_language
 from digitmileapi import views as api_views
 
 # Your existing URL patterns
@@ -33,5 +34,6 @@ panel_patterns = [
 ]
 
 urlpatterns = [
+    path('i18n/setlang/', set_language, name='set_language'),
     path('panel/', include(panel_patterns)),
 ]

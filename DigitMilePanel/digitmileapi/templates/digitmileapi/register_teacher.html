@@ -1,4 +1,5 @@
 {% extends "admin/base_site.html" %}
+{% load i18n %}
 {% block content %}
 <style>
     .form-group {
@@ -115,7 +116,7 @@
     }
 </style>
 
-<h2>Register Teacher</h2>
+<h2>{% trans "Register Teacher" %}</h2>
 
 <form method="post" id="teacher-form">
     {% csrf_token %}
@@ -165,9 +166,9 @@
     </div>
 
     <div class="form-group">
-        <label>Select Schools (minimum 1, maximum 3):</label>
-        <div class="help-text">Select the schools where you work. You can select up to 3 schools total.</div>
-        <div class="selection-count" id="selection-count">Selected: 0 / 3</div>
+        <label>{% trans "Select Schools (minimum 1, maximum 3):" %}</label>
+        <div class="help-text">{% trans "Select the schools where you work. You can select up to 3 schools total." %}</div>
+        <div class="selection-count" id="selection-count">{% trans "Selected" %}: 0 / 3</div>
 
         <div class="school-selection" id="all-schools">
             {% for school in form.schools.field.queryset %}
@@ -177,20 +178,20 @@
                         {{ school.name }} - {{ school.municipality }}, {{ school.region }}
                         {% if school.is_pending %}
                             <span class="pending-badge">
-                                ⚠ Pending
-                                <span class="tooltip">This school is pending approval by an administrator</span>
+                                ⚠ {% trans "Pending" %}
+                                <span class="tooltip">{% trans "This school is pending approval by an administrator" %}</span>
                             </span>
                         {% endif %}
                     </label>
                     <div class="years-input" id="years-school-{{ school.id }}">
                         <label>
-                            Years at this school:
-                            <input type="number" name="years_at_school_{{ school.id }}" min="0" max="50" placeholder="Years">
+                            {% trans "Years at this school:" %}
+                            <input type="number" name="years_at_school_{{ school.id }}" min="0" max="50" placeholder="{% trans 'Years' %}">
                         </label>
                     </div>
                 </div>
             {% empty %}
-                <p>No schools available.</p>
+                <p>{% trans "No schools available." %}</p>
             {% endfor %}
         </div>
 
@@ -207,7 +208,7 @@
         {% endif %}
     </div>
 
-    <button type="submit">Register Teacher</button>
+    <button type="submit">{% trans "Register Teacher" %}</button>
 </form>
 
 <script>
@@ -218,7 +219,7 @@
 
         function updateSelectionCount() {
             const checkedCount = document.querySelectorAll('.school-checkbox:checked').length;
-            selectionCount.textContent = `Selected: ${checkedCount} / 3`;
+            selectionCount.textContent = `{% trans "Selected" %}: ${checkedCount} / 3`;
 
             // Disable unchecked checkboxes if 3 are already selected
             checkboxes.forEach(checkbox => {
@@ -259,13 +260,13 @@
 
             if (checkedCount === 0) {
                 e.preventDefault();
-                alert('Please select at least one school.');
+                alert('{% trans "Please select at least one school." %}');
                 return false;
             }
 
             if (checkedCount > 3) {
                 e.preventDefault();
-                alert('You can select a maximum of 3 schools.');
+                alert('{% trans "You can select a maximum of 3 schools." %}');
                 return false;
             }
         });
