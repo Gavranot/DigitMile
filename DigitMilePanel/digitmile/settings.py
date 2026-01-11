@@ -55,6 +55,7 @@ APPEND_SLASH=False
 # Application definition
 
 INSTALLED_APPS = [
+    'digitmileapi',  # Must be before django.contrib.admin to override admin templates
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -63,7 +64,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'corsheaders',
     'rest_framework',
-    'digitmileapi',
     'captcha',
 ]
 
