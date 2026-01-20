@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en-us">
+<html lang="en">
   <head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
@@ -27,6 +27,28 @@
         background: linear-gradient(135deg, #417690 0%, #5a9fb8 100%);
         border-radius: 12px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        position: relative;
+      }
+
+      .language-switch {
+        position: absolute;
+        right: 20px;
+        top: 20px;
+      }
+
+      .language-switch label {
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 14px;
+        margin-right: 8px;
+      }
+
+      .language-switch select {
+        padding: 6px 12px;
+        border-radius: 4px;
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        background: rgba(255, 255, 255, 0.9);
+        font-size: 14px;
+        cursor: pointer;
       }
 
       .game-header h1 {
@@ -207,36 +229,46 @@
   <body>
     <div class="page-wrapper">
       <!-- Header with Title -->
-      <div class="game-header">
-        <h1>DigitMile Game</h1>
-        <p>An Interactive Educational Experience</p>
-      </div>
+       <div class="game-header">
+          <div class="language-switch">
+            <label for="language-switcher" data-i18n="language_label">Language</label>
+            <select id="language-switcher" aria-label="Language">
+              <option value="en">English</option>
+              <option value="mk">Македонски</option>
+              <option value="sq">Shqip</option>
+            </select>
+          </div>
+          <h1 data-i18n="game_title">DigitMile Game</h1>
+          <p data-i18n="game_tagline">An Interactive Educational Experience</p>
+
+       </div>
+
 
       <!-- Main Game Section with Sidebars -->
       <div class="game-section">
         <!-- Left Sidebar: How to Play -->
         <div class="sidebar">
-          <h2>How to Play</h2>
-          <p>DigitMile is an educational game designed to help students improve their mathematical skills through interactive gameplay.</p>
+          <h2 data-i18n="how_to_play_title">How to Play</h2>
+          <p data-i18n="how_to_play_intro">DigitMile is an educational game designed to help students improve their mathematical skills through interactive gameplay.</p>
 
-          <h3>Getting Started</h3>
+          <h3 data-i18n="getting_started_title">Getting Started</h3>
           <ul>
-            <li>Ask your teacher for your classroom key</li>
-            <li>Enter the classroom key when prompted</li>
-            <li>Select your name from the student list</li>
-            <li>Start playing and learning!</li>
+            <li data-i18n="getting_started_step_1">Ask your teacher for your classroom key</li>
+            <li data-i18n="getting_started_step_2">Enter the classroom key when prompted</li>
+            <li data-i18n="getting_started_step_3">Select your name from the student list</li>
+            <li data-i18n="getting_started_step_4">Start playing and learning!</li>
           </ul>
 
-          <h3>Game Controls</h3>
+          <h3 data-i18n="game_controls_title">Game Controls</h3>
           <ul>
-            <li>Use your mouse to interact with game elements</li>
-            <li>Follow on-screen instructions</li>
-            <li>Complete challenges to earn points</li>
+            <li data-i18n="game_controls_step_1">Use your mouse to interact with game elements</li>
+            <li data-i18n="game_controls_step_2">Follow on-screen instructions</li>
+            <li data-i18n="game_controls_step_3">Complete challenges to earn points</li>
           </ul>
 
           <div class="info-box">
-            <strong>Need Help?</strong>
-            Contact your teacher if you're having trouble accessing the game or if you forgot your classroom key.
+            <strong data-i18n="need_help_title">Need Help?</strong>
+            <span data-i18n="need_help_text">Contact your teacher if you're having trouble accessing the game or if you forgot your classroom key.</span>
           </div>
         </div>
 
@@ -261,51 +293,156 @@
 
         <!-- Right Sidebar: Access Information -->
         <div class="sidebar">
-          <h2>Access Information</h2>
-          <p>This game is part of the DigitMile educational platform managed by your teacher.</p>
+          <h2 data-i18n="access_info_title">Access Information</h2>
+          <p data-i18n="access_info_intro">This game is part of the DigitMile educational platform managed by your teacher.</p>
 
-          <h3>For Students</h3>
+          <h3 data-i18n="for_students_title">For Students</h3>
           <ul>
-            <li>You must be registered by your teacher</li>
-            <li>Use the classroom key provided by your teacher</li>
-            <li>Your progress is automatically tracked</li>
-            <li>Teachers can view your statistics and performance</li>
+            <li data-i18n="for_students_step_1">You must be registered by your teacher</li>
+            <li data-i18n="for_students_step_2">Use the classroom key provided by your teacher</li>
+            <li data-i18n="for_students_step_3">Your progress is automatically tracked</li>
+            <li data-i18n="for_students_step_4">Teachers can view your statistics and performance</li>
           </ul>
 
-          <h3>For Teachers</h3>
+          <h3 data-i18n="for_teachers_title">For Teachers</h3>
           <ul>
-            <li>Log in to the teacher panel to manage classrooms</li>
-            <li>Create classrooms and add students</li>
-            <li>Generate classroom keys for student access</li>
-            <li>View detailed statistics and progress reports</li>
+            <li data-i18n="for_teachers_step_1">Log in to the teacher panel to manage classrooms</li>
+            <li data-i18n="for_teachers_step_2">Create classrooms and add students</li>
+            <li data-i18n="for_teachers_step_3">Generate classroom keys for student access</li>
+            <li data-i18n="for_teachers_step_4">View detailed statistics and progress reports</li>
           </ul>
 
           <div class="info-box">
-            <strong>Teacher Portal</strong>
-            Teachers can access the management panel at /panel/ to create classrooms and track student progress.
+            <strong data-i18n="teacher_portal_title">Teacher Portal</strong>
+            <span data-i18n="teacher_portal_text">Teachers can access the management panel at /panel/ to create classrooms and track student progress.</span>
           </div>
         </div>
       </div>
 
       <!-- Description Section -->
       <div class="game-description">
-        <h2>About DigitMile</h2>
-        <p>
+        <h2 data-i18n="about_title">About DigitMile</h2>
+        <p data-i18n="about_paragraph_1">
           DigitMile combines engaging gameplay with educational content to create a fun learning environment.
           Students progress through various levels, solving mathematical challenges while competing in an interactive game format.
         </p>
-        <p>
+        <p data-i18n="about_paragraph_2">
           Teachers can monitor student progress in real-time, viewing detailed statistics including accuracy rates,
           completion times, and learning curves. This data-driven approach helps identify students who may need
           additional support or are ready for more advanced challenges.
         </p>
-        <p>
+        <p data-i18n="about_paragraph_3">
           The game is designed to be accessible and enjoyable for students of all skill levels, adapting to individual
           learning paces while maintaining engagement through competitive elements and achievement tracking.
         </p>
       </div>
     </div>
     <script>
+
+      var translations = {};
+      var fallbackTranslations = {};
+      var supportedLanguages = ["en", "mk", "sq"];
+      var translationsPath = "/game/i18n";
+
+      function getCookie(name) {
+        var cookieValue = document.cookie
+          .split("; ")
+          .find(function(row) {
+            return row.startsWith(name + "=");
+          });
+
+        if (!cookieValue) {
+          return null;
+        }
+
+        return cookieValue.split("=")[1];
+      }
+
+      function setCookie(name, value) {
+        document.cookie = name + "=" + value + "; path=/; max-age=31536000";
+      }
+
+      function resolveLanguage() {
+        var params = new URLSearchParams(window.location.search);
+        var urlLang = params.get("lang");
+        var cookieLang = getCookie("django_language");
+        var browserLang = (navigator.language || "en").split("-")[0];
+        var lang = urlLang || cookieLang || browserLang;
+
+        return supportedLanguages.indexOf(lang) !== -1 ? lang : "en";
+      }
+
+      function applyTranslations(lang) {
+        document.documentElement.lang = lang;
+
+        var elements = document.querySelectorAll("[data-i18n]");
+        elements.forEach(function(element) {
+          var key = element.getAttribute("data-i18n");
+          var value = (translations[lang] && translations[lang][key]) || fallbackTranslations[key];
+          if (value) {
+            element.textContent = value;
+          }
+        });
+      }
+
+      function loadTranslations(lang) {
+        var url = translationsPath + "/" + lang + ".json";
+
+        return fetch(url)
+          .then(function(response) {
+            if (!response.ok) {
+              throw new Error("Failed to load translations: " + response.status);
+            }
+            return response.json();
+          })
+          .then(function(data) {
+            translations[lang] = data;
+            if (lang === "en") {
+              fallbackTranslations = data;
+            }
+            return data;
+          });
+      }
+
+      function initLanguageSwitcher() {
+        var switcher = document.getElementById("language-switcher");
+        if (!switcher) {
+          return;
+        }
+
+        var currentLanguage = resolveLanguage();
+        switcher.value = currentLanguage;
+
+        loadTranslations("en")
+          .then(function() {
+            if (currentLanguage === "en") {
+              applyTranslations("en");
+              return null;
+            }
+            return loadTranslations(currentLanguage)
+              .catch(function() {
+                switcher.value = "en";
+                return null;
+              })
+              .then(function() {
+                applyTranslations(switcher.value);
+              });
+          });
+
+        switcher.addEventListener("change", function() {
+          var newLanguage = switcher.value;
+          setCookie("django_language", newLanguage);
+          loadTranslations(newLanguage)
+            .catch(function() {
+              switcher.value = "en";
+            })
+            .then(function() {
+              applyTranslations(switcher.value);
+            });
+        });
+      }
+
+      document.addEventListener("DOMContentLoaded", initLanguageSwitcher);
 
       var container = document.querySelector("#unity-container");
       var canvas = document.querySelector("#unity-canvas");

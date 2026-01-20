@@ -139,8 +139,9 @@ class TeacherAdmin(admin.ModelAdmin):
         }),
         ('Status', {
             'fields': ('status', 'created_at', 'updated_at'),
-            'description': '<strong style="color: #ff9f43;">⚠️ WARNING:</strong> Changing status to REJECTED will disable login access for this teacher. '
-                          'All classrooms, students, and run statistics will be preserved for audit purposes.'
+            'description': '<strong style="color: #ff9f43;">⚠️ STATUS CHANGES:</strong><br>'
+                          '• <strong>REJECTED:</strong> Disables login access. All data (classrooms, students, statistics) is preserved.<br>'
+                          '• <strong>APPROVED (from REJECTED):</strong> Re-enables login access. Creates user account if needed and sends password reset email.'
         }),
     )
 
@@ -160,38 +161,129 @@ class TeacherAdmin(admin.ModelAdmin):
         return qs.none()
 
     def save_model(self, request, obj, form, change):
-        """Override to show notification of cascade effects when status changes to REJECTED"""
+        """Override to handle status changes: REJECTED disables login, APPROVED re-enables it"""
         from django.contrib import messages
+        import secrets
+        import string
 
-        # Track if status is changing to REJECTED
+        # Track status transitions
         status_changing_to_rejected = False
-        classrooms_to_delete = 0
+        status_changing_to_approved_from_rejected = False
+        classrooms_count = 0
+        old_status = None
 
         if change and 'status' in form.changed_data:
             old_status = Teacher.objects.get(pk=obj.pk).status
+
             if old_status != 'REJECTED' and obj.status == 'REJECTED':
                 status_changing_to_rejected = True
-                classrooms_to_delete = Classroom.objects.filter(teacher=obj).count()
+                classrooms_count = Classroom.objects.filter(teacher=obj).count()
+
+            elif old_status == 'REJECTED' and obj.status == 'APPROVED':
+                status_changing_to_approved_from_rejected = True
+                classrooms_count = Classroom.objects.filter(teacher=obj).count()
 
         # Save the model (cascade will happen in Teacher.save())
         super().save_model(request, obj, form, change)
 
-        # Show warning message if status changed to rejected
+        # Handle REJECTED status
         if status_changing_to_rejected:
-            # Disable user login
             if obj.user:
                 obj.user.is_active = False
                 obj.user.save()
                 messages.warning(
                     request,
                     f"Teacher '{obj.full_name}' status changed to REJECTED and login access disabled. "
-                    f"{classrooms_to_delete} classroom(s) and all associated data have been preserved for audit purposes."
+                    f"{classrooms_count} classroom(s) and all associated data have been preserved for audit purposes."
                 )
             else:
                 messages.warning(
                     request,
                     f"Teacher '{obj.full_name}' status changed to REJECTED. "
-                    f"{classrooms_to_delete} classroom(s) and all associated data have been preserved for audit purposes."
+                    f"{classrooms_count} classroom(s) and all associated data have been preserved for audit purposes."
+                )
+
+        # Handle RE-APPROVAL (REJECTED -> APPROVED)
+        elif status_changing_to_approved_from_rejected:
+            user_created = False
+            password_reset_sent = False
+
+            # Create user account if it doesn't exist
+            if not obj.user:
+                # Generate username from email
+                username = obj.email.split('@')[0][:30]
+                counter = 1
+                base_username = username
+                while User.objects.filter(username=username).exists():
+                    username = f"{base_username[:27]}{counter}"
+                    counter += 1
+
+                # Generate a random password
+                random_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(16))
+
+                # Parse name
+                name_parts = obj.full_name.split(' ', 1)
+
+                # Create the user
+                user = User.objects.create_user(
+                    username=username,
+                    email=obj.email,
+                    password=random_password,
+                    first_name=name_parts[0] if len(name_parts) > 0 else '',
+                    last_name=name_parts[1] if len(name_parts) > 1 else '',
+                    is_active=True,
+                )
+                obj.user = user
+                obj.save(update_fields=['user'])
+                user_created = True
+
+                # Try to send password reset email
+                try:
+                    from django.contrib.auth.forms import PasswordResetForm
+                    from django.conf import settings
+
+                    reset_form = PasswordResetForm({'email': obj.email})
+                    if reset_form.is_valid():
+                        reset_form.save(
+                            request=request,
+                            use_https=request.is_secure(),
+                            from_email=settings.DEFAULT_FROM_EMAIL if hasattr(settings, 'DEFAULT_FROM_EMAIL') else None,
+                            email_template_name='registration/password_reset_email.html',
+                        )
+                        password_reset_sent = True
+                except Exception as e:
+                    # Log but don't fail if email sending fails
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.warning(f"Failed to send password reset email to {obj.email}: {e}")
+
+            else:
+                # Re-enable existing user account
+                obj.user.is_active = True
+                obj.user.save()
+
+            # Show success message
+            if user_created:
+                if password_reset_sent:
+                    messages.success(
+                        request,
+                        f"Teacher '{obj.full_name}' has been RE-APPROVED. "
+                        f"A new user account was created (username: {obj.user.username}) and a password reset email was sent to {obj.email}. "
+                        f"{classrooms_count} classroom(s) are now accessible again."
+                    )
+                else:
+                    messages.success(
+                        request,
+                        f"Teacher '{obj.full_name}' has been RE-APPROVED. "
+                        f"A new user account was created (username: {obj.user.username}). "
+                        f"NOTE: Password reset email could not be sent - please manually reset their password. "
+                        f"{classrooms_count} classroom(s) are now accessible again."
+                    )
+            else:
+                messages.success(
+                    request,
+                    f"Teacher '{obj.full_name}' has been RE-APPROVED and login access restored. "
+                    f"{classrooms_count} classroom(s) are now accessible again."
                 )
 
 @admin.register(TeacherSchoolAssignment)

@@ -171,6 +171,7 @@ USE_TZ = True
 LANGUAGES = [
     ('en', 'English'),
     ('mk', 'Македонски'),  # Macedonian
+    ('sq', 'Shqip'),       # Albanian
     # Add more languages as needed
 ]
 

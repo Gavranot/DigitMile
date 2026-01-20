@@ -169,20 +169,32 @@ class Teacher(models.Model):
         return self.status == 'APPROVED'
 
     def save(self, *args, **kwargs):
-        """Override save to handle status changes to REJECTED - disables access without deleting data"""
-        # Check if this is an existing instance and status is changing to REJECTED
+        """Override save to handle status changes:
+        - REJECTED: disables user login without deleting data
+        - APPROVED (from REJECTED): re-enables user login
+        """
         if self.pk:
             try:
                 old_instance = Teacher.objects.get(pk=self.pk)
+
+                # Handle transition TO REJECTED
                 if old_instance.status != 'REJECTED' and self.status == 'REJECTED':
-                    # Disable user login if user account exists
                     if self.user:
                         self.user.is_active = False
                         self.user.save()
 
-                    # Save teacher (no data deletion)
                     super().save(*args, **kwargs)
-                    return  # Already saved above
+                    return
+
+                # Handle transition FROM REJECTED TO APPROVED (re-approval)
+                if old_instance.status == 'REJECTED' and self.status == 'APPROVED':
+                    if self.user:
+                        self.user.is_active = True
+                        self.user.save()
+
+                    super().save(*args, **kwargs)
+                    return
+
             except Teacher.DoesNotExist:
                 pass
 
