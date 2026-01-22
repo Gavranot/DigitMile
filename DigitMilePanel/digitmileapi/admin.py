@@ -582,9 +582,22 @@ class StudentAdmin(admin.ModelAdmin):
 
 @admin.register(RunStatistics)
 class RunStatisticsAdmin(admin.ModelAdmin):
-    list_display = ('student', 'level', 'score', 'place', 'player_won', 'correct_moves', 'wrong_moves', 'time_elapsed', 'get_classroom_from_student')
+    list_display = (
+        'student',
+        'level',
+        'score',
+        'place',
+        'player_won',
+        'correct_moves',
+        'wrong_moves',
+        'time_elapsed',
+        'created_at',
+        'updated_at',
+        'get_classroom_from_student',
+    )
     list_filter = ('player_won', 'level', 'place', 'student__classroom__teacher')
     search_fields = ('student__full_name',)
+    readonly_fields = ('created_at', 'updated_at')
 
     def get_classroom_from_student(self, obj):
         if obj.student and obj.student.classroom:

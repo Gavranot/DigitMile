@@ -10,31 +10,46 @@
 
 ---
 
+## Current Implementation Status (2026-01-20)
+- teacher_statistics_dashboard builds student metrics (accuracy, win rate, weighted avg score, improvement, consistency, learning curve trend) and per-level performance data.
+- Template renders filters, quick stats cards, attention/reward panels, top/bottom lists, and a classroom bar chart.
+- Phase 2 widgets are present in the template/JS: classroom radar, cross-level transfer panel, per-level learning curves, and student comparison charts (some parts incomplete).
+- ENABLED_VISUALIZATIONS exists in `DigitMilePanel/digitmileapi/views.py` and gates major visualization sections.
+- RunStatistics timestamps added via `digitmileapi/migrations/0012_runstatistics_created_at_runstatistics_updated_at.py` with backfill migration 0013.
+
+## Next Steps (Immediate)
+- Decide whether to filter top improvement to positive values (UI now shows correct sign).
+
+## Known Bugs and Inconsistencies
+- None currently tracked; continue validating data quality with production runs.
+
+---
+
 ## Phase 1 - Foundation & Most Immediately Useful
 
 ### 1.1 Refactor Template Architecture
-- [ ] Create modular component structure for visualizations
-- [ ] Add global filters section (grade level, classroom, time range placeholder)
-- [ ] Update color scheme to match registration forms
-- [ ] Create reusable CSS classes for cards, charts, and panels
+- [ ] Create modular component structure for visualizations (all major sections gated)
+- [ ] Add global filters section (grade/classroom filters exist; no time range placeholder)
+- [x] Update color scheme to match registration forms
+- [x] Create reusable CSS classes for cards, charts, and panels
 
 ### 1.2 Top N Students (Adjustable)
 - [ ] Add dropdown to select metric (Accuracy, Score, Win Rate, Decision Time, Improvement Rate, Consistency)
 - [ ] Add slider/input for N (default 5, max 20)
-- [ ] Implement weighted calculations (recent games weighted more)
-- [ ] Display as ranked list with student names, metric value, and trend indicator
-- [ ] Color-code based on performance level
+- [ ] Implement weighted calculations (recent games weighted more; only weighted avg score exists)
+- [x] Display as ranked list with student names, metric value, and trend indicator (accuracy/improvement tabs)
+- [x] Color-code based on performance level
 
 ### 1.3 Bottom N Students (Two Definitions)
-- [ ] **Definition A**: Low Accuracy/Score
-  - Filter students with overall low metrics
+- [ ] **Definition A**: Low Accuracy/Score (accuracy only)
+  - Filter students with overall low metrics (score not included)
   - Show as ranked list from worst to best
 - [ ] **Definition B**: Flat/Negative Learning Curve
   - Calculate learning curve slope for students with 7+ games
   - Exclude high performers with flat curves (>80% accuracy + flat curve = mastered)
   - Show students with stagnant or declining performance
-- [ ] Add toggle to switch between definitions
-- [ ] Display with contextual explanations
+- [x] Add toggle to switch between definitions
+- [x] Display with contextual explanations
 
 ### 1.4 Students Needing Attention Panel
 - [x] Identify students with declining performance (negative learning curve)
@@ -43,16 +58,16 @@
 - [ ] Add "mark as addressed" functionality (future: requires database field)
 
 ### 1.5 Students Ready for Rewards Panel
-- [ ] Calculate top improvers (biggest positive learning curve slope)
-- [ ] Identify high accuracy students (>90%)
+- [ ] Calculate top improvers (biggest positive learning curve slope; currently threshold-based)
+- [x] Identify high accuracy students (>90%)
 - [ ] Find fastest completers with high accuracy (top 25% speed + >80% accuracy)
-- [ ] Show most consistent performers (low score standard deviation + high average)
-- [ ] Display as achievement cards with celebration indicators
+- [x] Show most consistent performers (consistency threshold + weighted avg score)
+- [x] Display as achievement cards with celebration indicators
 
 ### 1.6 Grade Level Filtering
-- [ ] Add dropdown for student grade filter (optional)
+- [x] Add dropdown for student grade filter (optional)
 - [ ] Add dropdown for classroom grade filter (optional)
-- [ ] Update all metrics to respect active filters
+- [x] Update all metrics to respect active filters
 - [ ] Show filter status clearly in UI
 
 ---
@@ -60,13 +75,13 @@
 ## Phase 2 - Deeper Analysis
 
 ### 2.1 Learning Curves Per Student (Per Level)
-- [ ] Check if student has 7+ games for a specific level
-- [ ] Calculate metrics over time for that level:
+- [x] Check if student has 7+ games for a specific level
+- [x] Calculate metrics over time for that level:
   - Accuracy trend (correct_moves / total_moves)
   - Speed trend (average decision time)
   - Score trend
-- [ ] Plot line charts showing progression
-- [ ] Add trend line with slope calculation
+- [x] Plot line charts showing progression
+- [ ] Add trend line with slope calculation (summary only so far)
 - [ ] Color-code mastery indicator:
   - Green: Improving (positive slope)
   - Yellow: Plateaued (near-zero slope)
@@ -74,34 +89,34 @@
   - Blue: Mastered (high performance + plateau)
 
 ### 2.2 Cross-Level Learning Transfer
-- [ ] Allow teacher to select 2+ levels to compare for a student
-- [ ] Show side-by-side learning curves
+- [x] Allow teacher to select 2+ levels to compare for a student
+- [ ] Show side-by-side learning curves (current view compares initial vs final)
 - [ ] Calculate correlation between performance on different levels
-- [ ] Highlight knowledge transfer indicators (improvement on Level B after mastering Level A)
+- [ ] Highlight knowledge transfer indicators (current view uses a simple delta)
 
 ### 2.3 Class Comparison - Multi-Metric Radar Chart
-- [ ] Select 2-5 classrooms to compare
-- [ ] Calculate class averages for:
+- [x] Select 2-5 classrooms to compare
+- [x] Calculate class averages for:
   - Average Accuracy
   - Average Score
   - Average Win Rate
   - Average Decision Speed
   - Engagement (games per student)
-- [ ] Display as radar/spider chart
-- [ ] Show both normalized (percentages) and raw values with toggle
+- [x] Display as radar/spider chart
+- [x] Show both normalized (percentages) and raw values with toggle
 
 ### 2.4 Class Comparison - Side-by-Side Bar Charts
 - [ ] Allow selecting specific metric for detailed comparison
-- [ ] Show bars for each classroom
+- [x] Show bars for each classroom (avg score + win rate only)
 - [ ] Include both normalized and raw data views
 - [ ] Add explanatory text about normalization
 
 ### 2.5 Student Head-to-Head Comparison
-- [ ] Multi-select dropdown for 2-5 students
-- [ ] Radar chart comparing all metrics
-- [ ] Line charts showing progression over time
-- [ ] Strengths/weaknesses table
-- [ ] Highlight areas where students excel or struggle
+- [x] Multi-select dropdown for 2-5 students
+- [x] Radar chart comparing all metrics
+- [x] Line charts showing progression over time
+- [x] Strengths/weaknesses table
+- [x] Highlight areas where students excel or struggle
 
 ---
 
@@ -119,7 +134,7 @@
 
 ### 3.2 Engagement Metrics
 - [ ] Games played per student over time
-- [ ] Add timestamp to RunStatistics model (future enhancement)
+- [x] Add timestamp to RunStatistics model (created_at/updated_at in migration 0012)
 - [ ] Activity heatmap (calendar view)
 - [ ] Peak playing times analysis
 - [ ] Completion rate funnel chart
@@ -209,32 +224,32 @@ For students with 7+ games on a level:
 
 ## Implementation Checklist
 
-**Phase 1 - COMPLETED**
-- [x] TASKS.md created
-- [x] Template refactored with modular structure
-- [x] Color scheme updated
-- [x] Top/Bottom N students implemented
-- [x] Attention & Rewards panels implemented
-- [x] Grade filtering added
-- [x] STATISTICS.md documentation created
-- [x] Removed "stuck on level" metric (not applicable to game design)
+**Phase 1 - In progress**
+- [x] TASKS.md maintained
+- [x] Filters bar + base styling
+- [x] Top/bottom lists + attention/reward panels (fixed N)
+- [x] Modular gating fully consistent with ENABLED_VISUALIZATIONS
+- [ ] Adjustable Top/Bottom N with metric selector
+- [ ] Grade/classroom filter parity and UI status
+- [ ] Recency weighting based on timestamps
 
-**Phase 2 - Week 3-4**
-- [ ] Learning curves per level
-- [ ] Cross-level comparison
-- [ ] Class comparison visualizations
-- [ ] Student head-to-head comparison
+**Phase 2 - Partially implemented**
+- [x] Classroom radar comparison UI (normalized/raw toggle)
+- [x] Student head-to-head comparison UI
+- [ ] Learning curves per level (score/time charts + trend display)
+- [ ] Cross-level transfer analysis (curves + correlation)
+- [ ] Classroom bar chart metric selector/normalized view
 
-**Phase 3 - Week 5+**
+**Phase 3 - Not started**
 - [ ] Difficulty analysis
-- [ ] Engagement metrics
+- [ ] Engagement metrics beyond timestamps
 - [ ] Progress map
 - [ ] Export functionality
 
 ---
 
 ## Notes
-- Add database migration for RunStatistics.created_at timestamp (needed for engagement metrics)
+- RunStatistics created_at/updated_at added in migration 0012; backfill if historical ordering matters.
 - Consider caching aggregated statistics for performance (Django cache framework)
 - Add tests for metric calculations
 - Document each visualization component for future developers

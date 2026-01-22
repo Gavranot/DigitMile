@@ -812,6 +812,7 @@ def reject_teacher(request, teacher_id):
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import Avg, Count, Sum, StdDev
+from django.utils import timezone
 import json
 import statistics
 from collections import defaultdict
@@ -838,10 +839,10 @@ def calculate_decision_time(time_elapsed, correct, wrong):
     total_moves = correct + wrong
     return (time_elapsed / total_moves) if total_moves > 0 else 0
 
-def calculate_weighted_metric(values, use_recency_weight=True):
+def calculate_weighted_metric(values, timestamps=None, use_recency_weight=True):
     """
     Calculate weighted average with recent values having more weight.
-    Assumes values are in chronological order.
+    Uses time-bucket weighting when timestamps are provided.
     """
     if not values:
         return 0
@@ -849,9 +850,31 @@ def calculate_weighted_metric(values, use_recency_weight=True):
     if not use_recency_weight:
         return sum(values) / len(values)
 
-    # Simple linear weighting: more recent = higher weight
-    weights = [(i + 1) for i in range(len(values))]
-    weighted_sum = sum(v * w for v, w in zip(values, weights))
+    if not timestamps or len(timestamps) != len(values):
+        weights = [(i + 1) for i in range(len(values))]
+        weighted_sum = sum(value * weight for value, weight in zip(values, weights))
+        total_weight = sum(weights)
+        return weighted_sum / total_weight if total_weight > 0 else 0
+
+    now = timezone.now()
+    weights = []
+    for timestamp in timestamps:
+        if timestamp is None:
+            weights.append(1.0)
+            continue
+
+        days_ago = (now - timestamp).days
+        if days_ago <= 30:
+            weight = 3.0
+        elif days_ago <= 90:
+            weight = 2.0
+        elif days_ago <= 180:
+            weight = 1.5
+        else:
+            weight = 1.0
+        weights.append(weight)
+
+    weighted_sum = sum(value * weight for value, weight in zip(values, weights))
     total_weight = sum(weights)
     return weighted_sum / total_weight if total_weight > 0 else 0
 
@@ -945,7 +968,7 @@ def teacher_statistics_dashboard(request):
     students_ready_for_rewards = []
 
     for student in students:
-        stats = RunStatistics.objects.filter(student=student).order_by('id')  # Chronological order
+        stats = RunStatistics.objects.filter(student=student).order_by('created_at', 'id')
 
         if not stats.exists():
             continue
@@ -955,47 +978,79 @@ def teacher_statistics_dashboard(request):
         wins = stats.filter(player_won=True).count()
         win_rate = (wins / total_runs * 100) if total_runs > 0 else 0
 
-        # Calculate accuracy metrics
-        correct_moves_list = [s.correct_moves for s in stats if s.correct_moves is not None]
-        wrong_moves_list = [s.wrong_moves for s in stats if s.wrong_moves is not None]
-        scores = [s.score for s in stats if s.score is not None]
-        times = [s.time_elapsed for s in stats if s.time_elapsed is not None]
+        # Calculate accuracy and aligned per-game metrics
+        correct_moves_list = []
+        wrong_moves_list = []
+        scores = []
+        score_values = []
+        score_timestamps = []
+        times = []
+        time_values = []
+        accuracy_per_game = []
+        accuracy_values = []
+        total_correct = 0
+        total_wrong = 0
+
+        for stat in stats:
+            correct_moves_list.append(stat.correct_moves)
+            wrong_moves_list.append(stat.wrong_moves)
+
+            correct = stat.correct_moves if stat.correct_moves is not None else 0
+            wrong = stat.wrong_moves if stat.wrong_moves is not None else 0
+            total_correct += correct
+            total_wrong += wrong
+
+            if stat.score is not None:
+                score_values.append(stat.score)
+                score_timestamps.append(stat.created_at)
+                scores.append(stat.score)
+            else:
+                scores.append(None)
+
+            if stat.time_elapsed is not None:
+                time_values.append(stat.time_elapsed)
+                times.append(stat.time_elapsed)
+            else:
+                times.append(None)
+
+            if stat.correct_moves is not None and stat.wrong_moves is not None:
+                game_accuracy = calculate_accuracy_rate(correct, wrong)
+                accuracy_per_game.append(game_accuracy)
+                accuracy_values.append(game_accuracy)
+            else:
+                accuracy_per_game.append(None)
 
         # Total moves for accuracy
-        total_correct = sum(correct_moves_list)
-        total_wrong = sum(wrong_moves_list)
         overall_accuracy = calculate_accuracy_rate(total_correct, total_wrong)
 
-        # Calculate per-game accuracy for learning curve
-        accuracy_per_game = []
-        for i in range(len(stats)):
-            if correct_moves_list[i] is not None and wrong_moves_list[i] is not None:
-                game_accuracy = calculate_accuracy_rate(correct_moves_list[i], wrong_moves_list[i])
-                accuracy_per_game.append(game_accuracy)
-
         # Decision time
-        total_time = sum(times) if times else 0
+        total_time = sum(time_values) if time_values else 0
         avg_decision_time = calculate_decision_time(total_time, total_correct, total_wrong)
 
         # Weighted average score (recent games weighted more)
-        weighted_avg_score = calculate_weighted_metric(scores, use_recency_weight=True)
+        weighted_avg_score = calculate_weighted_metric(
+            score_values,
+            timestamps=score_timestamps,
+            use_recency_weight=True,
+        )
 
         # Improvement rate (compare first 5 to last 5 games)
         improvement_rate = 0
-        if len(accuracy_per_game) >= 10:
-            initial_avg = sum(accuracy_per_game[:5]) / 5
-            recent_avg = sum(accuracy_per_game[-5:]) / 5
+        if len(accuracy_values) >= 7:
+            sample_size = min(5, max(3, len(accuracy_values) // 2))
+            initial_avg = sum(accuracy_values[:sample_size]) / sample_size
+            recent_avg = sum(accuracy_values[-sample_size:]) / sample_size
             if initial_avg > 0:
                 improvement_rate = ((recent_avg - initial_avg) / initial_avg) * 100
 
         # Consistency score
-        consistency = calculate_consistency_score(scores) if scores else 0
+        consistency = calculate_consistency_score(score_values) if score_values else 0
 
         # Learning curve analysis (overall)
         learning_curve_slope = 0
         learning_curve_trend = 'insufficient_data'
-        if len(accuracy_per_game) >= 7:
-            learning_curve_slope, learning_curve_trend = calculate_learning_curve_slope(accuracy_per_game)
+        if len(accuracy_values) >= 7:
+            learning_curve_slope, learning_curve_trend = calculate_learning_curve_slope(accuracy_values)
 
         # Per-level learning curves
         level_performance = defaultdict(lambda: {
@@ -1008,23 +1063,30 @@ def teacher_statistics_dashboard(request):
         })
 
         # Group stats by level
-        for i, stat in enumerate(stats):
-            if stat.level is not None:
-                level = stat.level
-                level_performance[level]['attempts'].append(len(level_performance[level]['attempts']) + 1)
+        for stat in stats:
+            if stat.level is None:
+                continue
 
-                # Calculate per-game metrics for this level
-                if i < len(accuracy_per_game):
-                    level_performance[level]['accuracy_values'].append(accuracy_per_game[i])
-                if i < len(scores):
-                    level_performance[level]['score_values'].append(scores[i])
-                if i < len(times):
-                    level_performance[level]['time_values'].append(times[i])
+            level = stat.level
+            level_performance[level]['attempts'].append(len(level_performance[level]['attempts']) + 1)
+
+            if stat.correct_moves is not None and stat.wrong_moves is not None:
+                level_accuracy = calculate_accuracy_rate(
+                    stat.correct_moves,
+                    stat.wrong_moves,
+                )
+                level_performance[level]['accuracy_values'].append(level_accuracy)
+            else:
+                level_performance[level]['accuracy_values'].append(None)
+
+            level_performance[level]['score_values'].append(stat.score if stat.score is not None else None)
+            level_performance[level]['time_values'].append(stat.time_elapsed if stat.time_elapsed is not None else None)
 
         # Calculate learning curves for each level
         for level, data in level_performance.items():
-            if len(data['accuracy_values']) >= 7:
-                slope, trend = calculate_learning_curve_slope(data['accuracy_values'])
+            accuracy_values_for_trend = [value for value in data['accuracy_values'] if value is not None]
+            if len(accuracy_values_for_trend) >= 7:
+                slope, trend = calculate_learning_curve_slope(accuracy_values_for_trend)
                 data['learning_curve_slope'] = slope
                 data['learning_curve_trend'] = trend
 

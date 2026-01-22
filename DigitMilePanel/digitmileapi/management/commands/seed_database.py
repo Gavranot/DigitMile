@@ -9,7 +9,7 @@ import random
 import string
 from datetime import date, timedelta
 from django.core.management.base import BaseCommand
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Group, User
 from digitmileapi.models import (
     School, Teacher, TeacherSchoolAssignment,
     Classroom, Student, RunStatistics
@@ -267,7 +267,10 @@ Run statistics created: {len(statistics)}
                     first_name=name_parts[0] if len(name_parts) > 0 else '',
                     last_name=name_parts[1] if len(name_parts) > 1 else '',
                     is_active=True,
+                    is_staff=True,
                 )
+                teachers_group, created = Group.objects.get_or_create(name='Teachers')
+                user.groups.add(teachers_group)
 
             teacher = Teacher.objects.create(
                 user=user,
@@ -384,17 +387,23 @@ Run statistics created: {len(statistics)}
             return statistics
 
         # Ensure we create at least min_count statistics
-        stats_per_student = max(5, min_count // len(students))
+        stats_per_student = max(20, min_count // len(students))
 
         for student in students:
-            # Each student has 5-20 game runs
-            num_runs = random.randint(
-                max(5, stats_per_student),
-                max(20, stats_per_student + 10)
+            # Each student has at least two levels with 10+ attempts
+            total_runs = random.randint(
+                max(20, stats_per_student),
+                max(30, stats_per_student + 10)
             )
 
-            for _ in range(num_runs):
-                level = random.randint(1, 10)
+            focused_levels = random.sample(range(1, 11), 2)
+            focused_runs = [random.randint(10, 15), random.randint(10, 15)]
+            focused_total = sum(focused_runs)
+
+            if total_runs < focused_total:
+                total_runs = focused_total
+
+            def add_stat(level):
                 player_won = random.random() > 0.4  # 60% win rate
 
                 # Score correlates with winning and level
@@ -423,6 +432,14 @@ Run statistics created: {len(statistics)}
                     time_elapsed=round(time_elapsed, 2),
                 )
                 statistics.append(stat)
+
+            for level, runs in zip(focused_levels, focused_runs):
+                for _ in range(runs):
+                    add_stat(level)
+
+            remaining_runs = total_runs - focused_total
+            for _ in range(remaining_runs):
+                add_stat(random.randint(1, 10))
 
         win_count = len([s for s in statistics if s.player_won])
         self.stdout.write(f'  - Created {len(statistics)} run statistics ({win_count} wins, {len(statistics) - win_count} losses)')

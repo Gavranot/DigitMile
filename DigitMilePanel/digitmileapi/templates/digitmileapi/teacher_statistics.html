@@ -1,10 +1,10 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% trans "Teacher Statistics Dashboard" %}</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Teacher Statistics Dashboard" %}{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
     <style>
         /* CSS remains unchanged as it contains no user-facing text */
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -21,7 +21,8 @@
         .filters-bar h3 { margin-bottom: 15px; color: var(--primary); font-size: 18px; }
         .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
         .filter-group label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 14px; color: #2c3e50; }
-        .filter-group select { width: 100%; padding: 10px; border: 2px solid var(--border-color); border-radius: 6px; font-size: 14px; background: white; cursor: pointer; transition: border-color 0.3s; }
+        .filter-group select { width: 100%; height: 44px; padding: 0 36px 0 12px; border: 2px solid var(--border-color); border-radius: 6px; font-size: 14px; line-height: 40px; background-color: #fff; color: #2c3e50; appearance: none; -webkit-appearance: none; -moz-appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232c3e50' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 10px center; background-size: 16px; cursor: pointer; transition: border-color 0.3s; vertical-align: middle; }
+        .filter-group select option { color: #2c3e50; background-color: #fff; }
         .filter-group select:focus { outline: none; border-color: var(--primary); }
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }
         .stat-card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); text-align: center; transition: transform 0.3s, box-shadow 0.3s; }
@@ -86,8 +87,18 @@
         label:has(.student-checkbox) { transition: all 0.3s ease; }
         label:has(.student-checkbox):hover { border-color: var(--primary-light) !important; background: #f8f9fa !important; }
     </style>
-</head>
-<body>
+{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content_title %}{% endblock %}
+{% block nav-sidebar %}{% endblock %}
+{% block breadcrumbs %}{% endblock %}
+
+{% block content %}
     <div class="container">
         <div class="header">
             <h1>{% trans "Teacher Statistics Dashboard" %}</h1>
@@ -149,7 +160,7 @@
             </div>
         </div>
 
-        {% if enabled_viz.attention_panel and students_needing_attention %}
+        {% if enabled_viz.attention_panel %}
         <div class="panel attention">
             <div class="panel-header">
                 <h2>{% trans "Students Needing Attention" %}</h2>
@@ -172,7 +183,7 @@
         </div>
         {% endif %}
 
-        {% if enabled_viz.rewards_panel and students_ready_for_rewards %}
+        {% if enabled_viz.rewards_panel %}
         <div class="panel rewards">
             <div class="panel-header">
                 <h2>{% trans "Students Ready for Rewards" %}</h2>
@@ -203,8 +214,8 @@
             </div>
 
             <div class="tabs">
-                <button class="tab active" onclick="switchTab('topAccuracy')">{% trans "By Accuracy" %}</button>
-                <button class="tab" onclick="switchTab('topImprovement')">{% trans "By Improvement" %}</button>
+                <button class="tab active" onclick="switchTab(event, 'topAccuracy')">{% trans "By Accuracy" %}</button>
+                <button class="tab" onclick="switchTab(event, 'topImprovement')">{% trans "By Improvement" %}</button>
             </div>
 
             <div id="topAccuracy" class="tab-content active">
@@ -237,12 +248,12 @@
                             <span class="rank">#{{ forloop.counter }}</span>
                             <span class="name">{{ student.name }}</span>
                             <span class="classroom">{{ student.classroom }}</span>
-                            <span class="metric excellent">+{{ student.improvement_rate|floatformat:1 }}%</span>
+                            <span class="metric {% if student.improvement_rate >= 0 %}excellent{% else %}poor{% endif %}">{% if student.improvement_rate > 0 %}+{% endif %}{{ student.improvement_rate|floatformat:1 }}%</span>
                         </li>
                         {% endfor %}
                     </ul>
                 {% else %}
-                    <div class="no-data"><p>{% trans "Need at least 10 games per student to calculate improvement" %}</p></div>
+                    <div class="no-data"><p>{% trans "Need at least 7 games per student to calculate improvement" %}</p></div>
                 {% endif %}
             </div>
         </div>
@@ -256,8 +267,8 @@
             </div>
 
             <div class="tabs">
-                <button class="tab active" onclick="switchTab('bottomAccuracy')">{% trans "Low Accuracy" %}</button>
-                <button class="tab" onclick="switchTab('bottomCurve')">{% trans "Flat/Declining Curve" %}</button>
+                <button class="tab active" onclick="switchTab(event, 'bottomAccuracy')">{% trans "Low Accuracy" %}</button>
+                <button class="tab" onclick="switchTab(event, 'bottomCurve')">{% trans "Flat/Declining Curve" %}</button>
             </div>
 
             <div id="bottomAccuracy" class="tab-content active">
@@ -297,6 +308,7 @@
         </div>
         {% endif %}
 
+        {% if enabled_viz.class_comparison %}
         <div class="panel">
             <div class="panel-header">
                 <h2>{% trans "Classroom Performance Comparison" %}</h2>
@@ -307,7 +319,7 @@
             </div>
         </div>
 
-        {% if enabled_viz.class_comparison and classroom_list|length >= 2 %}
+        {% if classroom_stats|length >= 2 %}
         <div class="panel">
             <div class="panel-header">
                 <h2>{% trans "Multi-Classroom Radar Comparison" %}</h2>
@@ -319,13 +331,13 @@
                     <label for="radarClassroomSelect">{% trans "Select Classrooms to Compare (2-5)" %}</label>
                     <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; margin-top: 10px;">
                         <div id="classroomCheckboxes" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px;">
-                            {% for classroom in classroom_list %}
+                            {% for classroom in classroom_stats %}
                             <label style="display: flex; align-items: center; cursor: pointer; padding: 8px; background: white; border-radius: 6px; border: 2px solid #e0e0e0; transition: all 0.3s;">
                                 <input type="checkbox" class="classroom-checkbox" value="{{ classroom.id }}"
-                                       data-name="{{ classroom.classroom_name }}"
+                                       data-name="{{ classroom.name }}"
                                        onchange="updateRadarChart()"
                                        style="margin-right: 8px; cursor: pointer;">
-                                <span style="font-size: 14px; font-weight: 500;">{{ classroom.classroom_name }}</span>
+                                <span style="font-size: 14px; font-weight: 500;">{{ classroom.name }}</span>
                             </label>
                             {% endfor %}
                         </div>
@@ -373,6 +385,7 @@
                 </div>
             </div>
         </div>
+        {% endif %}
         {% endif %}
 
         {% if enabled_viz.learning_curves %}
@@ -457,6 +470,11 @@
             </div>
 
             <div id="learningCurveCharts" style="display: none;">
+                <div id="learningCurveSummary" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; color: #666;">
+                    <strong>{% trans "Trend:" %}</strong> <span id="learningCurveTrend">-</span>
+                    <span style="margin-left: 15px;"><strong>{% trans "Slope:" %}</strong> <span id="learningCurveSlope">-</span></span>
+                    <span style="margin-left: 15px;"><strong>{% trans "Attempts:" %}</strong> <span id="learningCurveAttempts">-</span></span>
+                </div>
                 <div class="chart-wrapper" style="height: 300px; margin-bottom: 20px;">
                     <canvas id="accuracyCurveChart"></canvas>
                 </div>
@@ -539,6 +557,8 @@
     <script>
         const studentData = {{ student_data_json|safe }};
         const classroomData = {{ classroom_stats_json|safe }};
+        let selectedStudent = null;
+        let crossLevelStudent = null;
 
         if (studentData.length > 0) {
             const totalRuns = studentData.reduce((sum, s) => sum + s.total_runs, 0);
@@ -550,16 +570,18 @@
             document.getElementById('avgScore').textContent = avgScore;
         }
 
-        function switchTab(tabId) {
+        function switchTab(event, tabId) {
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
             document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
-            event.target.classList.add('active');
+            if (event && event.target) {
+                event.target.classList.add('active');
+            }
         }
 
-        if (classroomData.length > 0) {
-            const ctx = document.getElementById('classroomChart');
-            new Chart(ctx, {
+        const classroomChart = document.getElementById('classroomChart');
+        if (classroomChart && classroomData.length > 0) {
+            new Chart(classroomChart, {
                 type: 'bar',
                 data: {
                     labels: classroomData.map(c => c.name),
@@ -613,9 +635,11 @@
                 return;
             }
 
-            const selectedClassrooms = Array.from(checkboxes).map(cb => ({ id: parseInt(cb.value), name: cb.getAttribute('data-name') }));
+            const selectedClassrooms = Array.from(checkboxes).map(cb => ({ id: parseInt(cb.value, 10), name: cb.getAttribute('data-name') }));
             const dataMode = document.querySelector('input[name="radarDataMode"]:checked').value;
-            const selectedData = selectedClassrooms.map(sc => classroomData.find(cd => cd.name === sc.name)).filter(cd => cd !== undefined);
+            const selectedData = selectedClassrooms
+                .map(sc => classroomData.find(cd => cd.id === sc.id))
+                .filter(cd => cd !== undefined);
 
             if (selectedData.length < 2) { radarDisplay.style.display = 'block'; radarResults.style.display = 'none'; return; }
 
@@ -761,7 +785,18 @@
 
             makeChart('accuracyProgressionChart', '{% trans "Accuracy Progression Comparison" %}', '{% trans "Accuracy (%)" %}', s => s.accuracy_per_game);
             makeChart('scoreProgressionChart', '{% trans "Score Progression Comparison" %}', '{% trans "Score" %}', s => s.scores);
-            makeChart('speedProgressionChart', '{% trans "Decision Speed Progression Comparison" %}', '{% trans "Time (seconds)" %}', s => s.times.map((t, i) => t/((s.correct_moves[i]||0)+(s.wrong_moves[i]||0))));
+            makeChart(
+                'speedProgressionChart',
+                '{% trans "Decision Speed Progression Comparison" %}',
+                '{% trans "Time (seconds)" %}',
+                s => s.times.map((t, i) => {
+                    const totalMoves = (s.correct_moves[i] || 0) + (s.wrong_moves[i] || 0);
+                    if (t === null || totalMoves === 0) {
+                        return null;
+                    }
+                    return t / totalMoves;
+                })
+            );
         }
 
         function updateCrossLevelOptions() {
@@ -769,10 +804,17 @@
             const level1Select = document.getElementById('level1Select');
             const level2Select = document.getElementById('level2Select');
             if (!studentSelect.value) { level1Select.disabled = level2Select.disabled = true; return; }
-            crossLevelStudent = studentData.find(s => s.id == studentSelect.value);
+            crossLevelStudent = studentData.find(s => s.id == studentSelect.value) || null;
+            if (!crossLevelStudent) {
+                level1Select.disabled = true;
+                level2Select.disabled = true;
+                return;
+            }
             const levelPerf = crossLevelStudent.level_performance || {};
-            const allLevels = Object.keys(levelPerf).filter(l => levelPerf[l].accuracy_values.length >= 3).sort((a,b) => a-b);
-            const options = allLevels.map(l => `<option value="${l}">{% trans "Level" %} ${l} (${levelPerf[l].accuracy_values.length} {% trans "attempts" %})</option>`).join('');
+            const allLevels = Object.keys(levelPerf)
+                .filter(l => (levelPerf[l].attempts || []).length >= 7)
+                .sort((a, b) => a - b);
+            const options = allLevels.map(l => `<option value="${l}">{% trans "Level" %} ${l} (${levelPerf[l].attempts.length} {% trans "attempts" %})</option>`).join('');
             level1Select.innerHTML = level2Select.innerHTML = `<option value="">-- {% trans "Select level" %} --</option>` + options;
             level1Select.disabled = level2Select.disabled = allLevels.length < 2;
         }
@@ -783,8 +825,34 @@
             if (!l1 || !l2 || l1 === l2) return;
             const d1 = crossLevelStudent.level_performance[l1];
             const d2 = crossLevelStudent.level_performance[l2];
-            document.getElementById('crossLevelDisplay').style.display = 'none';
-            document.getElementById('crossLevelResults').style.display = 'block';
+            const crossLevelDisplay = document.getElementById('crossLevelDisplay');
+            const crossLevelResults = document.getElementById('crossLevelResults');
+
+            const getFirstValidValue = values => values.find(value => value !== null && value !== undefined);
+            const getLastValidValue = values => {
+                for (let i = values.length - 1; i >= 0; i -= 1) {
+                    const value = values[i];
+                    if (value !== null && value !== undefined) {
+                        return value;
+                    }
+                }
+                return null;
+            };
+
+            const initial1 = getFirstValidValue(d1.accuracy_values || []);
+            const final1 = getLastValidValue(d1.accuracy_values || []);
+            const initial2 = getFirstValidValue(d2.accuracy_values || []);
+            const final2 = getLastValidValue(d2.accuracy_values || []);
+
+            if (initial1 === null || final1 === null || initial2 === null || final2 === null) {
+                crossLevelDisplay.innerHTML = `<p>{% trans "Not enough accuracy data for the selected levels." %}</p>`;
+                crossLevelDisplay.style.display = 'block';
+                crossLevelResults.style.display = 'none';
+                return;
+            }
+
+            crossLevelDisplay.style.display = 'none';
+            crossLevelResults.style.display = 'block';
 
             if (crossLevelChart) crossLevelChart.destroy();
             crossLevelChart = new Chart(document.getElementById('crossLevelChart'), {
@@ -792,14 +860,14 @@
                 data: {
                     labels: [`{% trans "Level" %} ${l1}`, `{% trans "Level" %} ${l2}`],
                     datasets: [
-                        { label: '{% trans "Initial Performance" %}', data: [d1.accuracy_values[0], d2.accuracy_values[0]], backgroundColor: 'rgba(231, 76, 60, 0.6)' },
-                        { label: '{% trans "Final Performance" %}', data: [d1.accuracy_values.slice(-1)[0], d2.accuracy_values.slice(-1)[0]], backgroundColor: 'rgba(39, 174, 96, 0.6)' }
+                        { label: '{% trans "Initial Performance" %}', data: [initial1, initial2], backgroundColor: 'rgba(231, 76, 60, 0.6)' },
+                        { label: '{% trans "Final Performance" %}', data: [final1, final2], backgroundColor: 'rgba(39, 174, 96, 0.6)' }
                     ]
                 },
                 options: { responsive: true, maintainAspectRatio: false }
             });
 
-            const transfer = d2.accuracy_values[0] - d1.accuracy_values[0];
+            const transfer = initial2 - initial1;
             let insightHTML = `<h3>{% trans "Learning Transfer Analysis" %}</h3>`;
             if (transfer > 10) insightHTML += `<p style="color: #27ae60;">{% trans "✓ Excellent Transfer: Skill transfer detected between levels." %}</p>`;
             else insightHTML += `<p>{% trans "Moderate or Limited Transfer detected." %}</p>`;
@@ -809,28 +877,120 @@
         function updateLevelOptions() {
             const studentSelect = document.getElementById('studentSelect');
             const levelSelect = document.getElementById('levelSelect');
-            if (!studentSelect.value) { levelSelect.disabled = true; return; }
-            selectedStudent = studentData.find(s => s.id == studentSelect.value);
-            const levels = Object.keys(selectedStudent.level_performance || {}).filter(l => selectedStudent.level_performance[l].accuracy_values.length >= 7);
+            if (!studentSelect.value) {
+                selectedStudent = null;
+                levelSelect.innerHTML = `<option value="">-- {% trans "Select student first" %} --</option>`;
+                levelSelect.disabled = true;
+                return;
+            }
+            selectedStudent = studentData.find(s => s.id == studentSelect.value) || null;
+            if (!selectedStudent) {
+                levelSelect.innerHTML = `<option value="">-- {% trans "Select student first" %} --</option>`;
+                levelSelect.disabled = true;
+                return;
+            }
+            const levelPerformance = selectedStudent.level_performance || {};
+            const levels = Object.keys(levelPerformance).filter(l => (levelPerformance[l].attempts || []).length >= 7);
+            if (levels.length === 0) {
+                levelSelect.innerHTML = `<option value="">-- {% trans "Not enough attempts yet" %} --</option>`;
+                levelSelect.disabled = true;
+                return;
+            }
             levelSelect.innerHTML = `<option value="">-- {% trans "Select level" %} --</option>` + levels.map(l => `<option value="${l}">{% trans "Level" %} ${l}</option>`).join('');
-            levelSelect.disabled = levels.length === 0;
+            levelSelect.disabled = false;
         }
 
         function showLearningCurve() {
             const level = document.getElementById('levelSelect').value;
+            if (!selectedStudent || !level) {
+                return;
+            }
             const data = selectedStudent.level_performance[level];
+            const attempts = (data.attempts && data.attempts.length > 0)
+                ? data.attempts
+                : data.accuracy_values.map((_, index) => index + 1);
             document.getElementById('learningCurveDisplay').style.display = 'none';
             document.getElementById('learningCurveCharts').style.display = 'block';
+
+            const trendLabels = {
+                improving: '{% trans "Improving" %}',
+                declining: '{% trans "Declining" %}',
+                plateaued: '{% trans "Plateaued" %}',
+                mastered: '{% trans "Mastered" %}',
+                insufficient_data: '{% trans "Insufficient data" %}'
+            };
+            const trendLabel = trendLabels[data.learning_curve_trend] || data.learning_curve_trend;
+            const trendTarget = document.getElementById('learningCurveTrend');
+            const slopeTarget = document.getElementById('learningCurveSlope');
+            const attemptsTarget = document.getElementById('learningCurveAttempts');
+            if (trendTarget) {
+                trendTarget.textContent = trendLabel;
+            }
+            if (slopeTarget) {
+                slopeTarget.textContent = Number.isFinite(data.learning_curve_slope)
+                    ? data.learning_curve_slope.toFixed(3)
+                    : '-';
+            }
+            if (attemptsTarget) {
+                attemptsTarget.textContent = attempts.length;
+            }
 
             const ctxAcc = document.getElementById('accuracyCurveChart');
             if (accuracyChart) accuracyChart.destroy();
             accuracyChart = new Chart(ctxAcc, {
                 type: 'line',
-                data: { labels: data.accuracy_values.map((_, i) => i+1), datasets: [{ label: '{% trans "Accuracy Over Time" %}', data: data.accuracy_values, borderColor: '#27ae60' }] },
+                data: {
+                    labels: attempts,
+                    datasets: [
+                        {
+                            label: '{% trans "Accuracy Over Time" %}',
+                            data: data.accuracy_values,
+                            borderColor: '#27ae60',
+                            backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                            tension: 0.35
+                        }
+                    ]
+                },
                 options: { responsive: true, maintainAspectRatio: false }
             });
-            // Similar logic for score and time charts...
+
+            const ctxScore = document.getElementById('scoreCurveChart');
+            if (scoreChart) scoreChart.destroy();
+            scoreChart = new Chart(ctxScore, {
+                type: 'line',
+                data: {
+                    labels: attempts,
+                    datasets: [
+                        {
+                            label: '{% trans "Score Over Time" %}',
+                            data: data.score_values,
+                            borderColor: '#417690',
+                            backgroundColor: 'rgba(65, 118, 144, 0.1)',
+                            tension: 0.35
+                        }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            const ctxTime = document.getElementById('timeCurveChart');
+            if (timeChart) timeChart.destroy();
+            timeChart = new Chart(ctxTime, {
+                type: 'line',
+                data: {
+                    labels: attempts,
+                    datasets: [
+                        {
+                            label: '{% trans "Time Elapsed Over Time" %}',
+                            data: data.time_values,
+                            borderColor: '#f39c12',
+                            backgroundColor: 'rgba(243, 156, 18, 0.1)',
+                            tension: 0.35
+                        }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
         }
     </script>
-</body>
-</html>
+{% endblock %}

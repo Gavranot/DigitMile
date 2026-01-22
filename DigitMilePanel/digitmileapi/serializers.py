@@ -42,8 +42,20 @@ class LevelStatisticsInputSerializer(serializers.Serializer):
 class RunStatisticsSerializer(serializers.ModelSerializer):
     class Meta:
         model = RunStatistics
-        fields = ['id', 'student', 'player_won', 'level', 'score', 'place', 'correct_moves', 'wrong_moves', 'time_elapsed']
-        read_only_fields = ['id']
+        fields = [
+            'id',
+            'student',
+            'player_won',
+            'level',
+            'score',
+            'place',
+            'correct_moves',
+            'wrong_moves',
+            'time_elapsed',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
 class ClassroomBasicSerializer(serializers.ModelSerializer):
     school = SchoolSerializer(read_only=True)
     school_id = serializers.PrimaryKeyRelatedField(

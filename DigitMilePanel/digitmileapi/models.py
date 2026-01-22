@@ -260,6 +260,8 @@ class RunStatistics(models.Model):
     correct_moves = models.IntegerField(null=True, blank=True)
     wrong_moves = models.IntegerField(null=True, blank=True)
     time_elapsed = models.FloatField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
 
     def __str__(self):
         return f"Run for {self.student.full_name} - Level: {self.level} - Won: {self.player_won}"
