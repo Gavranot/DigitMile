@@ -40,6 +40,11 @@ panel_patterns = [
         name="teacher_statistics",
     ),
     path(
+        "teacher/statistics/viz-data/",
+        api_views.teacher_statistics_viz_data,
+        name="teacher_statistics_viz_data",
+    ),
+    path(
         "teacher/runs/<str:run_id>/",
         api_views.teacher_run_replay,
         name="teacher_run_replay",

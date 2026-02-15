@@ -227,6 +227,52 @@ def _summary_stats(values):
     }
 
 
+def _apply_scope_filters(
+    queryset,
+    teacher=None,
+    classroom_id=None,
+    student_ids=None,
+    student_id_field="student_id",
+    classroom_id_field="student__classroom_id",
+    teacher_field="student__classroom__teacher",
+):
+    """
+    Apply teacher/classroom/student scope safely.
+
+    Important behavior:
+    - If student_ids is an empty list, return queryset.none() to avoid global scans.
+    """
+    if student_ids is not None:
+        if len(student_ids) == 0:
+            return queryset.none()
+        return queryset.filter(**{f"{student_id_field}__in": student_ids})
+
+    if classroom_id:
+        return queryset.filter(**{classroom_id_field: classroom_id})
+    if teacher:
+        return queryset.filter(**{teacher_field: teacher})
+    return queryset
+
+
+def _extract_turn_card(turn):
+    card_type = turn.get("chosen_card_type")
+    card_family = turn.get("chosen_card_family")
+    tile_type = turn.get("chosen_card_tile_type")
+
+    if card_type and card_type != "unknown" and card_family and card_family != "unknown":
+        return {"type": card_type, "family": card_family, "tile_type": tile_type}
+
+    parsed_card = parse_card(turn.get("chosen_card"))
+    if tile_type is None:
+        tile_type = parsed_card.get("tile_type")
+
+    return {
+        "type": parsed_card.get("type", card_type or "unknown"),
+        "family": parsed_card.get("family", card_family or "unknown"),
+        "tile_type": tile_type,
+    }
+
+
 class RunAnalytics:
     """Analytics queries for Run data."""
 
@@ -243,14 +289,12 @@ class RunAnalytics:
         Returns:
             QuerySet with level, total_runs, wins, win_rate
         """
-        queryset = Run.objects.all()
-
-        if student_ids:
-            queryset = queryset.filter(student_id__in=student_ids)
-        elif classroom_id:
-            queryset = queryset.filter(student__classroom_id=classroom_id)
-        elif teacher:
-            queryset = queryset.filter(student__classroom__teacher=teacher)
+        queryset = _apply_scope_filters(
+            Run.objects.all(),
+            teacher=teacher,
+            classroom_id=classroom_id,
+            student_ids=student_ids,
+        )
 
         return (
             queryset.values("level")
@@ -279,14 +323,12 @@ class RunAnalytics:
         Returns:
             QuerySet with level, avg_score, min_score, max_score, total_runs
         """
-        queryset = Run.objects.all()
-
-        if student_ids:
-            queryset = queryset.filter(student_id__in=student_ids)
-        elif classroom_id:
-            queryset = queryset.filter(student__classroom_id=classroom_id)
-        elif teacher:
-            queryset = queryset.filter(student__classroom__teacher=teacher)
+        queryset = _apply_scope_filters(
+            Run.objects.all(),
+            teacher=teacher,
+            classroom_id=classroom_id,
+            student_ids=student_ids,
+        )
 
         return (
             queryset.values("level")
@@ -314,14 +356,15 @@ class RunAnalytics:
         Returns:
             QuerySet with level, avg_decision_time_ms, total_turns
         """
-        queryset = TurnEvent.objects.all()
-
-        if student_ids:
-            queryset = queryset.filter(run__student_id__in=student_ids)
-        elif classroom_id:
-            queryset = queryset.filter(run__student__classroom_id=classroom_id)
-        elif teacher:
-            queryset = queryset.filter(run__student__classroom__teacher=teacher)
+        queryset = _apply_scope_filters(
+            TurnEvent.objects.all(),
+            teacher=teacher,
+            classroom_id=classroom_id,
+            student_ids=student_ids,
+            student_id_field="run__student_id",
+            classroom_id_field="run__student__classroom_id",
+            teacher_field="run__student__classroom__teacher",
+        )
 
         return (
             queryset.values("run__level")
@@ -345,14 +388,12 @@ class RunAnalytics:
         Returns:
             QuerySet with level, total_correct, total_wrong, total_moves, wrong_rate
         """
-        queryset = Run.objects.all()
-
-        if student_ids:
-            queryset = queryset.filter(student_id__in=student_ids)
-        elif classroom_id:
-            queryset = queryset.filter(student__classroom_id=classroom_id)
-        elif teacher:
-            queryset = queryset.filter(student__classroom__teacher=teacher)
+        queryset = _apply_scope_filters(
+            Run.objects.all(),
+            teacher=teacher,
+            classroom_id=classroom_id,
+            student_ids=student_ids,
+        )
 
         return (
             queryset.values("level")
@@ -480,14 +521,12 @@ class RunAnalytics:
         Returns:
             QuerySet with level, avg_time_ms, min_time_ms, max_time_ms, std_time_ms, run_count
         """
-        queryset = Run.objects.all()
-
-        if student_ids:
-            queryset = queryset.filter(student_id__in=student_ids)
-        elif classroom_id:
-            queryset = queryset.filter(student__classroom_id=classroom_id)
-        elif teacher:
-            queryset = queryset.filter(student__classroom__teacher=teacher)
+        queryset = _apply_scope_filters(
+            Run.objects.all(),
+            teacher=teacher,
+            classroom_id=classroom_id,
+            student_ids=student_ids,
+        )
 
         return (
             queryset.values("level")
@@ -517,14 +556,12 @@ class RunAnalytics:
         Returns:
             List of dicts with x (elapsed_seconds), y (accuracy), level, student
         """
-        queryset = Run.objects.all()
-
-        if student_ids:
-            queryset = queryset.filter(student_id__in=student_ids)
-        elif classroom_id:
-            queryset = queryset.filter(student__classroom_id=classroom_id)
-        elif teacher:
-            queryset = queryset.filter(student__classroom__teacher=teacher)
+        queryset = _apply_scope_filters(
+            Run.objects.all(),
+            teacher=teacher,
+            classroom_id=classroom_id,
+            student_ids=student_ids,
+        )
 
         runs = queryset.select_related("student").values(
             "elapsed_ms", "correct_moves", "wrong_moves", "level", "student__full_name"
@@ -559,14 +596,15 @@ class RunAnalytics:
         Returns:
             Dict mapping level -> {tile_index: mistake_count}
         """
-        queryset = TurnEvent.objects.filter(was_correct=False)
-
-        if student_ids:
-            queryset = queryset.filter(run__student_id__in=student_ids)
-        elif classroom_id:
-            queryset = queryset.filter(run__student__classroom_id=classroom_id)
-        elif teacher:
-            queryset = queryset.filter(run__student__classroom__teacher=teacher)
+        queryset = _apply_scope_filters(
+            TurnEvent.objects.filter(was_correct=False),
+            teacher=teacher,
+            classroom_id=classroom_id,
+            student_ids=student_ids,
+            student_id_field="run__student_id",
+            classroom_id_field="run__student__classroom_id",
+            teacher_field="run__student__classroom__teacher",
+        )
 
         hotspots = (
             queryset.values("tile_before_index", "run__level")
@@ -596,14 +634,15 @@ class RunAnalytics:
         Returns:
             QuerySet with turn__run__level, special_tile_type, trigger_count
         """
-        queryset = SpecialTileTrigger.objects.all()
-
-        if student_ids:
-            queryset = queryset.filter(turn__run__student_id__in=student_ids)
-        elif classroom_id:
-            queryset = queryset.filter(turn__run__student__classroom_id=classroom_id)
-        elif teacher:
-            queryset = queryset.filter(turn__run__student__classroom__teacher=teacher)
+        queryset = _apply_scope_filters(
+            SpecialTileTrigger.objects.all(),
+            teacher=teacher,
+            classroom_id=classroom_id,
+            student_ids=student_ids,
+            student_id_field="turn__run__student_id",
+            classroom_id_field="turn__run__student__classroom_id",
+            teacher_field="turn__run__student__classroom__teacher",
+        )
 
         return (
             queryset.values("turn__run__level", "special_tile_type")
@@ -624,22 +663,27 @@ class RunAnalytics:
         Returns:
             Dict mapping card_type -> {count, avg, min, max, median, q1, q3}
         """
-        queryset = TurnEvent.objects.all()
+        queryset = _apply_scope_filters(
+            TurnEvent.objects.all(),
+            teacher=teacher,
+            classroom_id=classroom_id,
+            student_ids=student_ids,
+            student_id_field="run__student_id",
+            classroom_id_field="run__student__classroom_id",
+            teacher_field="run__student__classroom__teacher",
+        )
 
-        if student_ids:
-            queryset = queryset.filter(run__student_id__in=student_ids)
-        elif classroom_id:
-            queryset = queryset.filter(run__student__classroom_id=classroom_id)
-        elif teacher:
-            queryset = queryset.filter(run__student__classroom__teacher=teacher)
-
-        turns = queryset.values("chosen_card", "card_decision_time_ms")
+        turns = queryset.values(
+            "chosen_card_type",
+            "chosen_card_family",
+            "chosen_card_tile_type",
+            "chosen_card",
+            "card_decision_time_ms",
+        )
 
         card_type_times = defaultdict(list)
         for turn in turns:
-            chosen_card = turn.get("chosen_card")
-            parsed_card = parse_card(chosen_card)
-            card_type = parsed_card.get("type", "unknown")
+            card_type = _extract_turn_card(turn).get("type", "unknown")
             if turn["card_decision_time_ms"] is not None:
                 card_type_times[card_type].append(turn["card_decision_time_ms"])
 
@@ -706,16 +750,24 @@ class RunAnalytics:
         Returns:
             List of dicts with level, family, offered, chosen, offered_share, chosen_share, choice_rate
         """
-        queryset = TurnEvent.objects.all()
+        queryset = _apply_scope_filters(
+            TurnEvent.objects.all(),
+            teacher=teacher,
+            classroom_id=classroom_id,
+            student_ids=student_ids,
+            student_id_field="run__student_id",
+            classroom_id_field="run__student__classroom_id",
+            teacher_field="run__student__classroom__teacher",
+        )
 
-        if student_ids:
-            queryset = queryset.filter(run__student_id__in=student_ids)
-        elif classroom_id:
-            queryset = queryset.filter(run__student__classroom_id=classroom_id)
-        elif teacher:
-            queryset = queryset.filter(run__student__classroom__teacher=teacher)
-
-        turns = queryset.values("run__level", "chosen_card", "offered_cards")
+        turns = queryset.values(
+            "run__level",
+            "chosen_card_family",
+            "chosen_card_type",
+            "chosen_card_tile_type",
+            "chosen_card",
+            "offered_cards",
+        )
 
         offered_counts = defaultdict(int)
         chosen_counts = defaultdict(int)
@@ -724,8 +776,8 @@ class RunAnalytics:
 
         for turn in turns:
             level = turn.get("run__level")
-            chosen_card = parse_card(turn.get("chosen_card"))
-            chosen_counts[(level, chosen_card["family"])] += 1
+            chosen_family = _extract_turn_card(turn).get("family", "unknown")
+            chosen_counts[(level, chosen_family)] += 1
             chosen_totals[level] += 1
 
             offered_cards = turn.get("offered_cards") or []
@@ -775,22 +827,29 @@ class RunAnalytics:
         Returns:
             List of dicts with level, family, total, correct, wrong, accuracy
         """
-        queryset = TurnEvent.objects.all()
+        queryset = _apply_scope_filters(
+            TurnEvent.objects.all(),
+            teacher=teacher,
+            classroom_id=classroom_id,
+            student_ids=student_ids,
+            student_id_field="run__student_id",
+            classroom_id_field="run__student__classroom_id",
+            teacher_field="run__student__classroom__teacher",
+        )
 
-        if student_ids:
-            queryset = queryset.filter(run__student_id__in=student_ids)
-        elif classroom_id:
-            queryset = queryset.filter(run__student__classroom_id=classroom_id)
-        elif teacher:
-            queryset = queryset.filter(run__student__classroom__teacher=teacher)
-
-        turns = queryset.values("run__level", "chosen_card", "was_correct")
+        turns = queryset.values(
+            "run__level",
+            "chosen_card_family",
+            "chosen_card_type",
+            "chosen_card_tile_type",
+            "chosen_card",
+            "was_correct",
+        )
 
         counts = defaultdict(lambda: {"total": 0, "correct": 0})
         for turn in turns:
             level = turn.get("run__level")
-            card = parse_card(turn.get("chosen_card"))
-            family = card["family"]
+            family = _extract_turn_card(turn).get("family", "unknown")
             counts[(level, family)]["total"] += 1
             if turn.get("was_correct"):
                 counts[(level, family)]["correct"] += 1
@@ -822,24 +881,32 @@ class RunAnalytics:
         Returns:
             List of dicts with level, family, stats
         """
-        queryset = TurnEvent.objects.all()
+        queryset = _apply_scope_filters(
+            TurnEvent.objects.all(),
+            teacher=teacher,
+            classroom_id=classroom_id,
+            student_ids=student_ids,
+            student_id_field="run__student_id",
+            classroom_id_field="run__student__classroom_id",
+            teacher_field="run__student__classroom__teacher",
+        )
 
-        if student_ids:
-            queryset = queryset.filter(run__student_id__in=student_ids)
-        elif classroom_id:
-            queryset = queryset.filter(run__student__classroom_id=classroom_id)
-        elif teacher:
-            queryset = queryset.filter(run__student__classroom__teacher=teacher)
-
-        turns = queryset.values("run__level", "chosen_card", "card_decision_time_ms")
+        turns = queryset.values(
+            "run__level",
+            "chosen_card_family",
+            "chosen_card_type",
+            "chosen_card_tile_type",
+            "chosen_card",
+            "card_decision_time_ms",
+        )
 
         family_times = defaultdict(list)
         for turn in turns:
             level = turn.get("run__level")
-            card = parse_card(turn.get("chosen_card"))
             decision_time = turn.get("card_decision_time_ms")
             if decision_time is not None:
-                family_times[(level, card["family"])].append(decision_time)
+                family = _extract_turn_card(turn).get("family", "unknown")
+                family_times[(level, family)].append(decision_time)
 
         results = []
         for (level, family), times in family_times.items():
@@ -859,17 +926,21 @@ class RunAnalytics:
         Returns:
             Dict with by_tile_type list and else_rate_by_level
         """
-        queryset = TurnEvent.objects.all()
-
-        if student_ids:
-            queryset = queryset.filter(run__student_id__in=student_ids)
-        elif classroom_id:
-            queryset = queryset.filter(run__student__classroom_id=classroom_id)
-        elif teacher:
-            queryset = queryset.filter(run__student__classroom__teacher=teacher)
+        queryset = _apply_scope_filters(
+            TurnEvent.objects.filter(chosen_card_family="conditional_tile"),
+            teacher=teacher,
+            classroom_id=classroom_id,
+            student_ids=student_ids,
+            student_id_field="run__student_id",
+            classroom_id_field="run__student__classroom_id",
+            teacher_field="run__student__classroom__teacher",
+        )
 
         turns = queryset.values(
             "run__level",
+            "chosen_card_type",
+            "chosen_card_family",
+            "chosen_card_tile_type",
             "chosen_card",
             "was_correct",
             "tile_before_type",
@@ -880,10 +951,7 @@ class RunAnalytics:
         total_conditional_by_level = defaultdict(int)
 
         for turn in turns:
-            card = parse_card(turn.get("chosen_card"))
-            if card["family"] != "conditional_tile":
-                continue
-            tile_type = card["tile_type"]
+            tile_type = _extract_turn_card(turn).get("tile_type")
             if tile_type is None:
                 continue
 
@@ -940,19 +1008,29 @@ class RunAnalytics:
         Returns:
             Dict with by_comparator list and else_rate_by_level
         """
-        queryset = TurnEvent.objects.all()
-
-        if student_ids:
-            queryset = queryset.filter(run__student_id__in=student_ids)
-        elif classroom_id:
-            queryset = queryset.filter(run__student__classroom_id=classroom_id)
-        elif teacher:
-            queryset = queryset.filter(run__student__classroom__teacher=teacher)
+        queryset = _apply_scope_filters(
+            TurnEvent.objects.filter(
+                chosen_card_family__in=[
+                    "conditional_bag_eq",
+                    "conditional_bag_lt",
+                    "conditional_bag_gt",
+                ]
+            ),
+            teacher=teacher,
+            classroom_id=classroom_id,
+            student_ids=student_ids,
+            student_id_field="run__student_id",
+            classroom_id_field="run__student__classroom_id",
+            teacher_field="run__student__classroom__teacher",
+        )
 
         turns = queryset.values(
             "run_id",
             "run__level",
             "turn_index",
+            "chosen_card_type",
+            "chosen_card_family",
+            "chosen_card_tile_type",
             "chosen_card",
             "was_correct",
             "chosen_number",
@@ -963,12 +1041,12 @@ class RunAnalytics:
         total_conditional_by_level = defaultdict(int)
 
         for turn, bag_number in _iter_turns_with_bag_number(turns):
-            card = parse_card(turn.get("chosen_card"))
+            card = _extract_turn_card(turn)
             comparator = BAG_COMPARATOR_BY_TYPE.get(card["type"])
             if not comparator:
                 continue
 
-            threshold = card["if_value"]
+            threshold = parse_card(turn.get("chosen_card")).get("if_value")
             if threshold is None or bag_number is None:
                 continue
 
@@ -1032,22 +1110,20 @@ class RunAnalytics:
         Returns:
             List of dicts with level, place_before, count
         """
-        queryset = TurnEvent.objects.all()
+        queryset = _apply_scope_filters(
+            TurnEvent.objects.filter(chosen_card_family="back"),
+            teacher=teacher,
+            classroom_id=classroom_id,
+            student_ids=student_ids,
+            student_id_field="run__student_id",
+            classroom_id_field="run__student__classroom_id",
+            teacher_field="run__student__classroom__teacher",
+        )
 
-        if student_ids:
-            queryset = queryset.filter(run__student_id__in=student_ids)
-        elif classroom_id:
-            queryset = queryset.filter(run__student__classroom_id=classroom_id)
-        elif teacher:
-            queryset = queryset.filter(run__student__classroom__teacher=teacher)
-
-        turns = queryset.values("run__level", "chosen_card", "place_before")
+        turns = queryset.values("run__level", "place_before")
 
         counts = defaultdict(int)
         for turn in turns:
-            card = parse_card(turn.get("chosen_card"))
-            if card["family"] != "back":
-                continue
             level = turn.get("run__level")
             place_before = turn.get("place_before")
             if place_before is None:
@@ -1073,46 +1149,50 @@ class RunAnalytics:
         Returns:
             List of dicts with level, with_opponent, without_opponent, total
         """
-        queryset = TurnEvent.objects.all()
+        queryset = _apply_scope_filters(
+            TurnEvent.objects.filter(chosen_card_family="foreach_tile"),
+            teacher=teacher,
+            classroom_id=classroom_id,
+            student_ids=student_ids,
+            student_id_field="run__student_id",
+            classroom_id_field="run__student__classroom_id",
+            teacher_field="run__student__classroom__teacher",
+        )
 
-        if student_ids:
-            queryset = queryset.filter(run__student_id__in=student_ids)
-        elif classroom_id:
-            queryset = queryset.filter(run__student__classroom_id=classroom_id)
-        elif teacher:
-            queryset = queryset.filter(run__student__classroom__teacher=teacher)
+        run_ids = list(queryset.values_list("run_id", flat=True).distinct())
+        if not run_ids:
+            return []
+
+        map_cache = {}
+        run_maps = Run.objects.filter(id__in=run_ids).values("id", "game_map")
+        for run_entry in run_maps.iterator(chunk_size=500):
+            game_map = run_entry.get("game_map") or []
+            map_cache[run_entry["id"]] = {
+                tile.get("tileMapIndex"): tile.get("tileType", tile.get("tileIndex"))
+                for tile in game_map
+                if isinstance(tile, dict) and tile.get("tileMapIndex") is not None
+            }
 
         turns = queryset.values(
             "run_id",
             "run__level",
+            "chosen_card_type",
+            "chosen_card_family",
+            "chosen_card_tile_type",
             "chosen_card",
             "bot_positions_before",
-            "run__game_map",
         )
 
-        map_cache = {}
         with_opponent = defaultdict(int)
         without_opponent = defaultdict(int)
 
-        for turn in turns:
-            card = parse_card(turn.get("chosen_card"))
-            if card["family"] != "foreach_tile":
-                continue
-            target_tile_type = card["tile_type"]
+        for turn in turns.iterator(chunk_size=2000):
+            target_tile_type = _extract_turn_card(turn).get("tile_type")
             if target_tile_type is None:
                 continue
 
             level = turn.get("run__level")
             run_id = turn.get("run_id")
-            if run_id not in map_cache:
-                game_map = turn.get("run__game_map") or []
-                map_cache[run_id] = {
-                    tile.get("tileMapIndex"): tile.get(
-                        "tileType", tile.get("tileIndex")
-                    )
-                    for tile in game_map
-                    if isinstance(tile, dict) and tile.get("tileMapIndex") is not None
-                }
 
             map_lookup = map_cache.get(run_id, {})
             bot_positions = turn.get("bot_positions_before") or []
@@ -1157,28 +1237,24 @@ class RunAnalytics:
         Returns:
             List of dicts with level, chain_length, turn_count
         """
-        turn_queryset = TurnEvent.objects.all()
-        trigger_queryset = SpecialTileTrigger.objects.all()
-
-        if student_ids:
-            turn_queryset = turn_queryset.filter(run__student_id__in=student_ids)
-            trigger_queryset = trigger_queryset.filter(
-                turn__run__student_id__in=student_ids
-            )
-        elif classroom_id:
-            turn_queryset = turn_queryset.filter(
-                run__student__classroom_id=classroom_id
-            )
-            trigger_queryset = trigger_queryset.filter(
-                turn__run__student__classroom_id=classroom_id
-            )
-        elif teacher:
-            turn_queryset = turn_queryset.filter(
-                run__student__classroom__teacher=teacher
-            )
-            trigger_queryset = trigger_queryset.filter(
-                turn__run__student__classroom__teacher=teacher
-            )
+        turn_queryset = _apply_scope_filters(
+            TurnEvent.objects.all(),
+            teacher=teacher,
+            classroom_id=classroom_id,
+            student_ids=student_ids,
+            student_id_field="run__student_id",
+            classroom_id_field="run__student__classroom_id",
+            teacher_field="run__student__classroom__teacher",
+        )
+        trigger_queryset = _apply_scope_filters(
+            SpecialTileTrigger.objects.all(),
+            teacher=teacher,
+            classroom_id=classroom_id,
+            student_ids=student_ids,
+            student_id_field="turn__run__student_id",
+            classroom_id_field="turn__run__student__classroom_id",
+            teacher_field="turn__run__student__classroom__teacher",
+        )
 
         turns_by_level = turn_queryset.values("run__level").annotate(total=Count("id"))
         total_turns_by_level = {
@@ -1225,14 +1301,15 @@ class RunAnalytics:
         Returns:
             List of dicts with level, chosen_number, count
         """
-        queryset = TurnEvent.objects.filter(chosen_number__isnull=False)
-
-        if student_ids:
-            queryset = queryset.filter(run__student_id__in=student_ids)
-        elif classroom_id:
-            queryset = queryset.filter(run__student__classroom_id=classroom_id)
-        elif teacher:
-            queryset = queryset.filter(run__student__classroom__teacher=teacher)
+        queryset = _apply_scope_filters(
+            TurnEvent.objects.filter(chosen_number__isnull=False),
+            teacher=teacher,
+            classroom_id=classroom_id,
+            student_ids=student_ids,
+            student_id_field="run__student_id",
+            classroom_id_field="run__student__classroom_id",
+            teacher_field="run__student__classroom__teacher",
+        )
 
         return list(
             queryset.values("run__level", "chosen_number")
@@ -1250,14 +1327,15 @@ class RunAnalytics:
         Returns:
             List of dicts with level, chosen_number, avg_time_ms, count
         """
-        queryset = TurnEvent.objects.filter(chosen_number__isnull=False)
-
-        if student_ids:
-            queryset = queryset.filter(run__student_id__in=student_ids)
-        elif classroom_id:
-            queryset = queryset.filter(run__student__classroom_id=classroom_id)
-        elif teacher:
-            queryset = queryset.filter(run__student__classroom__teacher=teacher)
+        queryset = _apply_scope_filters(
+            TurnEvent.objects.filter(chosen_number__isnull=False),
+            teacher=teacher,
+            classroom_id=classroom_id,
+            student_ids=student_ids,
+            student_id_field="run__student_id",
+            classroom_id_field="run__student__classroom_id",
+            teacher_field="run__student__classroom__teacher",
+        )
 
         return list(
             queryset.values("run__level", "chosen_number")
@@ -1273,21 +1351,27 @@ class RunAnalytics:
         Returns:
             List of dicts with family, total, correct, wrong, accuracy
         """
-        queryset = TurnEvent.objects.all()
+        queryset = _apply_scope_filters(
+            TurnEvent.objects.all(),
+            teacher=teacher,
+            classroom_id=classroom_id,
+            student_ids=student_ids,
+            student_id_field="run__student_id",
+            classroom_id_field="run__student__classroom_id",
+            teacher_field="run__student__classroom__teacher",
+        )
 
-        if student_ids:
-            queryset = queryset.filter(run__student_id__in=student_ids)
-        elif classroom_id:
-            queryset = queryset.filter(run__student__classroom_id=classroom_id)
-        elif teacher:
-            queryset = queryset.filter(run__student__classroom__teacher=teacher)
-
-        turns = queryset.values("chosen_card", "was_correct")
+        turns = queryset.values(
+            "chosen_card_family",
+            "chosen_card_type",
+            "chosen_card_tile_type",
+            "chosen_card",
+            "was_correct",
+        )
 
         counts = defaultdict(lambda: {"total": 0, "correct": 0})
         for turn in turns:
-            card = parse_card(turn.get("chosen_card"))
-            family = card["family"]
+            family = _extract_turn_card(turn).get("family", "unknown")
             counts[family]["total"] += 1
             if turn.get("was_correct"):
                 counts[family]["correct"] += 1
@@ -1334,14 +1418,15 @@ class RunAnalytics:
         Returns:
             List of dicts with family, offered, chosen, adoption_rate
         """
-        queryset = TurnEvent.objects.all()
-
-        if student_ids:
-            queryset = queryset.filter(run__student_id__in=student_ids)
-        elif classroom_id:
-            queryset = queryset.filter(run__student__classroom_id=classroom_id)
-        elif teacher:
-            queryset = queryset.filter(run__student__classroom__teacher=teacher)
+        queryset = _apply_scope_filters(
+            TurnEvent.objects.all(),
+            teacher=teacher,
+            classroom_id=classroom_id,
+            student_ids=student_ids,
+            student_id_field="run__student_id",
+            classroom_id_field="run__student__classroom_id",
+            teacher_field="run__student__classroom__teacher",
+        )
 
         turns = queryset.values("chosen_card", "offered_cards")
 
@@ -1397,14 +1482,15 @@ class RunAnalytics:
         Returns:
             Dict mapping family -> stats
         """
-        queryset = TurnEvent.objects.all()
-
-        if student_ids:
-            queryset = queryset.filter(run__student_id__in=student_ids)
-        elif classroom_id:
-            queryset = queryset.filter(run__student__classroom_id=classroom_id)
-        elif teacher:
-            queryset = queryset.filter(run__student__classroom__teacher=teacher)
+        queryset = _apply_scope_filters(
+            TurnEvent.objects.all(),
+            teacher=teacher,
+            classroom_id=classroom_id,
+            student_ids=student_ids,
+            student_id_field="run__student_id",
+            classroom_id_field="run__student__classroom_id",
+            teacher_field="run__student__classroom__teacher",
+        )
 
         turns = queryset.values("chosen_card", "card_decision_time_ms")
 
@@ -1433,26 +1519,31 @@ class RunAnalytics:
         Returns:
             Dict with by_tile_type list and overall else_rate
         """
-        queryset = TurnEvent.objects.all()
+        queryset = _apply_scope_filters(
+            TurnEvent.objects.filter(chosen_card_family="conditional_tile"),
+            teacher=teacher,
+            classroom_id=classroom_id,
+            student_ids=student_ids,
+            student_id_field="run__student_id",
+            classroom_id_field="run__student__classroom_id",
+            teacher_field="run__student__classroom__teacher",
+        )
 
-        if student_ids:
-            queryset = queryset.filter(run__student_id__in=student_ids)
-        elif classroom_id:
-            queryset = queryset.filter(run__student__classroom_id=classroom_id)
-        elif teacher:
-            queryset = queryset.filter(run__student__classroom__teacher=teacher)
-
-        turns = queryset.values("chosen_card", "was_correct", "tile_before_type")
+        turns = queryset.values(
+            "chosen_card_type",
+            "chosen_card_family",
+            "chosen_card_tile_type",
+            "chosen_card",
+            "was_correct",
+            "tile_before_type",
+        )
 
         counts = defaultdict(lambda: {"total": 0, "correct": 0, "else_count": 0})
         total_else = 0
         total_conditional = 0
 
         for turn in turns:
-            card = parse_card(turn.get("chosen_card"))
-            if card["family"] != "conditional_tile":
-                continue
-            tile_type = card["tile_type"]
+            tile_type = _extract_turn_card(turn).get("tile_type")
             if tile_type is None:
                 continue
 
@@ -1499,18 +1590,28 @@ class RunAnalytics:
         Returns:
             Dict with by_comparator list and overall else_rate
         """
-        queryset = TurnEvent.objects.all()
-
-        if student_ids:
-            queryset = queryset.filter(run__student_id__in=student_ids)
-        elif classroom_id:
-            queryset = queryset.filter(run__student__classroom_id=classroom_id)
-        elif teacher:
-            queryset = queryset.filter(run__student__classroom__teacher=teacher)
+        queryset = _apply_scope_filters(
+            TurnEvent.objects.filter(
+                chosen_card_family__in=[
+                    "conditional_bag_eq",
+                    "conditional_bag_lt",
+                    "conditional_bag_gt",
+                ]
+            ),
+            teacher=teacher,
+            classroom_id=classroom_id,
+            student_ids=student_ids,
+            student_id_field="run__student_id",
+            classroom_id_field="run__student__classroom_id",
+            teacher_field="run__student__classroom__teacher",
+        )
 
         turns = queryset.values(
             "run_id",
             "turn_index",
+            "chosen_card_type",
+            "chosen_card_family",
+            "chosen_card_tile_type",
             "chosen_card",
             "was_correct",
             "chosen_number",
@@ -1521,12 +1622,12 @@ class RunAnalytics:
         total_conditional = 0
 
         for turn, bag_number in _iter_turns_with_bag_number(turns):
-            card = parse_card(turn.get("chosen_card"))
+            card = _extract_turn_card(turn)
             comparator = BAG_COMPARATOR_BY_TYPE.get(card["type"])
             if not comparator:
                 continue
 
-            threshold = card["if_value"]
+            threshold = parse_card(turn.get("chosen_card")).get("if_value")
             if threshold is None or bag_number is None:
                 continue
 
@@ -1602,22 +1703,20 @@ class RunAnalytics:
         Returns:
             List of dicts with place_before and count
         """
-        queryset = TurnEvent.objects.all()
+        queryset = _apply_scope_filters(
+            TurnEvent.objects.filter(chosen_card_family="back"),
+            teacher=teacher,
+            classroom_id=classroom_id,
+            student_ids=student_ids,
+            student_id_field="run__student_id",
+            classroom_id_field="run__student__classroom_id",
+            teacher_field="run__student__classroom__teacher",
+        )
 
-        if student_ids:
-            queryset = queryset.filter(run__student_id__in=student_ids)
-        elif classroom_id:
-            queryset = queryset.filter(run__student__classroom_id=classroom_id)
-        elif teacher:
-            queryset = queryset.filter(run__student__classroom__teacher=teacher)
-
-        turns = queryset.values("chosen_card", "place_before")
+        turns = queryset.values("place_before")
 
         counts = defaultdict(int)
         for turn in turns:
-            card = parse_card(turn.get("chosen_card"))
-            if card["family"] != "back":
-                continue
             place_before = turn.get("place_before")
             if place_before is None:
                 continue
@@ -1637,44 +1736,48 @@ class RunAnalytics:
         Returns:
             Dict with with_opponent, without_opponent, total
         """
-        queryset = TurnEvent.objects.all()
+        queryset = _apply_scope_filters(
+            TurnEvent.objects.filter(chosen_card_family="foreach_tile"),
+            teacher=teacher,
+            classroom_id=classroom_id,
+            student_ids=student_ids,
+            student_id_field="run__student_id",
+            classroom_id_field="run__student__classroom_id",
+            teacher_field="run__student__classroom__teacher",
+        )
 
-        if student_ids:
-            queryset = queryset.filter(run__student_id__in=student_ids)
-        elif classroom_id:
-            queryset = queryset.filter(run__student__classroom_id=classroom_id)
-        elif teacher:
-            queryset = queryset.filter(run__student__classroom__teacher=teacher)
+        run_ids = list(queryset.values_list("run_id", flat=True).distinct())
+        if not run_ids:
+            return {"with_opponent": 0, "without_opponent": 0, "total": 0}
+
+        map_cache = {}
+        run_maps = Run.objects.filter(id__in=run_ids).values("id", "game_map")
+        for run_entry in run_maps.iterator(chunk_size=500):
+            game_map = run_entry.get("game_map") or []
+            map_cache[run_entry["id"]] = {
+                tile.get("tileMapIndex"): tile.get("tileType", tile.get("tileIndex"))
+                for tile in game_map
+                if isinstance(tile, dict) and tile.get("tileMapIndex") is not None
+            }
 
         turns = queryset.values(
             "run_id",
+            "chosen_card_type",
+            "chosen_card_family",
+            "chosen_card_tile_type",
             "chosen_card",
             "bot_positions_before",
-            "run__game_map",
         )
 
-        map_cache = {}
         with_opponent = 0
         without_opponent = 0
 
-        for turn in turns:
-            card = parse_card(turn.get("chosen_card"))
-            if card["family"] != "foreach_tile":
-                continue
-            target_tile_type = card["tile_type"]
+        for turn in turns.iterator(chunk_size=2000):
+            target_tile_type = _extract_turn_card(turn).get("tile_type")
             if target_tile_type is None:
                 continue
 
             run_id = turn.get("run_id")
-            if run_id not in map_cache:
-                game_map = turn.get("run__game_map") or []
-                map_cache[run_id] = {
-                    tile.get("tileMapIndex"): tile.get(
-                        "tileType", tile.get("tileIndex")
-                    )
-                    for tile in game_map
-                    if isinstance(tile, dict) and tile.get("tileMapIndex") is not None
-                }
 
             map_lookup = map_cache.get(run_id, {})
             bot_positions = turn.get("bot_positions_before") or []
@@ -1710,28 +1813,24 @@ class RunAnalytics:
         Returns:
             List of dicts with chain_length and turn_count
         """
-        turn_queryset = TurnEvent.objects.all()
-        trigger_queryset = SpecialTileTrigger.objects.all()
-
-        if student_ids:
-            turn_queryset = turn_queryset.filter(run__student_id__in=student_ids)
-            trigger_queryset = trigger_queryset.filter(
-                turn__run__student_id__in=student_ids
-            )
-        elif classroom_id:
-            turn_queryset = turn_queryset.filter(
-                run__student__classroom_id=classroom_id
-            )
-            trigger_queryset = trigger_queryset.filter(
-                turn__run__student__classroom_id=classroom_id
-            )
-        elif teacher:
-            turn_queryset = turn_queryset.filter(
-                run__student__classroom__teacher=teacher
-            )
-            trigger_queryset = trigger_queryset.filter(
-                turn__run__student__classroom__teacher=teacher
-            )
+        turn_queryset = _apply_scope_filters(
+            TurnEvent.objects.all(),
+            teacher=teacher,
+            classroom_id=classroom_id,
+            student_ids=student_ids,
+            student_id_field="run__student_id",
+            classroom_id_field="run__student__classroom_id",
+            teacher_field="run__student__classroom__teacher",
+        )
+        trigger_queryset = _apply_scope_filters(
+            SpecialTileTrigger.objects.all(),
+            teacher=teacher,
+            classroom_id=classroom_id,
+            student_ids=student_ids,
+            student_id_field="turn__run__student_id",
+            classroom_id_field="turn__run__student__classroom_id",
+            teacher_field="turn__run__student__classroom__teacher",
+        )
 
         total_turns = turn_queryset.count()
         trigger_counts = trigger_queryset.values("turn_id").annotate(
@@ -1762,14 +1861,15 @@ class RunAnalytics:
         Returns:
             List of dicts with chosen_number and count
         """
-        queryset = TurnEvent.objects.filter(chosen_number__isnull=False)
-
-        if student_ids:
-            queryset = queryset.filter(run__student_id__in=student_ids)
-        elif classroom_id:
-            queryset = queryset.filter(run__student__classroom_id=classroom_id)
-        elif teacher:
-            queryset = queryset.filter(run__student__classroom__teacher=teacher)
+        queryset = _apply_scope_filters(
+            TurnEvent.objects.filter(chosen_number__isnull=False),
+            teacher=teacher,
+            classroom_id=classroom_id,
+            student_ids=student_ids,
+            student_id_field="run__student_id",
+            classroom_id_field="run__student__classroom_id",
+            teacher_field="run__student__classroom__teacher",
+        )
 
         data = (
             queryset.values("chosen_number")
@@ -1788,14 +1888,15 @@ class RunAnalytics:
         Returns:
             List of dicts with chosen_number and avg_time_ms
         """
-        queryset = TurnEvent.objects.filter(chosen_number__isnull=False)
-
-        if student_ids:
-            queryset = queryset.filter(run__student_id__in=student_ids)
-        elif classroom_id:
-            queryset = queryset.filter(run__student__classroom_id=classroom_id)
-        elif teacher:
-            queryset = queryset.filter(run__student__classroom__teacher=teacher)
+        queryset = _apply_scope_filters(
+            TurnEvent.objects.filter(chosen_number__isnull=False),
+            teacher=teacher,
+            classroom_id=classroom_id,
+            student_ids=student_ids,
+            student_id_field="run__student_id",
+            classroom_id_field="run__student__classroom_id",
+            teacher_field="run__student__classroom__teacher",
+        )
 
         data = (
             queryset.values("chosen_number")

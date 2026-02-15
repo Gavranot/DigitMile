@@ -41,12 +41,24 @@ from django.db import transaction, IntegrityError
 from django.utils import timezone
 from datetime import datetime, timezone as dt_timezone
 from django.core.mail import send_mail
+from django.core.cache import cache
 from django.conf import settings
 from django.http import JsonResponse
 import logging
 
 # Set up logger for email operations
 logger = logging.getLogger(__name__)
+
+CARD_FAMILY_BY_TYPE = {
+    "MoveX": "move",
+    "IfXMoveYElseMoveZ": "conditional_tile",
+    "IfBagEqualXMoveYElseMoveZ": "conditional_bag_eq",
+    "IfBagLessXMoveYElseMoveZ": "conditional_bag_lt",
+    "IfBagGreaterXMoveYElseMoveZ": "conditional_bag_gt",
+    "BagCount": "bagcount",
+    "ForXMoveY": "foreach_tile",
+    "Back": "back",
+}
 
 
 def _normalize_card_type_for_ingestion(card_type):
@@ -125,6 +137,24 @@ def _normalize_cards_for_ingestion(chosen_card, offered_cards):
         _normalize_card_payload_for_ingestion(card) for card in (offered_cards or [])
     ]
     return normalized_chosen, normalized_offered
+
+
+def _safe_int(value):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _extract_card_metadata(card):
+    if not isinstance(card, dict):
+        return ("unknown", "unknown", None)
+
+    card_type = _normalize_card_type_for_ingestion(card.get("type")) or "unknown"
+    card_family = CARD_FAMILY_BY_TYPE.get(card_type, "unknown")
+    parsed_data = _parse_card_data_string(card.get("data"))
+    card_tile_type = _safe_int(parsed_data.get("tileType"))
+    return (card_type, card_family, card_tile_type)
 
 
 class UnsafeSessionAuthentication(SessionAuthentication):
@@ -400,12 +430,20 @@ class InsertRunDataView(APIView):
                     chosen_card, offered_cards = _normalize_cards_for_ingestion(
                         event_data.get("chosenCard"), event_data.get("offeredCards")
                     )
+                    (
+                        chosen_card_type,
+                        chosen_card_family,
+                        chosen_card_tile_type,
+                    ) = _extract_card_metadata(chosen_card)
 
                     turn_event = TurnEvent(
                         run=run,
                         turn_index=event_data["turnIndex"],
                         timestamp_played=timestamp_played,
                         chosen_card=chosen_card,
+                        chosen_card_type=chosen_card_type,
+                        chosen_card_family=chosen_card_family,
+                        chosen_card_tile_type=chosen_card_tile_type,
                         offered_cards=offered_cards,
                         was_correct=event_data["wasCorrect"],
                         tile_before_index=tile_before["tileMapIndex"],
@@ -630,12 +668,20 @@ class RunIngestionView(APIView):
                     chosen_card, offered_cards = _normalize_cards_for_ingestion(
                         event_data.get("chosen_card"), event_data.get("offered_cards")
                     )
+                    (
+                        chosen_card_type,
+                        chosen_card_family,
+                        chosen_card_tile_type,
+                    ) = _extract_card_metadata(chosen_card)
 
                     turn_event = TurnEvent(
                         run=run,
                         turn_index=event_data["turn_index"],
                         timestamp_played=timestamp_played,
                         chosen_card=chosen_card,
+                        chosen_card_type=chosen_card_type,
+                        chosen_card_family=chosen_card_family,
+                        chosen_card_tile_type=chosen_card_tile_type,
                         offered_cards=offered_cards,
                         was_correct=event_data["was_correct"],
                         tile_before_index=event_data["tile_before_index"],
@@ -1456,6 +1502,119 @@ ENABLED_VISUALIZATIONS = {
 }
 
 
+def _get_filtered_students_for_teacher(teacher, grade_filter=None, classroom_filter=None):
+    students = Student.objects.filter(classroom__teacher=teacher)
+    if grade_filter:
+        students = students.filter(grade=grade_filter)
+    if classroom_filter:
+        students = students.filter(classroom_id=classroom_filter)
+    return students
+
+
+def _build_teacher_statistics_viz_payload(section, student_ids):
+    payload = {}
+
+    if section == "analytics":
+        if ENABLED_VISUALIZATIONS.get("win_rate_by_level"):
+            payload["win_rate_by_level"] = list(
+                RunAnalytics.win_rate_by_level(student_ids=student_ids)
+            )
+
+        if ENABLED_VISUALIZATIONS.get("accuracy_by_level"):
+            payload["accuracy_by_level"] = list(
+                RunAnalytics.wrong_moves_rate_by_level(student_ids=student_ids)
+            )
+
+        if ENABLED_VISUALIZATIONS.get("time_by_level"):
+            payload["time_by_level"] = list(
+                RunAnalytics.time_distribution_by_level(student_ids=student_ids)
+            )
+
+        if ENABLED_VISUALIZATIONS.get("speed_vs_accuracy"):
+            payload["speed_vs_accuracy"] = RunAnalytics.speed_vs_accuracy_scatter(
+                student_ids=student_ids, limit=1000
+            )
+
+        if ENABLED_VISUALIZATIONS.get("mistake_hotspots"):
+            payload["mistake_hotspots"] = RunAnalytics.mistake_hotspots_by_level(
+                student_ids=student_ids
+            )
+
+        if ENABLED_VISUALIZATIONS.get("special_tile_breakdown"):
+            payload["special_tile_breakdown"] = list(
+                RunAnalytics.special_tile_breakdown(student_ids=student_ids)
+            )
+
+        if ENABLED_VISUALIZATIONS.get("decision_time_by_card"):
+            payload["decision_time_by_card"] = RunAnalytics.decision_time_by_card_type(
+                student_ids=student_ids
+            )
+
+    elif section == "turn_insights":
+        if ENABLED_VISUALIZATIONS.get("card_exposure_by_family"):
+            payload["offer_choice_share_by_family"] = (
+                RunAnalytics.offer_choice_share_by_family(student_ids=student_ids)
+            )
+            payload["deck_expected_share_by_family"] = (
+                RunAnalytics.deck_expected_share_by_family()
+            )
+
+        if ENABLED_VISUALIZATIONS.get("card_accuracy_by_family"):
+            payload["card_accuracy_by_family"] = (
+                RunAnalytics.card_accuracy_by_family_by_level(student_ids=student_ids)
+            )
+
+        if ENABLED_VISUALIZATIONS.get("decision_time_by_family"):
+            payload["decision_time_by_family"] = (
+                RunAnalytics.decision_time_by_family_by_level(student_ids=student_ids)
+            )
+
+        if ENABLED_VISUALIZATIONS.get("tile_conditional_accuracy"):
+            payload["tile_conditional_accuracy"] = (
+                RunAnalytics.tile_conditional_accuracy_by_tile_type_by_level(
+                    student_ids=student_ids
+                )
+            )
+
+        if ENABLED_VISUALIZATIONS.get("bag_conditional_accuracy"):
+            payload["bag_conditional_accuracy"] = (
+                RunAnalytics.bag_conditional_accuracy_by_comparator_by_level(
+                    student_ids=student_ids
+                )
+            )
+
+        if ENABLED_VISUALIZATIONS.get("back_card_usage"):
+            payload["back_card_usage"] = (
+                RunAnalytics.back_card_usage_by_place_by_level(student_ids=student_ids)
+            )
+
+        if ENABLED_VISUALIZATIONS.get("foreach_tile_context"):
+            payload["foreach_tile_context"] = (
+                RunAnalytics.foreach_tile_context_usage_by_level(student_ids=student_ids)
+            )
+
+        if ENABLED_VISUALIZATIONS.get("special_chain_lengths"):
+            payload["special_chain_lengths"] = (
+                RunAnalytics.special_tile_chain_length_distribution_by_level(
+                    student_ids=student_ids
+                )
+            )
+
+        if ENABLED_VISUALIZATIONS.get("number_choice_distribution"):
+            payload["number_choice_distribution"] = (
+                RunAnalytics.number_choice_distribution_by_level(student_ids=student_ids)
+            )
+
+        if ENABLED_VISUALIZATIONS.get("number_decision_time"):
+            payload["number_decision_time"] = (
+                RunAnalytics.number_decision_time_by_choice_by_level(
+                    student_ids=student_ids
+                )
+            )
+
+    return payload
+
+
 # Helper functions for metric calculations
 def calculate_accuracy_rate(correct, wrong):
     """Calculate accuracy as correct / (correct + wrong)"""
@@ -1568,6 +1727,42 @@ def calculate_consistency_score(values):
     lambda u: hasattr(u, "teacher_profile")
     and u.teacher_profile.status in ["PENDING", "APPROVED"]
 )
+def teacher_statistics_viz_data(request):
+    teacher = request.user.teacher_profile
+    section = request.GET.get("section")
+
+    if section not in {"analytics", "turn_insights"}:
+        return JsonResponse(
+            {"error": "Invalid section. Expected 'analytics' or 'turn_insights'."},
+            status=400,
+        )
+
+    grade_filter = request.GET.get("grade", None)
+    classroom_filter = request.GET.get("classroom", None)
+    cache_key = (
+        f"teacher_stats_viz:{teacher.id}:{section}:"
+        f"{grade_filter or 'all'}:{classroom_filter or 'all'}"
+    )
+    cached_payload = cache.get(cache_key)
+    if cached_payload is not None:
+        return JsonResponse({"section": section, "data": cached_payload})
+
+    students = _get_filtered_students_for_teacher(
+        teacher=teacher,
+        grade_filter=grade_filter,
+        classroom_filter=classroom_filter,
+    )
+    filtered_student_ids = list(students.values_list("id", flat=True))
+    payload = _build_teacher_statistics_viz_payload(section, filtered_student_ids)
+    cache.set(cache_key, payload, timeout=300)
+    return JsonResponse({"section": section, "data": payload})
+
+
+@login_required
+@user_passes_test(
+    lambda u: hasattr(u, "teacher_profile")
+    and u.teacher_profile.status in ["PENDING", "APPROVED"]
+)
 def teacher_statistics_dashboard(request):
     """
     Enhanced dashboard for teachers to view comprehensive student performance statistics.
@@ -1591,18 +1786,16 @@ def teacher_statistics_dashboard(request):
         classrooms = classrooms.filter(id=classroom_filter)
 
     # Get all students for this teacher
-    students = Student.objects.filter(classroom__teacher=teacher)
+    students = _get_filtered_students_for_teacher(
+        teacher=teacher,
+        grade_filter=grade_filter,
+        classroom_filter=classroom_filter,
+    )
     comparison_students = Student.objects.filter(classroom__teacher=teacher)
 
     # Apply grade filter if specified
     if grade_filter:
-        students = students.filter(grade=grade_filter)
         comparison_students = comparison_students.filter(grade=grade_filter)
-
-    # Apply classroom filter if specified
-    if classroom_filter:
-        students = students.filter(classroom_id=classroom_filter)
-    filtered_student_ids = list(students.values_list("id", flat=True))
 
     # Prepare enhanced data for each student
     student_data = []
@@ -1928,121 +2121,8 @@ def teacher_statistics_dashboard(request):
         "classroom_name"
     )
 
-    # Starter Dashboard Visualization Data (using new Run/TurnEvent models)
+    # Visualizations are fetched lazily via `teacher_statistics_viz_data`.
     starter_viz_data = {}
-
-    if ENABLED_VISUALIZATIONS.get("win_rate_by_level"):
-        starter_viz_data["win_rate_by_level"] = list(
-            RunAnalytics.win_rate_by_level(student_ids=filtered_student_ids)
-        )
-
-    if ENABLED_VISUALIZATIONS.get("accuracy_by_level"):
-        starter_viz_data["accuracy_by_level"] = list(
-            RunAnalytics.wrong_moves_rate_by_level(student_ids=filtered_student_ids)
-        )
-
-    if ENABLED_VISUALIZATIONS.get("time_by_level"):
-        starter_viz_data["time_by_level"] = list(
-            RunAnalytics.time_distribution_by_level(student_ids=filtered_student_ids)
-        )
-
-    if ENABLED_VISUALIZATIONS.get("speed_vs_accuracy"):
-        starter_viz_data["speed_vs_accuracy"] = RunAnalytics.speed_vs_accuracy_scatter(
-            student_ids=filtered_student_ids, limit=1000
-        )
-
-    if ENABLED_VISUALIZATIONS.get("mistake_hotspots"):
-        starter_viz_data["mistake_hotspots"] = RunAnalytics.mistake_hotspots_by_level(
-            student_ids=filtered_student_ids
-        )
-
-    if ENABLED_VISUALIZATIONS.get("special_tile_breakdown"):
-        starter_viz_data["special_tile_breakdown"] = list(
-            RunAnalytics.special_tile_breakdown(student_ids=filtered_student_ids)
-        )
-
-    if ENABLED_VISUALIZATIONS.get("decision_time_by_card"):
-        starter_viz_data["decision_time_by_card"] = (
-            RunAnalytics.decision_time_by_card_type(student_ids=filtered_student_ids)
-        )
-
-    if ENABLED_VISUALIZATIONS.get("card_accuracy_by_family"):
-        starter_viz_data["card_accuracy_by_family"] = (
-            RunAnalytics.card_accuracy_by_family_by_level(
-                student_ids=filtered_student_ids
-            )
-        )
-
-    if ENABLED_VISUALIZATIONS.get("card_exposure_by_family"):
-        starter_viz_data["offer_choice_share_by_family"] = (
-            RunAnalytics.offer_choice_share_by_family(student_ids=filtered_student_ids)
-        )
-        starter_viz_data["deck_expected_share_by_family"] = (
-            RunAnalytics.deck_expected_share_by_family()
-        )
-
-    if ENABLED_VISUALIZATIONS.get("decision_time_by_family"):
-        starter_viz_data["decision_time_by_family"] = (
-            RunAnalytics.decision_time_by_family_by_level(
-                student_ids=filtered_student_ids
-            )
-        )
-
-    if ENABLED_VISUALIZATIONS.get("tile_conditional_accuracy"):
-        starter_viz_data["tile_conditional_accuracy"] = (
-            RunAnalytics.tile_conditional_accuracy_by_tile_type_by_level(
-                student_ids=filtered_student_ids
-            )
-        )
-
-    if ENABLED_VISUALIZATIONS.get("bag_conditional_accuracy"):
-        starter_viz_data["bag_conditional_accuracy"] = (
-            RunAnalytics.bag_conditional_accuracy_by_comparator_by_level(
-                student_ids=filtered_student_ids
-            )
-        )
-
-    if ENABLED_VISUALIZATIONS.get("conditional_else_rate"):
-        starter_viz_data["conditional_else_rates"] = (
-            RunAnalytics.conditional_else_branch_rates(
-                student_ids=filtered_student_ids
-            )
-        )
-
-    if ENABLED_VISUALIZATIONS.get("back_card_usage"):
-        starter_viz_data["back_card_usage"] = (
-            RunAnalytics.back_card_usage_by_place_by_level(
-                student_ids=filtered_student_ids
-            )
-        )
-
-    if ENABLED_VISUALIZATIONS.get("foreach_tile_context"):
-        starter_viz_data["foreach_tile_context"] = (
-            RunAnalytics.foreach_tile_context_usage_by_level(
-                student_ids=filtered_student_ids
-            )
-        )
-
-    if ENABLED_VISUALIZATIONS.get("special_chain_lengths"):
-        starter_viz_data["special_chain_lengths"] = (
-            RunAnalytics.special_tile_chain_length_distribution_by_level(
-                student_ids=filtered_student_ids
-            )
-        )
-
-    if ENABLED_VISUALIZATIONS.get("number_choice_distribution"):
-        starter_viz_data["number_choice_distribution"] = (
-            RunAnalytics.number_choice_distribution_by_level(
-                student_ids=filtered_student_ids
-            )
-        )
-
-    if ENABLED_VISUALIZATIONS.get("number_decision_time"):
-        starter_viz_data["number_decision_time"] = (
-            RunAnalytics.number_decision_time_by_choice_by_level(
-                student_ids=filtered_student_ids
-            )
-        )
 
     context = {
         "teacher": teacher,

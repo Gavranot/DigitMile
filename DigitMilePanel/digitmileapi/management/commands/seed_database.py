@@ -57,6 +57,17 @@ PRESETS = {
     },
 }
 
+CARD_FAMILY_BY_TYPE = {
+    "MoveX": "move",
+    "IfXMoveYElseMoveZ": "conditional_tile",
+    "IfBagEqualXMoveYElseMoveZ": "conditional_bag_eq",
+    "IfBagLessXMoveYElseMoveZ": "conditional_bag_lt",
+    "IfBagGreaterXMoveYElseMoveZ": "conditional_bag_gt",
+    "BagCount": "bagcount",
+    "ForXMoveY": "foreach_tile",
+    "Back": "back",
+}
+
 
 class Command(BaseCommand):
     help = "Seed the database with mock data for demonstration purposes"
@@ -824,6 +835,15 @@ Legacy statistics created:    {legacy_count}
             return "Back"
         return card_type
 
+    def _extract_card_metadata(self, card):
+        if not isinstance(card, dict):
+            return ("unknown", "unknown", None)
+
+        card_type = self._normalize_card_type(card.get("type")) or "unknown"
+        card_family = CARD_FAMILY_BY_TYPE.get(card_type, "unknown")
+        parsed_data = self._parse_card_data(card.get("data"))
+        return (card_type, card_family, parsed_data.get("tileType"))
+
     def _make_card_from_deck_name(self, card_name, level=None):
         """Convert deck card names to persisted card payload shape."""
         move_else_match = re.match(r"^Move(\d+)Else(\d+)$", card_name)
@@ -1129,6 +1149,11 @@ Legacy statistics created:    {legacy_count}
             movement = selected_candidate["movement"]
             chosen_card = selected_candidate["card"]
             offered_cards = [candidate["card"] for candidate in offered_candidates]
+            (
+                chosen_card_type,
+                chosen_card_family,
+                chosen_card_tile_type,
+            ) = self._extract_card_metadata(chosen_card)
 
             if was_correct:
                 correct_count += 1
@@ -1162,6 +1187,9 @@ Legacy statistics created:    {legacy_count}
                 turn_index=turn_idx,
                 timestamp_played=timestamp_played,
                 chosen_card=chosen_card,
+                chosen_card_type=chosen_card_type,
+                chosen_card_family=chosen_card_family,
+                chosen_card_tile_type=chosen_card_tile_type,
                 offered_cards=offered_cards,
                 was_correct=was_correct,
                 tile_before_index=tile_before_index,

@@ -446,6 +446,24 @@ class TurnEvent(models.Model):
     turn_index = models.IntegerField()
     timestamp_played = models.DateTimeField()
     chosen_card = models.JSONField(help_text="The card chosen by the player")
+    chosen_card_type = models.CharField(
+        max_length=64,
+        default="unknown",
+        db_index=True,
+        help_text="Normalized chosen card type for analytics filtering",
+    )
+    chosen_card_family = models.CharField(
+        max_length=64,
+        default="unknown",
+        db_index=True,
+        help_text="Card family derived from chosen card type",
+    )
+    chosen_card_tile_type = models.IntegerField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="Parsed tileType from chosen card data when available",
+    )
     offered_cards = models.JSONField(help_text="All cards offered to the player")
     was_correct = models.BooleanField()
     tile_before_index = models.IntegerField(help_text="Player position before turn")
