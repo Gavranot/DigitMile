@@ -55,6 +55,27 @@ tailwind.config = {
     /* Active nav item */
     .nav-item.active { background: rgba(59, 130, 246, 0.1); border-color: #3b82f6; }
 
+    /* Comparison tables should not inherit Django admin light table theme */
+    #comparison table {
+        width: 100%;
+        border-collapse: collapse;
+        background: #141414 !important;
+        color: #fafafa !important;
+        border: 1px solid #262626 !important;
+    }
+    #comparison thead tr {
+        background: #171717 !important;
+    }
+    #comparison th,
+    #comparison td {
+        background: transparent !important;
+        color: inherit !important;
+        border-bottom: 1px solid #262626 !important;
+    }
+    #comparison tbody tr:hover {
+        background: rgba(255, 255, 255, 0.04) !important;
+    }
+
     /* Section loading progress */
     .loading-progress-track {
         position: relative;
@@ -1628,18 +1649,18 @@ tailwind.config = {
             { key: 'improvement_rate', label: '{% trans "Improvement" %}', unit: '%', higher: true }
         ];
 
-        let tableHTML = '<table class="w-full text-sm"><thead><tr class="border-b border-border"><th class="p-3 text-left font-medium text-muted-foreground">{% trans "Metric" %}</th>';
-        students.forEach(student => tableHTML += `<th class="p-3 text-center font-medium">${student.name}</th>`);
+        let tableHTML = '<table class="comparison-table w-full text-sm rounded-md overflow-hidden"><thead><tr class="border-b border-border" style="background:#171717;"><th class="p-3 text-left font-medium text-muted-foreground" style="background:#171717;color:#a3a3a3;">{% trans "Metric" %}</th>';
+        students.forEach(student => tableHTML += `<th class="p-3 text-center font-medium text-foreground" style="background:#171717;color:#fafafa;">${student.name}</th>`);
         tableHTML += '</tr></thead><tbody>';
 
         metrics.forEach((metric) => {
-            tableHTML += `<tr class="border-b border-border hover:bg-muted/30"><td class="p-3 font-medium">${metric.label}</td>`;
+            tableHTML += `<tr class="border-b border-border hover:bg-muted/30" style="background:#141414;"><td class="p-3 font-medium text-foreground" style="background:#141414;color:#fafafa;">${metric.label}</td>`;
             const values = students.map(s => s[metric.key] || 0);
             const bestValue = metric.higher ? Math.max(...values) : Math.min(...values);
             students.forEach(student => {
                 const value = student[metric.key] || 0;
                 const isBest = value === bestValue && Math.max(...values) !== Math.min(...values);
-                tableHTML += `<td class="p-3 text-center ${isBest ? 'text-success font-semibold' : ''}">${value.toFixed(1)}${metric.unit}${isBest ? ' ★' : ''}</td>`;
+                tableHTML += `<td class="p-3 text-center ${isBest ? 'text-success font-semibold' : 'text-foreground'}" style="background:#141414;color:${isBest ? '#22c55e' : '#fafafa'};">${value.toFixed(1)}${metric.unit}${isBest ? ' *' : ''}</td>`;
             });
             tableHTML += '</tr>';
         });
