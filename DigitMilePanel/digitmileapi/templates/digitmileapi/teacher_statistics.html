@@ -5,93 +5,61 @@
 
 {% block extrastyle %}
 {{ block.super }}
-    <style>
-        /* CSS remains unchanged as it contains no user-facing text */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background: #f5f7fa; min-height: 100vh; padding: 20px; color: #2c3e50; }
-        .container { max-width: 1400px; margin: 0 auto; }
-        :root { --primary: #417690; --primary-light: #5a9fb8; --success: #27ae60; --warning: #f39c12; --danger: #e74c3c; --neutral: #95a5a6; --bg-light: #f8f9fa; --border-color: #e0e0e0; }
-        .header { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); margin-bottom: 30px; }
-        .header h1 { color: var(--primary); margin-bottom: 10px; font-size: 28px; }
-        .header p { color: #666; font-size: 16px; margin-bottom: 20px; }
-        .nav-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
-        .nav-buttons a, .nav-buttons button { padding: 10px 20px; background: var(--primary); color: white; text-decoration: none; border-radius: 6px; border: none; cursor: pointer; transition: background 0.3s; font-size: 14px; }
-        .nav-buttons a:hover, .nav-buttons button:hover { background: var(--primary-light); }
-        .filters-bar { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); margin-bottom: 30px; }
-        .filters-bar h3 { margin-bottom: 15px; color: var(--primary); font-size: 18px; }
-        .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
-        .filter-group label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 14px; color: #2c3e50; }
-        .filter-group select { width: 100%; height: 44px; padding: 0 36px 0 12px; border: 2px solid var(--border-color); border-radius: 6px; font-size: 14px; line-height: 40px; background-color: #fff; color: #2c3e50; appearance: none; -webkit-appearance: none; -moz-appearance: none; background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232c3e50' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e"); background-repeat: no-repeat; background-position: right 10px center; background-size: 16px; cursor: pointer; transition: border-color 0.3s; vertical-align: middle; }
-        .filter-group select option { color: #2c3e50; background-color: #fff; }
-        .filter-group select:focus { outline: none; border-color: var(--primary); }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }
-        .stat-card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); text-align: center; transition: transform 0.3s, box-shadow 0.3s; }
-        .stat-card:hover { transform: translateY(-5px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); }
-        .stat-card h3 { color: #666; font-size: 13px; font-weight: 500; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .stat-card .value { color: var(--primary); font-size: 32px; font-weight: bold; }
-        .panel { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); margin-bottom: 30px; }
-        .panel-header { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #f0f0f0; }
-        .panel-header h2 { color: var(--primary); font-size: 22px; margin-bottom: 5px; }
-        .panel-header p { color: #666; font-size: 14px; }
-        .panel.attention { border-left: 5px solid var(--danger); }
-        .panel.attention .panel-header h2 { color: var(--danger); }
-        .alert-card { background: #fff5f5; border: 2px solid var(--danger); border-radius: 8px; padding: 15px; margin-bottom: 15px; }
-        .alert-card h4 { color: var(--danger); margin-bottom: 5px; font-size: 16px; }
-        .alert-card p { color: #666; font-size: 14px; margin-bottom: 5px; }
-        .alert-card .reason { background: white; padding: 8px 12px; border-radius: 4px; font-size: 13px; color: var(--danger); margin-top: 8px; display: inline-block; }
-        .panel.rewards { border-left: 5px solid var(--success); }
-        .panel.rewards .panel-header h2 { color: var(--success); }
-        .reward-card { background: #f0fdf4; border: 2px solid var(--success); border-radius: 8px; padding: 15px; margin-bottom: 15px; }
-        .reward-card h4 { color: var(--success); margin-bottom: 5px; font-size: 16px; }
-        .reward-card p { color: #666; font-size: 14px; margin-bottom: 5px; }
-        .reward-card .reason { background: white; padding: 8px 12px; border-radius: 4px; font-size: 13px; color: var(--success); margin-top: 8px; display: inline-block; }
-        .ranking-list { list-style: none; }
-        .ranking-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #f8f9fa; border-radius: 8px; margin-bottom: 10px; transition: background 0.3s; }
-        .ranking-item:hover { background: #e9ecef; }
-        .ranking-item .rank { font-weight: bold; color: var(--primary); font-size: 18px; width: 40px; }
-        .ranking-item .name { flex: 1; font-weight: 600; color: #2c3e50; }
-        .ranking-item .classroom { color: #666; font-size: 13px; margin-right: 15px; }
-        .ranking-item .metric { font-weight: bold; font-size: 18px; padding: 5px 15px; border-radius: 6px; background: white; }
-        .ranking-item .metric.excellent { color: var(--success); background: #f0fdf4; }
-        .ranking-item .metric.good { color: var(--primary-light); background: #e3f2fd; }
-        .ranking-item .metric.moderate { color: var(--warning); background: #fff8e1; }
-        .ranking-item .metric.poor { color: var(--danger); background: #fff5f5; }
-        .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #f0f0f0; }
-        .tab { padding: 12px 20px; background: transparent; border: none; cursor: pointer; font-size: 15px; font-weight: 600; color: #666; border-bottom: 3px solid transparent; transition: all 0.3s; }
-        .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
-        .tab:hover { color: var(--primary-light); }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-        .chart-wrapper { position: relative; height: 400px; margin-top: 20px; }
-        .empty-state { text-align: center; padding: 60px 20px; color: #999; }
-        .empty-state h3 { font-size: 20px; margin-bottom: 10px; }
-        .empty-state p { font-size: 15px; }
-        .trend { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; margin-left: 8px; }
-        .trend.improving { background: #f0fdf4; color: var(--success); }
-        .trend.improving::before { content: "↗ "; }
-        .trend.mastered { background: #e3f2fd; color: var(--primary); }
-        .trend.mastered::before { content: "★ "; }
-        .trend.plateaued { background: #fff8e1; color: var(--warning); }
-        .trend.plateaued::before { content: "→ "; }
-        .trend.declining { background: #fff5f5; color: var(--danger); }
-        .trend.declining::before { content: "↘ "; }
-        @media (max-width: 768px) { .stats-grid { grid-template-columns: 1fr; } .ranking-item { flex-direction: column; align-items: flex-start; gap: 10px; } .tabs { flex-wrap: wrap; } }
-        .no-data { text-align: center; padding: 40px; color: #666; background: #f8f9fa; border-radius: 8px; }
-        .no-data h3 { margin-bottom: 10px; }
-        .classroom-checkbox:checked + span { color: var(--primary); }
-        label:has(.classroom-checkbox:checked) { border-color: var(--primary) !important; background: #e3f2fd !important; }
-        label:has(.classroom-checkbox) { transition: all 0.3s ease; }
-        label:has(.classroom-checkbox):hover { border-color: var(--primary-light) !important; background: #f8f9fa !important; }
-        .student-checkbox:checked ~ div { color: var(--primary); }
-        label:has(.student-checkbox:checked) { border-color: var(--primary) !important; background: #e3f2fd !important; }
-        label:has(.student-checkbox) { transition: all 0.3s ease; }
-        label:has(.student-checkbox):hover { border-color: var(--primary-light) !important; background: #f8f9fa !important; }
-    </style>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+    theme: {
+        extend: {
+            colors: {
+                background: '#0a0a0a',
+                foreground: '#fafafa',
+                card: '#141414',
+                'card-foreground': '#fafafa',
+                border: '#262626',
+                muted: '#171717',
+                'muted-foreground': '#a3a3a3',
+                primary: '#3b82f6',
+                'primary-foreground': '#ffffff',
+                success: '#22c55e',
+                'success-foreground': '#ffffff',
+                warning: '#f59e0b',
+                'warning-foreground': '#ffffff',
+                danger: '#ef4444',
+                'danger-foreground': '#ffffff',
+            }
+        }
+    }
+}
+</script>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; }
+    
+    /* Hide Django admin elements */
+    #header, #branding, #user-tools, .breadcrumbs, #nav-sidebar { display: none !important; }
+    #container, #main, #content { padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
+    
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #171717; }
+    ::-webkit-scrollbar-thumb { background: #404040; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #525252; }
+    
+    /* Collapsible animation */
+    .collapsible-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
+    .collapsible-content.open { max-height: 2000px; }
+    
+    /* Chart container */
+    .chart-container { position: relative; height: 350px; }
+    
+    /* Active nav item */
+    .nav-item.active { background: rgba(59, 130, 246, 0.1); border-color: #3b82f6; }
+</style>
 {% endblock %}
 
 {% block extrahead %}
 {{ block.super }}
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 {% endblock %}
 
 {% block content_title %}{% endblock %}
@@ -99,23 +67,73 @@
 {% block breadcrumbs %}{% endblock %}
 
 {% block content %}
-    <div class="container">
-        <div class="header">
-            <h1>{% trans "Teacher Statistics Dashboard" %}</h1>
-            <p>{% trans "Welcome," %} {{ teacher.full_name }}</p>
-            <div class="nav-buttons">
-                <a href="/panel/admin/">{% trans "Admin Panel" %}</a>
-                <a href="/panel/">{% trans "Home" %}</a>
+<div class="min-h-screen bg-background text-foreground">
+    <!-- Top Navigation Bar -->
+    <header class="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
+        <div class="flex h-14 items-center justify-between px-6">
+            <div class="flex items-center gap-6">
+                <h1 class="text-lg font-semibold">{% trans "Teacher Dashboard" %}</h1>
+                <nav class="hidden md:flex items-center gap-1">
+                    <a href="#overview" class="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted">{% trans "Overview" %}</a>
+                    <a href="#students" class="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted">{% trans "Students" %}</a>
+                    <a href="#analytics" class="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted">{% trans "Analytics" %}</a>
+                    <a href="#comparison" class="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted">{% trans "Comparison" %}</a>
+                </nav>
+            </div>
+            <div class="flex items-center gap-4">
+                <span class="text-sm text-muted-foreground">{% trans "Welcome," %} <span class="text-foreground font-medium">{{ teacher.full_name }}</span></span>
+                <div class="flex gap-2">
+                    <a href="/panel/admin/" class="inline-flex items-center justify-center rounded-md text-sm font-medium h-9 px-4 bg-muted text-foreground hover:bg-muted/80 transition-colors">{% trans "Admin" %}</a>
+                    <a href="/panel/" class="inline-flex items-center justify-center rounded-md text-sm font-medium h-9 px-4 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">{% trans "Home" %}</a>
+                </div>
             </div>
         </div>
+    </header>
 
-        <div class="filters-bar">
-            <h3>{% trans "Filters" %}</h3>
-            <form method="get" id="filterForm">
-                <div class="filter-grid">
-                    <div class="filter-group">
-                        <label for="gradeFilter">{% trans "Student Grade" %}</label>
-                        <select name="grade" id="gradeFilter" onchange="document.getElementById('filterForm').submit()">
+    <section class="border-b border-border bg-card/40">
+        <div class="px-6 py-3">
+            <form method="get" id="topFilterForm" class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                <div>
+                    <label for="topGradeFilter" class="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{% trans "Grade" %}</label>
+                    <select name="grade" id="topGradeFilter" onchange="document.getElementById('topFilterForm').submit()" class="w-full h-9 px-3 rounded-md bg-muted border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                        <option value="">{% trans "All Grades" %}</option>
+                        {% for grade in all_grades %}
+                        <option value="{{ grade }}" {% if selected_grade == grade|stringformat:"s" %}selected{% endif %}>
+                            {% trans "Grade" %} {{ grade }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="topClassroomFilter" class="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{% trans "Classroom" %}</label>
+                    <select name="classroom" id="topClassroomFilter" onchange="document.getElementById('topFilterForm').submit()" class="w-full h-9 px-3 rounded-md bg-muted border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                        <option value="">{% trans "All Classrooms" %}</option>
+                        {% for classroom in classroom_list %}
+                        <option value="{{ classroom.id }}" {% if selected_classroom == classroom.id|stringformat:"s" %}selected{% endif %}>
+                            {{ classroom.classroom_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="md:justify-self-start">
+                    <a href="/panel/teacher/statistics/" class="inline-flex items-center justify-center rounded-md text-sm font-medium h-9 px-4 bg-muted text-foreground hover:bg-muted/80 transition-colors">
+                        {% trans "Clear Filters" %}
+                    </a>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <div class="flex">
+        <!-- Sidebar -->
+        <aside class="hidden lg:block w-64 border-r border-border min-h-[calc(100vh-3.5rem)] p-4 sticky top-14 bg-background">
+            <!-- Filters -->
+            <div class="mb-6">
+                <h3 class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">{% trans "Filters" %}</h3>
+                <form method="get" id="filterForm" class="space-y-4">
+                    <div>
+                        <label for="gradeFilter" class="block text-sm font-medium mb-1.5">{% trans "Grade" %}</label>
+                        <select name="grade" id="gradeFilter" onchange="document.getElementById('filterForm').submit()" class="w-full h-9 px-3 rounded-md bg-muted border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
                             <option value="">{% trans "All Grades" %}</option>
                             {% for grade in all_grades %}
                             <option value="{{ grade }}" {% if selected_grade == grade|stringformat:"s" %}selected{% endif %}>
@@ -124,10 +142,9 @@
                             {% endfor %}
                         </select>
                     </div>
-
-                    <div class="filter-group">
-                        <label for="classroomFilter">{% trans "Classroom" %}</label>
-                        <select name="classroom" id="classroomFilter" onchange="document.getElementById('filterForm').submit()">
+                    <div>
+                        <label for="classroomFilter" class="block text-sm font-medium mb-1.5">{% trans "Classroom" %}</label>
+                        <select name="classroom" id="classroomFilter" onchange="document.getElementById('filterForm').submit()" class="w-full h-9 px-3 rounded-md bg-muted border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
                             <option value="">{% trans "All Classrooms" %}</option>
                             {% for classroom in classroom_list %}
                             <option value="{{ classroom.id }}" {% if selected_classroom == classroom.id|stringformat:"s" %}selected{% endif %}>
@@ -136,861 +153,1436 @@
                             {% endfor %}
                         </select>
                     </div>
+                </form>
+            </div>
+
+            <!-- Quick Stats -->
+            {% if student_data %}
+            <div class="mb-6">
+                <h3 class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">{% trans "Quick Stats" %}</h3>
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between py-2 px-3 rounded-md bg-muted">
+                        <span class="text-sm text-muted-foreground">{% trans "Students" %}</span>
+                        <span class="text-sm font-semibold">{{ student_data|length }}</span>
+                    </div>
+                    <div class="flex items-center justify-between py-2 px-3 rounded-md bg-muted">
+                        <span class="text-sm text-muted-foreground">{% trans "Games" %}</span>
+                        <span class="text-sm font-semibold" id="sidebarTotalRuns">0</span>
+                    </div>
+                    <div class="flex items-center justify-between py-2 px-3 rounded-md bg-muted">
+                        <span class="text-sm text-muted-foreground">{% trans "Avg Accuracy" %}</span>
+                        <span class="text-sm font-semibold text-success" id="sidebarAvgAccuracy">0%</span>
+                    </div>
                 </div>
-            </form>
-        </div>
+            </div>
+            {% endif %}
 
-        {% if student_data %}
-        <div class="stats-grid">
-            <div class="stat-card">
-                <h3>{% trans "Total Students" %}</h3>
-                <div class="value">{{ student_data|length }}</div>
-            </div>
-            <div class="stat-card">
-                <h3>{% trans "Total Games" %}</h3>
-                <div class="value" id="totalRuns">0</div>
-            </div>
-            <div class="stat-card">
-                <h3>{% trans "Average Accuracy" %}</h3>
-                <div class="value" id="avgAccuracy">0%</div>
-            </div>
-            <div class="stat-card">
-                <h3>{% trans "Average Score" %}</h3>
-                <div class="value" id="avgScore">0</div>
-            </div>
-        </div>
-
-        {% if enabled_viz.attention_panel %}
-        <div class="panel attention">
-            <div class="panel-header">
-                <h2>{% trans "Students Needing Attention" %}</h2>
-                <p>{% trans "These students may be struggling and could benefit from additional support" %}</p>
-            </div>
-
+            <!-- Alerts Summary -->
             {% if students_needing_attention %}
-                {% for student in students_needing_attention %}
-                <div class="alert-card">
-                    <h4>{{ student.name }}</h4>
-                    <p>{% trans "Classroom:" %} {{ student.classroom }} | {% trans "Accuracy:" %} {{ student.accuracy|floatformat:1 }}%</p>
-                    <span class="reason">{{ student.attention_reason }}</span>
+            <div class="p-3 rounded-md bg-danger/10 border border-danger/20">
+                <div class="flex items-center gap-2 mb-1">
+                    <svg class="w-4 h-4 text-danger" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                    <span class="text-sm font-medium text-danger">{% trans "Attention Needed" %}</span>
                 </div>
-                {% endfor %}
-            {% else %}
-                <div class="no-data">
-                    <p>{% trans "Great! No students currently need urgent attention." %}</p>
-                </div>
+                <p class="text-xs text-muted-foreground">{{ students_needing_attention|length }} {% trans "students need support" %}</p>
+            </div>
             {% endif %}
-        </div>
-        {% endif %}
+        </aside>
 
-        {% if enabled_viz.rewards_panel %}
-        <div class="panel rewards">
-            <div class="panel-header">
-                <h2>{% trans "Students Ready for Rewards" %}</h2>
-                <p>{% trans "These students have shown exceptional performance and deserve recognition" %}</p>
-            </div>
-
-            {% if students_ready_for_rewards %}
-                {% for student in students_ready_for_rewards %}
-                <div class="reward-card">
-                    <h4>{{ student.name }}</h4>
-                    <p>{% trans "Classroom:" %} {{ student.classroom }} | {% trans "Accuracy:" %} {{ student.accuracy|floatformat:1 }}%</p>
-                    <span class="reason">{{ student.reward_reason }}</span>
-                </div>
-                {% endfor %}
-            {% else %}
-                <div class="no-data">
-                    <p>{% trans "Students will appear here when they achieve exceptional performance." %}</p>
-                </div>
-            {% endif %}
-        </div>
-        {% endif %}
-
-        {% if enabled_viz.top_students %}
-        <div class="panel">
-            <div class="panel-header">
-                <h2>{% trans "Top Performing Students" %}</h2>
-                <p>{% trans "Students with the highest performance metrics" %}</p>
-            </div>
-
-            <div class="tabs">
-                <button class="tab active" onclick="switchTab(event, 'topAccuracy')">{% trans "By Accuracy" %}</button>
-                <button class="tab" onclick="switchTab(event, 'topImprovement')">{% trans "By Improvement" %}</button>
-            </div>
-
-            <div id="topAccuracy" class="tab-content active">
-                {% if top_by_accuracy %}
-                    <ul class="ranking-list">
-                        {% for student in top_by_accuracy %}
-                        <li class="ranking-item">
-                            <span class="rank">#{{ forloop.counter }}</span>
-                            <span class="name">{{ student.name }}</span>
-                            <span class="classroom">{{ student.classroom }}</span>
-                            <span class="metric {% if student.accuracy >= 90 %}excellent{% elif student.accuracy >= 75 %}good{% elif student.accuracy >= 60 %}moderate{% else %}poor{% endif %}">
-                                {{ student.accuracy|floatformat:1 }}%
-                            </span>
-                            {% if student.learning_curve_trend != 'insufficient_data' %}
-                            <span class="trend {{ student.learning_curve_trend }}">{{ student.learning_curve_trend|title }}</span>
-                            {% endif %}
-                        </li>
-                        {% endfor %}
-                    </ul>
-                {% else %}
-                    <div class="no-data"><p>{% trans "Not enough data yet" %}</p></div>
-                {% endif %}
-            </div>
-
-            <div id="topImprovement" class="tab-content">
-                {% if top_by_improvement %}
-                    <ul class="ranking-list">
-                        {% for student in top_by_improvement %}
-                        <li class="ranking-item">
-                            <span class="rank">#{{ forloop.counter }}</span>
-                            <span class="name">{{ student.name }}</span>
-                            <span class="classroom">{{ student.classroom }}</span>
-                            <span class="metric {% if student.improvement_rate >= 0 %}excellent{% else %}poor{% endif %}">{% if student.improvement_rate > 0 %}+{% endif %}{{ student.improvement_rate|floatformat:1 }}%</span>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                {% else %}
-                    <div class="no-data"><p>{% trans "Need at least 7 games per student to calculate improvement" %}</p></div>
-                {% endif %}
-            </div>
-        </div>
-        {% endif %}
-
-        {% if enabled_viz.bottom_students %}
-        <div class="panel">
-            <div class="panel-header">
-                <h2>{% trans "Students Who May Need Help" %}</h2>
-                <p>{% trans "Identify students who are struggling or not improving" %}</p>
-            </div>
-
-            <div class="tabs">
-                <button class="tab active" onclick="switchTab(event, 'bottomAccuracy')">{% trans "Low Accuracy" %}</button>
-                <button class="tab" onclick="switchTab(event, 'bottomCurve')">{% trans "Flat/Declining Curve" %}</button>
-            </div>
-
-            <div id="bottomAccuracy" class="tab-content active">
-                {% if bottom_by_accuracy %}
-                    <ul class="ranking-list">
-                        {% for student in bottom_by_accuracy %}
-                        <li class="ranking-item">
-                            <span class="rank">#{{ forloop.counter }}</span>
-                            <span class="name">{{ student.name }}</span>
-                            <span class="classroom">{{ student.classroom }}</span>
-                            <span class="metric poor">{{ student.accuracy|floatformat:1 }}%</span>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                {% else %}
-                    <div class="no-data"><p>{% trans "No students with low accuracy" %}</p></div>
-                {% endif %}
-            </div>
-
-            <div id="bottomCurve" class="tab-content">
-                {% if bottom_by_learning_curve %}
-                    <ul class="ranking-list">
-                        {% for student in bottom_by_learning_curve %}
-                        <li class="ranking-item">
-                            <span class="rank">#{{ forloop.counter }}</span>
-                            <span class="name">{{ student.name }}</span>
-                            <span class="classroom">{{ student.classroom }}</span>
-                            <span class="metric moderate">{{ student.accuracy|floatformat:1 }}%</span>
-                            <span class="trend {{ student.learning_curve_trend }}">{{ student.learning_curve_trend|title }}</span>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                {% else %}
-                    <div class="no-data"><p>{% trans "Need at least 7 games per student for learning curve analysis" %}</p></div>
-                {% endif %}
-            </div>
-        </div>
-        {% endif %}
-
-        {% if enabled_viz.class_comparison %}
-        <div class="panel">
-            <div class="panel-header">
-                <h2>{% trans "Classroom Performance Comparison" %}</h2>
-                <p>{% trans "Compare average performance across your classrooms" %}</p>
-            </div>
-            <div class="chart-wrapper">
-                <canvas id="classroomChart"></canvas>
-            </div>
-        </div>
-
-        {% if classroom_stats|length >= 2 %}
-        <div class="panel">
-            <div class="panel-header">
-                <h2>{% trans "Multi-Classroom Radar Comparison" %}</h2>
-                <p>{% trans "Compare 2-5 classrooms across multiple performance metrics simultaneously" %}</p>
-            </div>
-
-            <div style="margin-bottom: 20px;">
-                <div class="filter-group">
-                    <label for="radarClassroomSelect">{% trans "Select Classrooms to Compare (2-5)" %}</label>
-                    <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; margin-top: 10px;">
-                        <div id="classroomCheckboxes" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px;">
-                            {% for classroom in classroom_stats %}
-                            <label style="display: flex; align-items: center; cursor: pointer; padding: 8px; background: white; border-radius: 6px; border: 2px solid #e0e0e0; transition: all 0.3s;">
-                                <input type="checkbox" class="classroom-checkbox" value="{{ classroom.id }}"
-                                       data-name="{{ classroom.name }}"
-                                       onchange="updateRadarChart()"
-                                       style="margin-right: 8px; cursor: pointer;">
-                                <span style="font-size: 14px; font-weight: 500;">{{ classroom.name }}</span>
-                            </label>
+        <!-- Main Content -->
+        <main class="flex-1 p-6">
+            <section class="lg:hidden mb-6 rounded-lg bg-card border border-border p-4">
+                <h3 class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">{% trans "Filters" %}</h3>
+                <form method="get" id="mobileFilterForm" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label for="mobileGradeFilter" class="block text-sm font-medium mb-1.5">{% trans "Grade" %}</label>
+                        <select name="grade" id="mobileGradeFilter" onchange="document.getElementById('mobileFilterForm').submit()" class="w-full h-9 px-3 rounded-md bg-muted border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                            <option value="">{% trans "All Grades" %}</option>
+                            {% for grade in all_grades %}
+                            <option value="{{ grade }}" {% if selected_grade == grade|stringformat:"s" %}selected{% endif %}>
+                                {% trans "Grade" %} {{ grade }}
+                            </option>
                             {% endfor %}
-                        </div>
-                        <div id="selectionCounter" style="margin-top: 12px; padding: 8px; background: white; border-radius: 6px; text-align: center; font-weight: 600; color: #666;">
-                            0/5 {% trans "classrooms selected" %}
-                        </div>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="mobileClassroomFilter" class="block text-sm font-medium mb-1.5">{% trans "Classroom" %}</label>
+                        <select name="classroom" id="mobileClassroomFilter" onchange="document.getElementById('mobileFilterForm').submit()" class="w-full h-9 px-3 rounded-md bg-muted border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                            <option value="">{% trans "All Classrooms" %}</option>
+                            {% for classroom in classroom_list %}
+                            <option value="{{ classroom.id }}" {% if selected_classroom == classroom.id|stringformat:"s" %}selected{% endif %}>
+                                {{ classroom.classroom_name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </form>
+            </section>
+
+            {% if student_data %}
+            
+            <!-- Overview Section -->
+            <section id="overview" class="mb-8">
+                <h2 class="text-xl font-semibold mb-4">{% trans "Overview" %}</h2>
+                
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <div class="p-5 rounded-lg bg-card border border-border">
+                        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">{% trans "Total Students" %}</p>
+                        <p class="text-2xl font-bold">{{ student_data|length }}</p>
+                    </div>
+                    <div class="p-5 rounded-lg bg-card border border-border">
+                        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">{% trans "Total Games" %}</p>
+                        <p class="text-2xl font-bold" id="totalRuns">0</p>
+                    </div>
+                    <div class="p-5 rounded-lg bg-card border border-border">
+                        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">{% trans "Average Accuracy" %}</p>
+                        <p class="text-2xl font-bold text-success" id="avgAccuracy">0%</p>
+                    </div>
+                    <div class="p-5 rounded-lg bg-card border border-border">
+                        <p class="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">{% trans "Average Score" %}</p>
+                        <p class="text-2xl font-bold text-primary" id="avgScore">0</p>
                     </div>
                 </div>
 
-                <div style="margin-top: 15px; display: flex; gap: 10px; align-items: center;">
-                    <label style="display: flex; align-items: center; gap: 8px; font-weight: 600;">
-                        <input type="radio" name="radarDataMode" value="normalized" checked onchange="updateRadarChart()">
-                        {% trans "Normalized (Per Student)" %}
-                    </label>
-                    <label style="display: flex; align-items: center; gap: 8px; font-weight: 600;">
-                        <input type="radio" name="radarDataMode" value="raw" onchange="updateRadarChart()">
-                        {% trans "Raw Data (Totals)" %}
-                    </label>
-                    <div style="margin-left: auto; padding: 8px 12px; background: #e3f2fd; border-radius: 6px; font-size: 13px; color: #417690;">
-                        <strong>{% trans "Tip:" %}</strong> {% trans "Normalized view is better for fair comparison between different class sizes" %}
-                    </div>
-                </div>
-            </div>
-
-            <div id="radarChartDisplay" class="no-data">
-                <p>{% trans "Select 2-5 classrooms to compare their performance across multiple metrics" %}</p>
-            </div>
-
-            <div id="radarChartResults" style="display: none;">
-                <div class="chart-wrapper" style="height: 500px;">
-                    <canvas id="radarComparisonChart"></canvas>
-                </div>
-                <div id="radarInsights" style="margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
-                    <h3 style="margin-top: 0; color: var(--primary);">{% trans "Understanding the Metrics" %}</h3>
-                    <ul style="line-height: 1.8; color: #666;">
-                        <li><strong>{% trans "Accuracy:" %}</strong> {% trans "Average percentage of correct moves across all games" %}</li>
-                        <li><strong>{% trans "Average Score:" %}</strong> {% trans "Mean score achieved per game" %}</li>
-                        <li><strong>{% trans "Win Rate:" %}</strong> {% trans "Percentage of games where students achieved first place" %}</li>
-                        <li><strong>{% trans "Decision Speed:" %}</strong> {% trans "Average time per move (inverted: faster = higher on chart)" %}</li>
-                        <li><strong>{% trans "Engagement:" %}</strong> {% trans "Number of games played per student (higher = more engaged)" %}</li>
-                    </ul>
-                    <p style="margin-top: 15px; padding: 12px; background: white; border-left: 4px solid var(--primary); border-radius: 4px;">
-                        <strong>{% trans "Interpretation:" %}</strong> {% trans "Larger radar areas indicate better overall performance. Look for classrooms that excel in specific metrics versus those with well-rounded performance across all areas." %}
-                    </p>
-                </div>
-            </div>
-        </div>
-        {% endif %}
-        {% endif %}
-
-        {% if enabled_viz.learning_curves %}
-        <div class="panel">
-            <div class="panel-header">
-                <h2>{% trans "Cross-Level Learning Transfer" %}</h2>
-                <p>{% trans "Compare performance across levels to identify skill transfer" %}</p>
-            </div>
-
-            <div class="filter-grid" style="margin-bottom: 20px;">
-                <div class="filter-group">
-                    <label for="crossLevelStudentSelect">{% trans "Select Student" %}</label>
-                    <select id="crossLevelStudentSelect" onchange="updateCrossLevelOptions()">
-                        <option value="">-- {% trans "Choose a student" %} --</option>
-                        {% for student in student_data %}
-                        <option value="{{ student.id }}">
-                            {{ student.name }} ({{ student.classroom }})
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <div class="filter-group">
-                    <label for="level1Select">{% trans "First Level" %}</label>
-                    <select id="level1Select" onchange="compareLevels()" disabled>
-                        <option value="">-- {% trans "Select student first" %} --</option>
-                    </select>
-                </div>
-
-                <div class="filter-group">
-                    <label for="level2Select">{% trans "Second Level" %}</label>
-                    <select id="level2Select" onchange="compareLevels()" disabled>
-                        <option value="">-- {% trans "Select student first" %} --</option>
-                    </select>
-                </div>
-            </div>
-
-            <div id="crossLevelDisplay" class="no-data">
-                <p>{% trans "Select a student and two levels to compare learning transfer" %}</p>
-            </div>
-
-            <div id="crossLevelResults" style="display: none;">
-                <div class="chart-wrapper" style="height: 400px;">
-                    <canvas id="crossLevelChart"></canvas>
-                </div>
-                <div id="transferInsights" style="margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
-                    </div>
-            </div>
-        </div>
-        {% endif %}
-
-        {% if enabled_viz.learning_curves %}
-        <div class="panel">
-            <div class="panel-header">
-                <h2>{% trans "Student Learning Curves by Level" %}</h2>
-                <p>{% trans "Track how students improve on specific levels over multiple attempts" %}</p>
-            </div>
-
-            <div class="filter-grid" style="margin-bottom: 20px;">
-                <div class="filter-group">
-                    <label for="studentSelect">{% trans "Select Student" %}</label>
-                    <select id="studentSelect" onchange="updateLevelOptions()">
-                        <option value="">-- {% trans "Choose a student" %} --</option>
-                        {% for student in student_data %}
-                        <option value="{{ student.id }}" data-student='{{ student|safe }}'>
-                            {{ student.name }} ({{ student.classroom }})
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <div class="filter-group">
-                    <label for="levelSelect">{% trans "Select Level" %}</label>
-                    <select id="levelSelect" onchange="showLearningCurve()" disabled>
-                        <option value="">-- {% trans "Select student first" %} --</option>
-                    </select>
-                </div>
-            </div>
-
-            <div id="learningCurveDisplay" class="no-data">
-                <p>{% trans "Select a student and level to view learning curves" %}</p>
-            </div>
-
-            <div id="learningCurveCharts" style="display: none;">
-                <div id="learningCurveSummary" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; color: #666;">
-                    <strong>{% trans "Trend:" %}</strong> <span id="learningCurveTrend">-</span>
-                    <span style="margin-left: 15px;"><strong>{% trans "Slope:" %}</strong> <span id="learningCurveSlope">-</span></span>
-                    <span style="margin-left: 15px;"><strong>{% trans "Attempts:" %}</strong> <span id="learningCurveAttempts">-</span></span>
-                </div>
-                <div class="chart-wrapper" style="height: 300px; margin-bottom: 20px;">
-                    <canvas id="accuracyCurveChart"></canvas>
-                </div>
-                <div class="chart-wrapper" style="height: 300px; margin-bottom: 20px;">
-                    <canvas id="scoreCurveChart"></canvas>
-                </div>
-                <div class="chart-wrapper" style="height: 300px;">
-                    <canvas id="timeCurveChart"></canvas>
-                </div>
-            </div>
-        </div>
-        {% endif %}
-
-        {% if enabled_viz.student_comparison and student_data|length >= 2 %}
-        <div class="panel">
-            <div class="panel-header">
-                <h2>{% trans "Student Head-to-Head Comparison" %}</h2>
-                <p>{% trans "Compare 2-5 students across all performance metrics" %}</p>
-            </div>
-
-            <div style="margin-bottom: 20px;">
-                <div class="filter-group">
-                    <label for="studentComparisonSelect">{% trans "Select Students to Compare (2-5)" %}</label>
-                    <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; margin-top: 10px;">
-                        <div id="studentCheckboxes" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px;">
-                            {% for student in student_data %}
-                            <label style="display: flex; align-items: center; cursor: pointer; padding: 8px; background: white; border-radius: 6px; border: 2px solid #e0e0e0; transition: all 0.3s;">
-                                <input type="checkbox" class="student-checkbox" value="{{ student.id }}"
-                                       data-name="{{ student.name }}"
-                                       data-classroom="{{ student.classroom }}"
-                                       onchange="updateStudentComparison()"
-                                       style="margin-right: 8px; cursor: pointer;">
-                                <div style="flex: 1;">
-                                    <div style="font-size: 14px; font-weight: 600;">{{ student.name }}</div>
-                                    <div style="font-size: 12px; color: #666;">{{ student.classroom }}</div>
+                <!-- Attention & Rewards Row -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <!-- Students Needing Attention -->
+                    {% if enabled_viz.attention_panel %}
+                    <div class="rounded-lg bg-card border border-border overflow-hidden">
+                        <button onclick="toggleCollapsible('attentionContent', this)" class="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div class="w-2 h-2 rounded-full bg-danger"></div>
+                                <div class="text-left">
+                                    <h3 class="font-semibold">{% trans "Students Needing Attention" %}</h3>
+                                    <p class="text-xs text-muted-foreground">{{ students_needing_attention|length }} {% trans "students" %}</p>
                                 </div>
-                            </label>
-                            {% endfor %}
+                            </div>
+                            <svg class="w-5 h-5 text-muted-foreground transition-transform collapsible-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        </button>
+                        <div id="attentionContent" class="collapsible-content open">
+                            <div class="border-t border-border max-h-80 overflow-y-auto">
+                                {% if students_needing_attention %}
+                                    {% for student in students_needing_attention %}
+                                    <div class="p-4 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <span class="font-medium">{{ student.name }}</span>
+                                            <span class="text-sm px-2 py-0.5 rounded-full bg-danger/10 text-danger">{{ student.accuracy|floatformat:1 }}%</span>
+                                        </div>
+                                        <p class="text-xs text-muted-foreground mb-1">{{ student.classroom }}</p>
+                                        <p class="text-xs text-danger">{{ student.attention_reason }}</p>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="p-6 text-center text-muted-foreground">
+                                        <svg class="w-8 h-8 mx-auto mb-2 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        <p class="text-sm">{% trans "No students need urgent attention" %}</p>
+                                    </div>
+                                {% endif %}
+                            </div>
                         </div>
-                        <div id="studentSelectionCounter" style="margin-top: 12px; padding: 8px; background: white; border-radius: 6px; text-align: center; font-weight: 600; color: #666;">
-                            0/5 {% trans "students selected" %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Students Ready for Rewards -->
+                    {% if enabled_viz.rewards_panel %}
+                    <div class="rounded-lg bg-card border border-border overflow-hidden">
+                        <button onclick="toggleCollapsible('rewardsContent', this)" class="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div class="w-2 h-2 rounded-full bg-success"></div>
+                                <div class="text-left">
+                                    <h3 class="font-semibold">{% trans "Ready for Rewards" %}</h3>
+                                    <p class="text-xs text-muted-foreground">{{ students_ready_for_rewards|length }} {% trans "students" %}</p>
+                                </div>
+                            </div>
+                            <svg class="w-5 h-5 text-muted-foreground transition-transform collapsible-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        </button>
+                        <div id="rewardsContent" class="collapsible-content open">
+                            <div class="border-t border-border max-h-80 overflow-y-auto">
+                                {% if students_ready_for_rewards %}
+                                    {% for student in students_ready_for_rewards %}
+                                    <div class="p-4 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <span class="font-medium">{{ student.name }}</span>
+                                            <span class="text-sm px-2 py-0.5 rounded-full bg-success/10 text-success">{{ student.accuracy|floatformat:1 }}%</span>
+                                        </div>
+                                        <p class="text-xs text-muted-foreground mb-1">{{ student.classroom }}</p>
+                                        <p class="text-xs text-success">{{ student.reward_reason }}</p>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="p-6 text-center text-muted-foreground">
+                                        <svg class="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        <p class="text-sm">{% trans "Students will appear here when they achieve exceptional performance" %}</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </section>
+
+            <!-- Turn Insights Section -->
+            <section id="turn-insights" class="mb-8">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                    <div>
+                        <h2 class="text-xl font-semibold">{% trans "Turn Insights" %}</h2>
+                        <p class="text-sm text-muted-foreground">{% trans "Per-level breakdown of choices, conditionals, and number mechanics" %}</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label for="levelFocusSelect" class="text-sm text-muted-foreground">{% trans "Level" %}</label>
+                        <select id="levelFocusSelect" class="h-9 px-3 rounded-md bg-muted border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                            <option value="6">6</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                    <div class="rounded-lg bg-card border border-border p-4">
+                        <h3 class="font-semibold mb-4">{% trans "Card Family Share (Offered vs Chosen vs Expected)" %}</h3>
+                        <div class="chart-container">
+                            <canvas id="cardFamilyShareChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="rounded-lg bg-card border border-border p-4">
+                        <h3 class="font-semibold mb-4">{% trans "Card Family Accuracy" %}</h3>
+                        <div class="chart-container">
+                            <canvas id="cardFamilyAccuracyChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="rounded-lg bg-card border border-border p-4">
+                        <h3 class="font-semibold mb-4">{% trans "Decision Time by Card Family" %}</h3>
+                        <div class="chart-container">
+                            <canvas id="cardFamilyDecisionTimeChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="rounded-lg bg-card border border-border p-4">
+                        <h3 class="font-semibold mb-4">{% trans "Tile Conditional Accuracy" %}</h3>
+                        <div class="chart-container">
+                            <canvas id="tileConditionalAccuracyChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div id="bagConditionalCard" class="rounded-lg bg-card border border-border p-4">
+                        <h3 class="font-semibold mb-4">{% trans "Bag Conditional Accuracy" %}</h3>
+                        <div class="chart-container">
+                            <canvas id="bagConditionalAccuracyChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="rounded-lg bg-card border border-border p-4">
+                        <h3 class="font-semibold mb-4">{% trans "Else-Branch Rates" %}</h3>
+                        <div class="chart-container">
+                            <canvas id="conditionalElseRateChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div id="backCardUsageCard" class="rounded-lg bg-card border border-border p-4">
+                        <h3 class="font-semibold mb-4">{% trans "Back Card Usage by Place" %}</h3>
+                        <div class="chart-container">
+                            <canvas id="backCardUsageChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="rounded-lg bg-card border border-border p-4">
+                        <h3 class="font-semibold mb-4">{% trans "ForXMoveY Context Usage" %}</h3>
+                        <div class="chart-container">
+                            <canvas id="foreachContextChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="rounded-lg bg-card border border-border p-4">
+                        <h3 class="font-semibold mb-4">{% trans "Special Tile Chain Lengths" %}</h3>
+                        <div class="chart-container">
+                            <canvas id="specialChainLengthChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div id="numberChoiceCard" class="rounded-lg bg-card border border-border p-4">
+                        <h3 class="font-semibold mb-4">{% trans "Number Choice Distribution" %}</h3>
+                        <div class="chart-container">
+                            <canvas id="numberChoiceChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div id="numberDecisionTimeCard" class="rounded-lg bg-card border border-border p-4">
+                        <h3 class="font-semibold mb-4">{% trans "Number Decision Time" %}</h3>
+                        <div class="chart-container">
+                            <canvas id="numberDecisionTimeChart"></canvas>
                         </div>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <div id="studentComparisonDisplay" class="no-data">
-                <p>{% trans "Select 2-5 students to compare their performance" %}</p>
-            </div>
+            <!-- Students Section -->
+            <section id="students" class="mb-8">
+                <h2 class="text-xl font-semibold mb-4">{% trans "Student Performance" %}</h2>
+                
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                    <!-- Top Performing Students -->
+                    {% if enabled_viz.top_students %}
+                    <div class="rounded-lg bg-card border border-border">
+                        <div class="p-4 border-b border-border">
+                            <h3 class="font-semibold">{% trans "Top Performing Students" %}</h3>
+                            <!-- Tabs -->
+                            <div class="flex gap-2 mt-3">
+                                <button onclick="switchTab(event, 'topAccuracy')" class="tab-btn active px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground">{% trans "By Accuracy" %}</button>
+                                <button onclick="switchTab(event, 'topImprovement')" class="tab-btn px-3 py-1.5 text-sm rounded-md bg-muted text-muted-foreground hover:text-foreground">{% trans "By Improvement" %}</button>
+                            </div>
+                        </div>
+                        
+                        <div id="topAccuracy" class="tab-content active max-h-96 overflow-y-auto">
+                            {% if top_by_accuracy %}
+                                {% for student in top_by_accuracy %}
+                                <div class="flex items-center gap-4 p-4 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors">
+                                    <span class="w-8 h-8 flex items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-bold">#{{ forloop.counter }}</span>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="font-medium truncate">{{ student.name }}</p>
+                                        <p class="text-xs text-muted-foreground">{{ student.classroom }}</p>
+                                        {% if student.latest_run_id %}
+                                        <a href="/panel/teacher/runs/{{ student.latest_run_id }}/" class="text-xs text-primary hover:text-primary/80">{% trans "Replay" %} L{{ student.latest_run_level }}</a>
+                                        {% endif %}
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        {% if student.learning_curve_trend != 'insufficient_data' %}
+                                        <span class="text-xs px-2 py-0.5 rounded-full {% if student.learning_curve_trend == 'improving' %}bg-success/10 text-success{% elif student.learning_curve_trend == 'mastered' %}bg-primary/10 text-primary{% elif student.learning_curve_trend == 'declining' %}bg-danger/10 text-danger{% else %}bg-warning/10 text-warning{% endif %}">
+                                            {{ student.learning_curve_trend|title }}
+                                        </span>
+                                        {% endif %}
+                                        <span class="font-semibold {% if student.accuracy >= 90 %}text-success{% elif student.accuracy >= 75 %}text-primary{% elif student.accuracy >= 60 %}text-warning{% else %}text-danger{% endif %}">
+                                            {{ student.accuracy|floatformat:1 }}%
+                                        </span>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="p-6 text-center text-muted-foreground">
+                                    <p class="text-sm">{% trans "Not enough data yet" %}</p>
+                                </div>
+                            {% endif %}
+                        </div>
 
-            <div id="studentComparisonResults" style="display: none;">
-                <div class="chart-wrapper" style="height: 500px; margin-bottom: 30px;">
-                    <canvas id="studentRadarChart"></canvas>
-                </div>
-                <div id="strengthsTable" style="margin-bottom: 30px; overflow-x: auto;"></div>
-                <h3 style="margin-top: 30px; margin-bottom: 20px; color: var(--primary);">{% trans "Performance Progression Over Time" %}</h3>
-                <div class="chart-wrapper" style="height: 350px; margin-bottom: 20px;">
-                    <canvas id="accuracyProgressionChart"></canvas>
-                </div>
-                <div class="chart-wrapper" style="height: 350px; margin-bottom: 20px;">
-                    <canvas id="scoreProgressionChart"></canvas>
-                </div>
-                <div class="chart-wrapper" style="height: 350px;">
-                    <canvas id="speedProgressionChart"></canvas>
-                </div>
-            </div>
-        </div>
-        {% endif %}
+                        <div id="topImprovement" class="tab-content hidden max-h-96 overflow-y-auto">
+                            {% if top_by_improvement %}
+                                {% for student in top_by_improvement %}
+                                <div class="flex items-center gap-4 p-4 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors">
+                                    <span class="w-8 h-8 flex items-center justify-center rounded-full bg-success/10 text-success text-sm font-bold">#{{ forloop.counter }}</span>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="font-medium truncate">{{ student.name }}</p>
+                                        <p class="text-xs text-muted-foreground">{{ student.classroom }}</p>
+                                        {% if student.latest_run_id %}
+                                        <a href="/panel/teacher/runs/{{ student.latest_run_id }}/" class="text-xs text-primary hover:text-primary/80">{% trans "Replay" %} L{{ student.latest_run_level }}</a>
+                                        {% endif %}
+                                    </div>
+                                    <span class="font-semibold {% if student.improvement_rate >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                        {% if student.improvement_rate > 0 %}+{% endif %}{{ student.improvement_rate|floatformat:1 }}%
+                                    </span>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="p-6 text-center text-muted-foreground">
+                                    <p class="text-sm">{% trans "Need at least 7 games per student" %}</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
 
-        {% else %}
-        <div class="panel">
-            <div class="empty-state">
-                <h3>{% trans "No Student Data Available" %}</h3>
-                <p>{% trans "Students will appear here once they start playing the game." %}</p>
+                    <!-- Students Who Need Help -->
+                    {% if enabled_viz.bottom_students %}
+                    <div class="rounded-lg bg-card border border-border">
+                        <div class="p-4 border-b border-border">
+                            <h3 class="font-semibold">{% trans "Students Who May Need Help" %}</h3>
+                            <!-- Tabs -->
+                            <div class="flex gap-2 mt-3">
+                                <button onclick="switchTab(event, 'bottomAccuracy')" class="tab-btn active px-3 py-1.5 text-sm rounded-md bg-danger text-danger-foreground">{% trans "Low Accuracy" %}</button>
+                                <button onclick="switchTab(event, 'bottomCurve')" class="tab-btn px-3 py-1.5 text-sm rounded-md bg-muted text-muted-foreground hover:text-foreground">{% trans "Declining" %}</button>
+                            </div>
+                        </div>
+                        
+                        <div id="bottomAccuracy" class="tab-content active max-h-96 overflow-y-auto">
+                            {% if bottom_by_accuracy %}
+                                {% for student in bottom_by_accuracy %}
+                                <div class="flex items-center gap-4 p-4 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors">
+                                    <span class="w-8 h-8 flex items-center justify-center rounded-full bg-danger/10 text-danger text-sm font-bold">#{{ forloop.counter }}</span>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="font-medium truncate">{{ student.name }}</p>
+                                        <p class="text-xs text-muted-foreground">{{ student.classroom }}</p>
+                                        {% if student.latest_run_id %}
+                                        <a href="/panel/teacher/runs/{{ student.latest_run_id }}/" class="text-xs text-primary hover:text-primary/80">{% trans "Replay" %} L{{ student.latest_run_level }}</a>
+                                        {% endif %}
+                                    </div>
+                                    <span class="font-semibold text-danger">{{ student.accuracy|floatformat:1 }}%</span>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="p-6 text-center text-muted-foreground">
+                                    <p class="text-sm">{% trans "No students with low accuracy" %}</p>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div id="bottomCurve" class="tab-content hidden max-h-96 overflow-y-auto">
+                            {% if bottom_by_learning_curve %}
+                                {% for student in bottom_by_learning_curve %}
+                                <div class="flex items-center gap-4 p-4 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors">
+                                    <span class="w-8 h-8 flex items-center justify-center rounded-full bg-warning/10 text-warning text-sm font-bold">#{{ forloop.counter }}</span>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="font-medium truncate">{{ student.name }}</p>
+                                        <p class="text-xs text-muted-foreground">{{ student.classroom }}</p>
+                                        {% if student.latest_run_id %}
+                                        <a href="/panel/teacher/runs/{{ student.latest_run_id }}/" class="text-xs text-primary hover:text-primary/80">{% trans "Replay" %} L{{ student.latest_run_level }}</a>
+                                        {% endif %}
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xs px-2 py-0.5 rounded-full {% if student.learning_curve_trend == 'declining' %}bg-danger/10 text-danger{% else %}bg-warning/10 text-warning{% endif %}">
+                                            {{ student.learning_curve_trend|title }}
+                                        </span>
+                                        <span class="font-semibold text-warning">{{ student.accuracy|floatformat:1 }}%</span>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="p-6 text-center text-muted-foreground">
+                                    <p class="text-sm">{% trans "Need at least 7 games per student" %}</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </section>
+
+            <!-- Analytics Section -->
+            <section id="analytics" class="mb-8">
+                <h2 class="text-xl font-semibold mb-4">{% trans "Analytics" %}</h2>
+                
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                    <!-- Classroom Performance -->
+                    {% if enabled_viz.class_comparison %}
+                    <div class="rounded-lg bg-card border border-border p-4">
+                        <h3 class="font-semibold mb-4">{% trans "Classroom Performance" %}</h3>
+                        <div class="chart-container">
+                            <canvas id="classroomChart"></canvas>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Win Rate by Level -->
+                    {% if enabled_viz.win_rate_by_level %}
+                    <div class="rounded-lg bg-card border border-border p-4">
+                        <h3 class="font-semibold mb-4">{% trans "Win Rate by Level" %}</h3>
+                        <div class="chart-container">
+                            <canvas id="winRateByLevelChart"></canvas>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Accuracy by Level -->
+                    {% if enabled_viz.accuracy_by_level %}
+                    <div class="rounded-lg bg-card border border-border p-4">
+                        <h3 class="font-semibold mb-4">{% trans "Accuracy by Level" %}</h3>
+                        <div class="chart-container">
+                            <canvas id="accuracyByLevelChart"></canvas>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Time by Level -->
+                    {% if enabled_viz.time_by_level %}
+                    <div class="rounded-lg bg-card border border-border p-4">
+                        <h3 class="font-semibold mb-4">{% trans "Time Distribution by Level" %}</h3>
+                        <div class="chart-container">
+                            <canvas id="timeByLevelChart"></canvas>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Speed vs Accuracy -->
+                    {% if enabled_viz.speed_vs_accuracy %}
+                    <div class="rounded-lg bg-card border border-border p-4 xl:col-span-2">
+                        <h3 class="font-semibold mb-4">{% trans "Speed vs Accuracy" %}</h3>
+                        <div class="chart-container" style="height: 450px;">
+                            <canvas id="speedAccuracyChart"></canvas>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Mistake Hotspots -->
+                    {% if enabled_viz.mistake_hotspots %}
+                    <div class="rounded-lg bg-card border border-border p-4">
+                        <h3 class="font-semibold mb-4">{% trans "Mistake Hotspots" %}</h3>
+                        <div class="chart-container">
+                            <canvas id="mistakeHeatmapChart"></canvas>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Special Tiles -->
+                    {% if enabled_viz.special_tile_breakdown %}
+                    <div class="rounded-lg bg-card border border-border p-4">
+                        <h3 class="font-semibold mb-4">{% trans "Special Tile Triggers" %}</h3>
+                        <div class="chart-container">
+                            <canvas id="specialTileChart"></canvas>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Decision Time by Card -->
+                    {% if enabled_viz.decision_time_by_card %}
+                    <div class="rounded-lg bg-card border border-border p-4">
+                        <h3 class="font-semibold mb-4">{% trans "Decision Time by Card Type" %}</h3>
+                        <div class="chart-container">
+                            <canvas id="decisionTimeChart"></canvas>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </section>
+
+            <!-- Comparison Section -->
+            <section id="comparison" class="mb-8">
+                <h2 class="text-xl font-semibold mb-4">{% trans "Comparisons" %}</h2>
+
+                <!-- Multi-Classroom Radar -->
+                {% if enabled_viz.class_comparison and comparison_classroom_stats|length >= 2 %}
+                <div class="rounded-lg bg-card border border-border p-4 mb-4">
+                    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4">
+                        <div>
+                            <h3 class="font-semibold">{% trans "Multi-Classroom Radar Comparison" %}</h3>
+                            <p class="text-sm text-muted-foreground">{% trans "Compare 2-5 classrooms across multiple metrics" %}</p>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <label class="flex items-center gap-2 text-sm">
+                                <input type="radio" name="radarDataMode" value="normalized" checked onchange="updateRadarChart()" class="accent-primary">
+                                {% trans "Normalized" %}
+                            </label>
+                            <label class="flex items-center gap-2 text-sm">
+                                <input type="radio" name="radarDataMode" value="raw" onchange="updateRadarChart()" class="accent-primary">
+                                {% trans "Raw Data" %}
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-wrap gap-2 mb-4 p-3 rounded-md bg-muted">
+                        {% for classroom in comparison_classroom_stats %}
+                        <label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-card border border-border cursor-pointer hover:border-primary transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/10">
+                            <input type="checkbox" class="classroom-checkbox accent-primary" value="{{ classroom.id }}" data-name="{{ classroom.name }}" onchange="updateRadarChart()">
+                            <span class="text-sm">{{ classroom.name }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    <p id="selectionCounter" class="text-xs text-muted-foreground mb-4">0/5 {% trans "classrooms selected" %}</p>
+                    
+                    <div id="radarChartDisplay" class="p-6 text-center text-muted-foreground">
+                        <p class="text-sm">{% trans "Select 2-5 classrooms to compare" %}</p>
+                    </div>
+                    <div id="radarChartResults" class="hidden">
+                        <div class="chart-container" style="height: 450px;">
+                            <canvas id="radarComparisonChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Student Head-to-Head -->
+                {% if enabled_viz.student_comparison and comparison_student_data|length >= 2 %}
+                <div class="rounded-lg bg-card border border-border p-4 mb-4">
+                    <div class="mb-4">
+                        <h3 class="font-semibold">{% trans "Student Head-to-Head Comparison" %}</h3>
+                        <p class="text-sm text-muted-foreground">{% trans "Compare 2-5 students across all metrics" %}</p>
+                    </div>
+                    
+                    <div class="flex flex-wrap gap-2 mb-4 p-3 rounded-md bg-muted max-h-48 overflow-y-auto">
+                        {% for student in comparison_student_data %}
+                        <label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-card border border-border cursor-pointer hover:border-primary transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/10">
+                            <input type="checkbox" class="student-checkbox accent-primary" value="{{ student.id }}" data-name="{{ student.name }}" data-classroom="{{ student.classroom }}" onchange="updateStudentComparison()">
+                            <div class="text-left">
+                                <span class="text-sm block">{{ student.name }}</span>
+                                <span class="text-xs text-muted-foreground">{{ student.classroom }}</span>
+                            </div>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    <p id="studentSelectionCounter" class="text-xs text-muted-foreground mb-4">0/5 {% trans "students selected" %}</p>
+                    
+                    <div id="studentComparisonDisplay" class="p-6 text-center text-muted-foreground">
+                        <p class="text-sm">{% trans "Select 2-5 students to compare" %}</p>
+                    </div>
+                    <div id="studentComparisonResults" class="hidden">
+                        <div class="chart-container" style="height: 450px; margin-bottom: 24px;">
+                            <canvas id="studentRadarChart"></canvas>
+                        </div>
+                        <div id="strengthsTable" class="mb-6 overflow-x-auto"></div>
+                        <h4 class="font-semibold mb-4">{% trans "Performance Progression Over Time" %}</h4>
+                        <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+                            <div class="chart-container" style="height: 300px;">
+                                <canvas id="accuracyProgressionChart"></canvas>
+                            </div>
+                            <div class="chart-container" style="height: 300px;">
+                                <canvas id="scoreProgressionChart"></canvas>
+                            </div>
+                            <div class="chart-container" style="height: 300px;">
+                                <canvas id="speedProgressionChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Learning Curves -->
+                {% if enabled_viz.learning_curves %}
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                    <!-- Cross-Level Learning Transfer -->
+                    <div class="rounded-lg bg-card border border-border p-4">
+                        <h3 class="font-semibold mb-4">{% trans "Cross-Level Learning Transfer" %}</h3>
+                        <div class="grid grid-cols-3 gap-3 mb-4">
+                            <div>
+                                <label class="block text-xs text-muted-foreground mb-1">{% trans "Student" %}</label>
+                                <select id="crossLevelStudentSelect" onchange="updateCrossLevelOptions()" class="w-full h-9 px-3 rounded-md bg-muted border border-border text-sm">
+                                    <option value="">-- {% trans "Select" %} --</option>
+                                    {% for student in comparison_student_data %}
+                                    <option value="{{ student.id }}">{{ student.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-muted-foreground mb-1">{% trans "Level 1" %}</label>
+                                <select id="level1Select" onchange="compareLevels()" disabled class="w-full h-9 px-3 rounded-md bg-muted border border-border text-sm">
+                                    <option value="">--</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-muted-foreground mb-1">{% trans "Level 2" %}</label>
+                                <select id="level2Select" onchange="compareLevels()" disabled class="w-full h-9 px-3 rounded-md bg-muted border border-border text-sm">
+                                    <option value="">--</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="crossLevelDisplay" class="p-6 text-center text-muted-foreground text-sm">
+                            {% trans "Select a student and two levels" %}
+                        </div>
+                        <div id="crossLevelResults" class="hidden">
+                            <div class="chart-container" style="height: 300px;">
+                                <canvas id="crossLevelChart"></canvas>
+                            </div>
+                            <div id="transferInsights" class="mt-4 p-3 rounded-md bg-muted text-sm"></div>
+                        </div>
+                    </div>
+
+                    <!-- Student Learning Curves -->
+                    <div class="rounded-lg bg-card border border-border p-4">
+                        <h3 class="font-semibold mb-4">{% trans "Student Learning Curves by Level" %}</h3>
+                        <div class="grid grid-cols-2 gap-3 mb-4">
+                            <div>
+                                <label class="block text-xs text-muted-foreground mb-1">{% trans "Student" %}</label>
+                                <select id="studentSelect" onchange="updateLevelOptions()" class="w-full h-9 px-3 rounded-md bg-muted border border-border text-sm">
+                                    <option value="">-- {% trans "Select" %} --</option>
+                                    {% for student in comparison_student_data %}
+                                    <option value="{{ student.id }}" data-student='{{ student|safe }}'>{{ student.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-muted-foreground mb-1">{% trans "Level" %}</label>
+                                <select id="levelSelect" onchange="showLearningCurve()" disabled class="w-full h-9 px-3 rounded-md bg-muted border border-border text-sm">
+                                    <option value="">--</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="learningCurveSummary" class="hidden mb-4 p-3 rounded-md bg-muted text-sm">
+                            <span><strong>{% trans "Trend:" %}</strong> <span id="learningCurveTrend">-</span></span>
+                            <span class="ml-4"><strong>{% trans "Slope:" %}</strong> <span id="learningCurveSlope">-</span></span>
+                            <span class="ml-4"><strong>{% trans "Attempts:" %}</strong> <span id="learningCurveAttempts">-</span></span>
+                        </div>
+                        <div id="learningCurveDisplay" class="p-6 text-center text-muted-foreground text-sm">
+                            {% trans "Select a student and level" %}
+                        </div>
+                        <div id="learningCurveCharts" class="hidden space-y-4">
+                            <div class="chart-container" style="height: 200px;"><canvas id="accuracyCurveChart"></canvas></div>
+                            <div class="chart-container" style="height: 200px;"><canvas id="scoreCurveChart"></canvas></div>
+                            <div class="chart-container" style="height: 200px;"><canvas id="timeCurveChart"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </section>
+
+            {% else %}
+            <!-- No Data State -->
+            <div class="flex items-center justify-center min-h-[400px]">
+                <div class="text-center">
+                    <svg class="w-16 h-16 mx-auto mb-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    <h3 class="text-lg font-semibold mb-2">{% trans "No Student Data Available" %}</h3>
+                    <p class="text-muted-foreground">{% trans "Students will appear here once they start playing the game." %}</p>
+                </div>
             </div>
-        </div>
-        {% endif %}
+            {% endif %}
+        </main>
     </div>
+</div>
 
-    <script>
-        const studentData = {{ student_data_json|safe }};
-        const classroomData = {{ classroom_stats_json|safe }};
-        let selectedStudent = null;
-        let crossLevelStudent = null;
+<script>
+    // Chart.js dark theme defaults
+    Chart.defaults.color = '#a3a3a3';
+    Chart.defaults.borderColor = '#262626';
+    Chart.defaults.backgroundColor = '#141414';
+    
+    const filteredStudentData = {{ student_data_json|safe }};
+    const studentData = {{ comparison_student_data_json|safe }};
+    const classroomData = {{ classroom_stats_json|safe }};
+    const comparisonClassroomData = {{ comparison_classroom_stats_json|safe }};
+    const starterVizData = {{ starter_viz_data_json|safe }};
+    let selectedStudent = null;
+    let crossLevelStudent = null;
 
-        if (studentData.length > 0) {
-            const totalRuns = studentData.reduce((sum, s) => sum + s.total_runs, 0);
-            const avgAccuracy = (studentData.reduce((sum, s) => sum + s.accuracy, 0) / studentData.length).toFixed(1);
-            const avgScore = (studentData.reduce((sum, s) => sum + s.avg_score, 0) / studentData.length).toFixed(1);
+    // Calculate and display stats
+    if (filteredStudentData.length > 0) {
+        const totalRuns = filteredStudentData.reduce((sum, s) => sum + s.total_runs, 0);
+        const avgAccuracy = (filteredStudentData.reduce((sum, s) => sum + s.accuracy, 0) / filteredStudentData.length).toFixed(1);
+        const avgScore = (filteredStudentData.reduce((sum, s) => sum + s.avg_score, 0) / filteredStudentData.length).toFixed(1);
 
-            document.getElementById('totalRuns').textContent = totalRuns;
-            document.getElementById('avgAccuracy').textContent = avgAccuracy + '%';
-            document.getElementById('avgScore').textContent = avgScore;
+        document.getElementById('totalRuns').textContent = totalRuns;
+        document.getElementById('avgAccuracy').textContent = avgAccuracy + '%';
+        document.getElementById('avgScore').textContent = avgScore;
+        
+        // Sidebar stats
+        const sidebarRuns = document.getElementById('sidebarTotalRuns');
+        const sidebarAccuracy = document.getElementById('sidebarAvgAccuracy');
+        if (sidebarRuns) sidebarRuns.textContent = totalRuns;
+        if (sidebarAccuracy) sidebarAccuracy.textContent = avgAccuracy + '%';
+    }
+
+    // Collapsible toggle
+    function toggleCollapsible(contentId, button) {
+        const content = document.getElementById(contentId);
+        const arrow = button.querySelector('.collapsible-arrow');
+        content.classList.toggle('open');
+        arrow.style.transform = content.classList.contains('open') ? 'rotate(0deg)' : 'rotate(-90deg)';
+    }
+
+    // Tab switching
+    function switchTab(event, tabId) {
+        const parent = event.target.closest('.rounded-lg');
+        parent.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.add('hidden');
+            content.classList.remove('active');
+        });
+        parent.querySelectorAll('.tab-btn').forEach(tab => {
+            tab.classList.remove('bg-primary', 'bg-danger', 'text-primary-foreground', 'text-danger-foreground');
+            tab.classList.add('bg-muted', 'text-muted-foreground');
+        });
+        document.getElementById(tabId).classList.remove('hidden');
+        document.getElementById(tabId).classList.add('active');
+        event.target.classList.remove('bg-muted', 'text-muted-foreground');
+        if (tabId.includes('bottom')) {
+            event.target.classList.add('bg-danger', 'text-danger-foreground');
+        } else {
+            event.target.classList.add('bg-primary', 'text-primary-foreground');
         }
+    }
 
-        function switchTab(event, tabId) {
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
-            if (event && event.target) {
-                event.target.classList.add('active');
-            }
-        }
-
-        const classroomChart = document.getElementById('classroomChart');
-        if (classroomChart && classroomData.length > 0) {
-            new Chart(classroomChart, {
-                type: 'bar',
-                data: {
-                    labels: classroomData.map(c => c.name),
-                    datasets: [
-                        {
-                            label: '{% trans "Average Score" %}',
-                            data: classroomData.map(c => c.avg_score),
-                            backgroundColor: 'rgba(65, 118, 144, 0.6)',
-                            borderColor: 'rgba(65, 118, 144, 1)',
-                            borderWidth: 2
-                        },
-                        {
-                            label: '{% trans "Win Rate (%)" %}',
-                            data: classroomData.map(c => c.win_rate),
-                            backgroundColor: 'rgba(90, 159, 184, 0.6)',
-                            borderColor: 'rgba(90, 159, 184, 1)',
-                            borderWidth: 2
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: { y: { beginAtZero: true } },
-                    plugins: { legend: { position: 'top' } }
-                }
-            });
-        }
-
-        let radarChart, studentRadarChart, crossLevelChart, accuracyChart, scoreChart, timeChart, accuracyProgressionChart, scoreProgressionChart, speedProgressionChart;
-
-        function updateRadarChart() {
-            const checkboxes = document.querySelectorAll('.classroom-checkbox:checked');
-            const selectedCount = checkboxes.length;
-            const counter = document.getElementById('selectionCounter');
-            const radarDisplay = document.getElementById('radarChartDisplay');
-            const radarResults = document.getElementById('radarChartResults');
-
-            counter.textContent = `${selectedCount}/5 {% trans "classrooms selected" %}`;
-            counter.style.color = selectedCount >= 2 && selectedCount <= 5 ? '#27ae60' : '#666';
-
-            if (selectedCount > 5) {
-                checkboxes[checkboxes.length - 1].checked = false;
-                updateRadarChart();
-                return;
-            }
-
-            if (selectedCount < 2) {
-                radarDisplay.style.display = 'block';
-                radarResults.style.display = 'none';
-                return;
-            }
-
-            const selectedClassrooms = Array.from(checkboxes).map(cb => ({ id: parseInt(cb.value, 10), name: cb.getAttribute('data-name') }));
-            const dataMode = document.querySelector('input[name="radarDataMode"]:checked').value;
-            const selectedData = selectedClassrooms
-                .map(sc => classroomData.find(cd => cd.id === sc.id))
-                .filter(cd => cd !== undefined);
-
-            if (selectedData.length < 2) { radarDisplay.style.display = 'block'; radarResults.style.display = 'none'; return; }
-
-            radarDisplay.style.display = 'none';
-            radarResults.style.display = 'block';
-
-            const datasets = selectedData.map((classData, index) => {
-                const colors = ['rgba(65, 118, 144, 0.6)', 'rgba(39, 174, 96, 0.6)', 'rgba(243, 156, 18, 0.6)', 'rgba(231, 76, 60, 0.6)', 'rgba(90, 159, 184, 0.6)'];
-                const borderColors = ['#417690', '#27ae60', '#f39c12', '#e74c3c', '#5a9fb8'];
-                let radarData;
-                if (dataMode === 'normalized') {
-                    const decisionSpeedScore = classData.avg_decision_time > 0 ? Math.max(0, 100 - (classData.avg_decision_time * 2)) : 50;
-                    radarData = [classData.accuracy || 0, (classData.avg_score / 10) || 0, classData.win_rate || 0, decisionSpeedScore, Math.min(100, classData.engagement * 10) || 0];
-                } else {
-                    const totalGames = classData.total_runs || 1;
-                    radarData = [classData.accuracy || 0, (classData.avg_score * totalGames) / 10, ((classData.win_rate / 100) * totalGames) || 0, Math.max(0, 100 - (classData.avg_decision_time * totalGames)), classData.engagement * classData.student_count || 0];
-                }
-                return {
-                    label: classData.name, data: radarData, backgroundColor: colors[index % 5], borderColor: borderColors[index % 5], borderWidth: 2,
-                    pointBackgroundColor: borderColors[index % 5], pointBorderColor: '#fff', pointHoverBackgroundColor: '#fff', pointHoverBorderColor: borderColors[index % 5]
-                };
-            });
-
-            if (radarChart) radarChart.destroy();
-            radarChart = new Chart(document.getElementById('radarComparisonChart'), {
-                type: 'radar',
-                data: {
-                    labels: ['{% trans "Accuracy" %}', '{% trans "Average Score" %}', '{% trans "Win Rate" %}', '{% trans "Decision Speed" %}', '{% trans "Engagement" %}'],
-                    datasets: datasets
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { 
-                        title: { display: true, text: `{% trans "Multi-Classroom Performance Comparison" %} (${dataMode === 'normalized' ? '{% trans "Normalized" %}' : '{% trans "Raw Data" %}'})` },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.dataset.label + ': ';
-                                    const value = context.parsed.r;
-                                    const metricIndex = context.dataIndex;
-                                    if (metricIndex === 0 || metricIndex === 2) label += value.toFixed(1) + '%';
-                                    else if (metricIndex === 1) label += value.toFixed(1) + ' {% trans "pts" %}';
-                                    else if (metricIndex === 3) label += value.toFixed(1) + ' ({% trans "actual:" %} ' + (dataMode === 'normalized' ? ((100-value)/2).toFixed(1) : (100-value).toFixed(1)) + 's)';
-                                    else label += value.toFixed(1) + ' {% trans "games" %}';
-                                    return label;
-                                }
-                            }
-                        }
+    // Classroom chart
+    const classroomChart = document.getElementById('classroomChart');
+    if (classroomChart && classroomData.length > 0) {
+        new Chart(classroomChart, {
+            type: 'bar',
+            data: {
+                labels: classroomData.map(c => c.name),
+                datasets: [
+                    {
+                        label: '{% trans "Average Score" %}',
+                        data: classroomData.map(c => c.avg_score),
+                        backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 1
                     },
-                    scales: { r: { beginAtZero: true, max: 100, ticks: { stepSize: 20 } } }
-                }
-            });
-        }
-
-        function updateStudentComparison() {
-            const checkboxes = document.querySelectorAll('.student-checkbox:checked');
-            const selectedCount = checkboxes.length;
-            const counter = document.getElementById('studentSelectionCounter');
-            const display = document.getElementById('studentComparisonDisplay');
-            const results = document.getElementById('studentComparisonResults');
-
-            counter.textContent = `${selectedCount}/5 {% trans "students selected" %}`;
-            if (selectedCount > 5) { checkboxes[checkboxes.length - 1].checked = false; updateStudentComparison(); return; }
-            if (selectedCount < 2) { display.style.display = 'block'; results.style.display = 'none'; return; }
-
-            const selectedStudents = Array.from(checkboxes).map(cb => studentData.find(s => s.id === parseInt(cb.value))).filter(s => s !== undefined);
-            if (selectedStudents.length < 2) { display.style.display = 'block'; results.style.display = 'none'; return; }
-
-            display.style.display = 'none';
-            results.style.display = 'block';
-
-            createStudentRadarChart(selectedStudents);
-            createStrengthsTable(selectedStudents);
-            createProgressionCharts(selectedStudents);
-        }
-
-        function createStudentRadarChart(students) {
-            const colors = ['rgba(65, 118, 144, 0.6)', 'rgba(39, 174, 96, 0.6)', 'rgba(243, 156, 18, 0.6)', 'rgba(231, 76, 60, 0.6)', 'rgba(90, 159, 184, 0.6)'];
-            const borderColors = ['#417690', '#27ae60', '#f39c12', '#e74c3c', '#5a9fb8'];
-            const datasets = students.map((student, index) => ({
-                label: `${student.name} (${student.classroom})`,
-                data: [student.accuracy || 0, student.avg_score/10 || 0, student.win_rate || 0, student.avg_decision_time > 0 ? 100 - (student.avg_decision_time * 2) : 50, student.improvement_rate + 50 || 50, student.consistency * 100 || 0],
-                backgroundColor: colors[index % 5], borderColor: borderColors[index % 5], borderWidth: 2
-            }));
-
-            if (studentRadarChart) studentRadarChart.destroy();
-            studentRadarChart = new Chart(document.getElementById('studentRadarChart'), {
-                type: 'radar',
-                data: { labels: ['{% trans "Accuracy" %}', '{% trans "Score" %}', '{% trans "Win Rate" %}', '{% trans "Speed" %}', '{% trans "Improvement" %}', '{% trans "Consistency" %}'], datasets: datasets },
-                options: { 
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { title: { display: true, text: '{% trans "Student Performance Comparison - All Metrics" %}' } },
-                    scales: { r: { beginAtZero: true, max: 100 } }
-                }
-            });
-        }
-
-        function createStrengthsTable(students) {
-            const metrics = [
-                { key: 'accuracy', label: '{% trans "Accuracy" %}', unit: '%', higher: true },
-                { key: 'avg_score', label: '{% trans "Avg Score" %}', unit: ' {% trans "pts" %}', higher: true },
-                { key: 'win_rate', label: '{% trans "Win Rate" %}', unit: '%', higher: true },
-                { key: 'avg_decision_time', label: '{% trans "Decision Time" %}', unit: 's', higher: false },
-                { key: 'improvement_rate', label: '{% trans "Improvement" %}', unit: '%', higher: true },
-                { key: 'consistency', label: '{% trans "Consistency" %}', unit: '', higher: true }
-            ];
-
-            let tableHTML = '<table style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden;">';
-            tableHTML += '<thead><tr style="background: var(--primary); color: white;"><th style="padding: 15px; text-align: left;">{% trans "Metric" %}</th>';
-            students.forEach(student => tableHTML += `<th style="padding: 15px; text-align: center;">${student.name}</th>`);
-            tableHTML += '</tr></thead><tbody>';
-
-            metrics.forEach((metric, metricIndex) => {
-                tableHTML += `<tr style="background: ${metricIndex % 2 === 0 ? '#f8f9fa' : 'white'};"><td style="padding: 12px; font-weight: 600;">${metric.label}</td>`;
-                const values = students.map(s => s[metric.key] || 0);
-                const bestValue = metric.higher ? Math.max(...values) : Math.min(...values);
-                students.forEach(student => {
-                    const value = student[metric.key] || 0;
-                    const isBest = value === bestValue && Math.max(...values) !== Math.min(...values);
-                    tableHTML += `<td style="padding: 12px; text-align: center; ${isBest ? 'background: #f0fdf4; color: #27ae60; font-weight: bold;' : ''}">${(metric.key === 'consistency' ? value*100 : value).toFixed(1)}${metric.unit}${isBest ? ' ★' : ''}</td>`;
-                });
-                tableHTML += '</tr>';
-            });
-            tableHTML += '</tbody></table><p style="text-align: center; margin-top: 10px; font-size: 13px; color: #666;">{% trans "★ = Best in group" %}</p>';
-            document.getElementById('strengthsTable').innerHTML = tableHTML;
-        }
-
-        function createProgressionCharts(students) {
-            const colors = ['#417690', '#27ae60', '#f39c12', '#e74c3c', '#5a9fb8'];
-            const maxGames = Math.max(...students.map(s => s.total_runs || 0));
-            if (maxGames === 0) return;
-            const labels = Array.from({length: maxGames}, (_, i) => `{% trans "Game" %} ${i + 1}`);
-
-            const makeChart = (id, title, yLabel, dataFunc) => {
-                const ctx = document.getElementById(id);
-                if (window[id + 'Obj']) window[id + 'Obj'].destroy();
-                window[id + 'Obj'] = new Chart(ctx, {
-                    type: 'line',
-                    data: { labels: labels, datasets: students.map((s, i) => ({ label: s.name, data: dataFunc(s), borderColor: colors[i % 5], tension: 0.4 })) },
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: title } }, scales: { y: { title: { display: true, text: yLabel } } } }
-                });
-            };
-
-            makeChart('accuracyProgressionChart', '{% trans "Accuracy Progression Comparison" %}', '{% trans "Accuracy (%)" %}', s => s.accuracy_per_game);
-            makeChart('scoreProgressionChart', '{% trans "Score Progression Comparison" %}', '{% trans "Score" %}', s => s.scores);
-            makeChart(
-                'speedProgressionChart',
-                '{% trans "Decision Speed Progression Comparison" %}',
-                '{% trans "Time (seconds)" %}',
-                s => s.times.map((t, i) => {
-                    const totalMoves = (s.correct_moves[i] || 0) + (s.wrong_moves[i] || 0);
-                    if (t === null || totalMoves === 0) {
-                        return null;
+                    {
+                        label: '{% trans "Win Rate (%)" %}',
+                        data: classroomData.map(c => c.win_rate),
+                        backgroundColor: 'rgba(34, 197, 94, 0.7)',
+                        borderColor: 'rgba(34, 197, 94, 1)',
+                        borderWidth: 1
                     }
-                    return t / totalMoves;
-                })
-            );
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true } },
+                plugins: { legend: { position: 'top' } }
+            }
+        });
+    }
+
+    // Win Rate by Level
+    if (document.getElementById('winRateByLevelChart') && starterVizData.win_rate_by_level && starterVizData.win_rate_by_level.length > 0) {
+        const wrData = starterVizData.win_rate_by_level;
+        new Chart(document.getElementById('winRateByLevelChart'), {
+            type: 'bar',
+            data: {
+                labels: wrData.map(d => `{% trans "Level" %} ${d.level}`),
+                datasets: [{
+                    label: '{% trans "Win Rate (%)" %}',
+                    data: wrData.map(d => d.win_rate),
+                    backgroundColor: wrData.map(d => d.win_rate >= 75 ? 'rgba(34, 197, 94, 0.7)' : d.win_rate >= 50 ? 'rgba(245, 158, 11, 0.7)' : 'rgba(239, 68, 68, 0.7)'),
+                    borderWidth: 0
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } } }
+        });
+    }
+
+    // Accuracy by Level
+    if (document.getElementById('accuracyByLevelChart') && starterVizData.accuracy_by_level && starterVizData.accuracy_by_level.length > 0) {
+        const accData = starterVizData.accuracy_by_level;
+        new Chart(document.getElementById('accuracyByLevelChart'), {
+            type: 'bar',
+            data: {
+                labels: accData.map(d => `{% trans "Level" %} ${d.level}`),
+                datasets: [
+                    { label: '{% trans "Correct" %}', data: accData.map(d => d.total_correct), backgroundColor: 'rgba(34, 197, 94, 0.7)' },
+                    { label: '{% trans "Wrong" %}', data: accData.map(d => d.total_wrong), backgroundColor: 'rgba(239, 68, 68, 0.7)' }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } }
+        });
+    }
+
+    // Time by Level
+    if (document.getElementById('timeByLevelChart') && starterVizData.time_by_level && starterVizData.time_by_level.length > 0) {
+        const timeData = starterVizData.time_by_level;
+        new Chart(document.getElementById('timeByLevelChart'), {
+            type: 'bar',
+            data: {
+                labels: timeData.map(d => `{% trans "Level" %} ${d.level}`),
+                datasets: [{ label: '{% trans "Avg Time (s)" %}', data: timeData.map(d => d.avg_time_ms / 1000), backgroundColor: 'rgba(59, 130, 246, 0.7)' }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+        });
+    }
+
+    // Speed vs Accuracy Scatter
+    if (document.getElementById('speedAccuracyChart') && starterVizData.speed_vs_accuracy && starterVizData.speed_vs_accuracy.length > 0) {
+        const scatterData = starterVizData.speed_vs_accuracy;
+        const levels = [...new Set(scatterData.map(d => d.level))].sort((a, b) => a - b);
+        const colors = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#a855f7', '#06b6d4', '#ec4899'];
+        const datasets = levels.map((level, i) => ({
+            label: `{% trans "Level" %} ${level}`,
+            data: scatterData.filter(d => d.level === level).map(d => ({ x: d.x, y: d.y, student: d.student })),
+            backgroundColor: colors[i % colors.length] + 'aa',
+            pointRadius: 6,
+            pointHoverRadius: 9
+        }));
+        new Chart(document.getElementById('speedAccuracyChart'), {
+            type: 'scatter',
+            data: { datasets },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: {
+                    x: { title: { display: true, text: '{% trans "Time (seconds)" %}' } },
+                    y: { title: { display: true, text: '{% trans "Accuracy (%)" %}' }, min: 0, max: 100 }
+                },
+                plugins: { tooltip: { callbacks: { label: (ctx) => `${ctx.raw.student}: ${ctx.raw.y.toFixed(1)}% in ${ctx.raw.x.toFixed(1)}s` } } }
+            }
+        });
+    }
+
+    // Mistake Hotspots
+    if (document.getElementById('mistakeHeatmapChart') && starterVizData.mistake_hotspots && Object.keys(starterVizData.mistake_hotspots).length > 0) {
+        const hotspotData = starterVizData.mistake_hotspots;
+        const allHotspots = [];
+        for (const level of Object.keys(hotspotData).sort((a, b) => a - b)) {
+            for (const [pos, count] of Object.entries(hotspotData[level])) {
+                allHotspots.push({ level, position: parseInt(pos), count });
+            }
+        }
+        allHotspots.sort((a, b) => b.count - a.count);
+        const topHotspots = allHotspots.slice(0, 15);
+        new Chart(document.getElementById('mistakeHeatmapChart'), {
+            type: 'bar',
+            data: {
+                labels: topHotspots.map(h => `L${h.level} P${h.position}`),
+                datasets: [{ label: '{% trans "Mistakes" %}', data: topHotspots.map(h => h.count), backgroundColor: 'rgba(239, 68, 68, 0.7)' }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y' }
+        });
+    }
+
+    // Special Tiles
+    if (document.getElementById('specialTileChart') && starterVizData.special_tile_breakdown && starterVizData.special_tile_breakdown.length > 0) {
+        const tileData = starterVizData.special_tile_breakdown;
+        const levelData = {};
+        for (const item of tileData) {
+            const level = item['turn__run__level'];
+            if (!levelData[level]) levelData[level] = { skateboard: 0, clown: 0 };
+            if (item.special_tile_type === 5) levelData[level].skateboard = item.trigger_count;
+            if (item.special_tile_type === 4) levelData[level].clown = item.trigger_count;
+        }
+        const levels = Object.keys(levelData).sort((a, b) => a - b);
+        new Chart(document.getElementById('specialTileChart'), {
+            type: 'bar',
+            data: {
+                labels: levels.map(l => `{% trans "Level" %} ${l}`),
+                datasets: [
+                    { label: '{% trans "Skateboard" %}', data: levels.map(l => levelData[l].skateboard), backgroundColor: 'rgba(34, 197, 94, 0.7)' },
+                    { label: '{% trans "Clown" %}', data: levels.map(l => levelData[l].clown), backgroundColor: 'rgba(239, 68, 68, 0.7)' }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } }
+        });
+    }
+
+    // Decision Time
+    if (document.getElementById('decisionTimeChart') && starterVizData.decision_time_by_card && Object.keys(starterVizData.decision_time_by_card).length > 0) {
+        const cardData = starterVizData.decision_time_by_card;
+        const cardTypes = Object.keys(cardData);
+        new Chart(document.getElementById('decisionTimeChart'), {
+            type: 'bar',
+            data: {
+                labels: cardTypes,
+                datasets: [{ label: '{% trans "Avg Time (ms)" %}', data: cardTypes.map(t => cardData[t].avg), backgroundColor: 'rgba(59, 130, 246, 0.7)' }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+
+    let cardFamilyShareChart;
+    let cardFamilyAccuracyChart;
+    let cardFamilyDecisionTimeChart;
+    let tileConditionalAccuracyChart;
+    let bagConditionalAccuracyChart;
+    let conditionalElseRateChart;
+    let backCardUsageChart;
+    let foreachContextChart;
+    let specialChainLengthChart;
+    let numberChoiceChart;
+    let numberDecisionTimeChart;
+
+    const levelSelect = document.getElementById('levelFocusSelect');
+    const bagConditionalCard = document.getElementById('bagConditionalCard');
+    const backCardUsageCard = document.getElementById('backCardUsageCard');
+    const numberChoiceCard = document.getElementById('numberChoiceCard');
+    const numberDecisionTimeCard = document.getElementById('numberDecisionTimeCard');
+
+    const familyLabel = (family) => {
+        const labels = {
+            move: 'Move',
+            back: 'Back',
+            conditional_tile: 'Tile Conditional',
+            conditional_bag_eq: 'Bag =',
+            conditional_bag_lt: 'Bag <',
+            conditional_bag_gt: 'Bag >',
+            bagcount: 'BagCount',
+            foreach_tile: 'ForEach Tile',
+            unknown: 'Unknown'
+        };
+        return labels[family] || family;
+    };
+
+    const getLevelValue = () => {
+        if (!levelSelect) return 1;
+        return parseInt(levelSelect.value, 10);
+    };
+
+    const filterByLevel = (data, level) => {
+        if (!Array.isArray(data)) return [];
+        return data.filter(item => parseInt(item.level, 10) === level);
+    };
+
+    const destroyIfExists = (chartRef) => {
+        if (chartRef) {
+            chartRef.destroy();
+        }
+    };
+
+    const setTurnInsightVisibility = (level) => {
+        const isBagLevel = level >= 5;
+        const isBackLevel = level === 6;
+
+        if (bagConditionalCard) {
+            bagConditionalCard.classList.toggle('hidden', !isBagLevel);
+        }
+        if (numberChoiceCard) {
+            numberChoiceCard.classList.toggle('hidden', !isBagLevel);
+        }
+        if (numberDecisionTimeCard) {
+            numberDecisionTimeCard.classList.toggle('hidden', !isBagLevel);
+        }
+        if (backCardUsageCard) {
+            backCardUsageCard.classList.toggle('hidden', !isBackLevel);
         }
 
-        function updateCrossLevelOptions() {
-            const studentSelect = document.getElementById('crossLevelStudentSelect');
-            const level1Select = document.getElementById('level1Select');
-            const level2Select = document.getElementById('level2Select');
-            if (!studentSelect.value) { level1Select.disabled = level2Select.disabled = true; return; }
-            crossLevelStudent = studentData.find(s => s.id == studentSelect.value) || null;
-            if (!crossLevelStudent) {
-                level1Select.disabled = true;
-                level2Select.disabled = true;
-                return;
-            }
-            const levelPerf = crossLevelStudent.level_performance || {};
-            const allLevels = Object.keys(levelPerf)
-                .filter(l => (levelPerf[l].attempts || []).length >= 7)
-                .sort((a, b) => a - b);
-            const options = allLevels.map(l => `<option value="${l}">{% trans "Level" %} ${l} (${levelPerf[l].attempts.length} {% trans "attempts" %})</option>`).join('');
-            level1Select.innerHTML = level2Select.innerHTML = `<option value="">-- {% trans "Select level" %} --</option>` + options;
-            level1Select.disabled = level2Select.disabled = allLevels.length < 2;
+        return { isBagLevel, isBackLevel };
+    };
+
+    function renderTurnInsightsCharts() {
+        const level = getLevelValue();
+        const { isBagLevel, isBackLevel } = setTurnInsightVisibility(level);
+
+        const shareData = filterByLevel(starterVizData.offer_choice_share_by_family, level);
+        const expectedData = filterByLevel(starterVizData.deck_expected_share_by_family, level);
+        const accuracyData = filterByLevel(starterVizData.card_accuracy_by_family, level);
+        const decisionData = filterByLevel(starterVizData.decision_time_by_family, level);
+        const tileConditionalData = starterVizData.tile_conditional_accuracy ? filterByLevel(starterVizData.tile_conditional_accuracy.by_tile_type, level) : [];
+        const tileElseRate = starterVizData.tile_conditional_accuracy ? filterByLevel(starterVizData.tile_conditional_accuracy.else_rate_by_level, level) : [];
+        const bagConditionalData = starterVizData.bag_conditional_accuracy ? filterByLevel(starterVizData.bag_conditional_accuracy.by_comparator, level) : [];
+        const bagElseRate = starterVizData.bag_conditional_accuracy ? filterByLevel(starterVizData.bag_conditional_accuracy.else_rate_by_level, level) : [];
+        const backUsageData = filterByLevel(starterVizData.back_card_usage, level);
+        const foreachData = filterByLevel(starterVizData.foreach_tile_context, level);
+        const chainData = filterByLevel(starterVizData.special_chain_lengths, level);
+        const numberChoiceData = filterByLevel(starterVizData.number_choice_distribution, level);
+        const numberDecisionData = filterByLevel(starterVizData.number_decision_time, level);
+
+        const hiddenFamilies = new Set();
+        if (!isBagLevel) {
+            hiddenFamilies.add('conditional_bag_eq');
+            hiddenFamilies.add('conditional_bag_lt');
+            hiddenFamilies.add('conditional_bag_gt');
+            hiddenFamilies.add('bagcount');
+        }
+        if (!isBackLevel) {
+            hiddenFamilies.add('back');
         }
 
-        function compareLevels() {
-            const l1 = document.getElementById('level1Select').value;
-            const l2 = document.getElementById('level2Select').value;
-            if (!l1 || !l2 || l1 === l2) return;
-            const d1 = crossLevelStudent.level_performance[l1];
-            const d2 = crossLevelStudent.level_performance[l2];
-            const crossLevelDisplay = document.getElementById('crossLevelDisplay');
-            const crossLevelResults = document.getElementById('crossLevelResults');
+        const families = Array.from(new Set([
+            ...shareData.map(d => d.family),
+            ...expectedData.map(d => d.family),
+            ...accuracyData.map(d => d.family)
+        ]))
+            .filter(family => !hiddenFamilies.has(family))
+            .sort();
 
-            const getFirstValidValue = values => values.find(value => value !== null && value !== undefined);
-            const getLastValidValue = values => {
-                for (let i = values.length - 1; i >= 0; i -= 1) {
-                    const value = values[i];
-                    if (value !== null && value !== undefined) {
-                        return value;
-                    }
-                }
-                return null;
-            };
+        if (document.getElementById('cardFamilyShareChart')) {
+            destroyIfExists(cardFamilyShareChart);
+            const offeredLookup = Object.fromEntries(shareData.map(d => [d.family, d.offered_share]));
+            const chosenLookup = Object.fromEntries(shareData.map(d => [d.family, d.chosen_share]));
+            const expectedLookup = Object.fromEntries(expectedData.map(d => [d.family, d.expected_share]));
 
-            const initial1 = getFirstValidValue(d1.accuracy_values || []);
-            const final1 = getLastValidValue(d1.accuracy_values || []);
-            const initial2 = getFirstValidValue(d2.accuracy_values || []);
-            const final2 = getLastValidValue(d2.accuracy_values || []);
-
-            if (initial1 === null || final1 === null || initial2 === null || final2 === null) {
-                crossLevelDisplay.innerHTML = `<p>{% trans "Not enough accuracy data for the selected levels." %}</p>`;
-                crossLevelDisplay.style.display = 'block';
-                crossLevelResults.style.display = 'none';
-                return;
-            }
-
-            crossLevelDisplay.style.display = 'none';
-            crossLevelResults.style.display = 'block';
-
-            if (crossLevelChart) crossLevelChart.destroy();
-            crossLevelChart = new Chart(document.getElementById('crossLevelChart'), {
+            cardFamilyShareChart = new Chart(document.getElementById('cardFamilyShareChart'), {
                 type: 'bar',
                 data: {
-                    labels: [`{% trans "Level" %} ${l1}`, `{% trans "Level" %} ${l2}`],
+                    labels: families.map(familyLabel),
                     datasets: [
-                        { label: '{% trans "Initial Performance" %}', data: [initial1, initial2], backgroundColor: 'rgba(231, 76, 60, 0.6)' },
-                        { label: '{% trans "Final Performance" %}', data: [final1, final2], backgroundColor: 'rgba(39, 174, 96, 0.6)' }
+                        { label: '{% trans "Offered Share" %}', data: families.map(f => offeredLookup[f] || 0), backgroundColor: 'rgba(59, 130, 246, 0.7)' },
+                        { label: '{% trans "Chosen Share" %}', data: families.map(f => chosenLookup[f] || 0), backgroundColor: 'rgba(34, 197, 94, 0.7)' },
+                        { label: '{% trans "Expected Share" %}', data: families.map(f => expectedLookup[f] || 0), backgroundColor: 'rgba(245, 158, 11, 0.7)' }
                     ]
                 },
-                options: { responsive: true, maintainAspectRatio: false }
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } } }
             });
-
-            const transfer = initial2 - initial1;
-            let insightHTML = `<h3>{% trans "Learning Transfer Analysis" %}</h3>`;
-            if (transfer > 10) insightHTML += `<p style="color: #27ae60;">{% trans "✓ Excellent Transfer: Skill transfer detected between levels." %}</p>`;
-            else insightHTML += `<p>{% trans "Moderate or Limited Transfer detected." %}</p>`;
-            document.getElementById('transferInsights').innerHTML = insightHTML;
         }
 
-        function updateLevelOptions() {
-            const studentSelect = document.getElementById('studentSelect');
-            const levelSelect = document.getElementById('levelSelect');
-            if (!studentSelect.value) {
-                selectedStudent = null;
-                levelSelect.innerHTML = `<option value="">-- {% trans "Select student first" %} --</option>`;
-                levelSelect.disabled = true;
-                return;
-            }
-            selectedStudent = studentData.find(s => s.id == studentSelect.value) || null;
-            if (!selectedStudent) {
-                levelSelect.innerHTML = `<option value="">-- {% trans "Select student first" %} --</option>`;
-                levelSelect.disabled = true;
-                return;
-            }
-            const levelPerformance = selectedStudent.level_performance || {};
-            const levels = Object.keys(levelPerformance).filter(l => (levelPerformance[l].attempts || []).length >= 7);
-            if (levels.length === 0) {
-                levelSelect.innerHTML = `<option value="">-- {% trans "Not enough attempts yet" %} --</option>`;
-                levelSelect.disabled = true;
-                return;
-            }
-            levelSelect.innerHTML = `<option value="">-- {% trans "Select level" %} --</option>` + levels.map(l => `<option value="${l}">{% trans "Level" %} ${l}</option>`).join('');
-            levelSelect.disabled = false;
+        if (document.getElementById('cardFamilyAccuracyChart')) {
+            destroyIfExists(cardFamilyAccuracyChart);
+            const accuracyLookup = Object.fromEntries(accuracyData.map(d => [d.family, d.accuracy]));
+            cardFamilyAccuracyChart = new Chart(document.getElementById('cardFamilyAccuracyChart'), {
+                type: 'bar',
+                data: {
+                    labels: families.map(familyLabel),
+                    datasets: [{ label: '{% trans "Accuracy (%)" %}', data: families.map(f => accuracyLookup[f] || 0), backgroundColor: 'rgba(34, 197, 94, 0.7)' }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } } }
+            });
         }
 
-        function showLearningCurve() {
-            const level = document.getElementById('levelSelect').value;
-            if (!selectedStudent || !level) {
-                return;
-            }
-            const data = selectedStudent.level_performance[level];
-            const attempts = (data.attempts && data.attempts.length > 0)
-                ? data.attempts
-                : data.accuracy_values.map((_, index) => index + 1);
-            document.getElementById('learningCurveDisplay').style.display = 'none';
-            document.getElementById('learningCurveCharts').style.display = 'block';
-
-            const trendLabels = {
-                improving: '{% trans "Improving" %}',
-                declining: '{% trans "Declining" %}',
-                plateaued: '{% trans "Plateaued" %}',
-                mastered: '{% trans "Mastered" %}',
-                insufficient_data: '{% trans "Insufficient data" %}'
-            };
-            const trendLabel = trendLabels[data.learning_curve_trend] || data.learning_curve_trend;
-            const trendTarget = document.getElementById('learningCurveTrend');
-            const slopeTarget = document.getElementById('learningCurveSlope');
-            const attemptsTarget = document.getElementById('learningCurveAttempts');
-            if (trendTarget) {
-                trendTarget.textContent = trendLabel;
-            }
-            if (slopeTarget) {
-                slopeTarget.textContent = Number.isFinite(data.learning_curve_slope)
-                    ? data.learning_curve_slope.toFixed(3)
-                    : '-';
-            }
-            if (attemptsTarget) {
-                attemptsTarget.textContent = attempts.length;
-            }
-
-            const ctxAcc = document.getElementById('accuracyCurveChart');
-            if (accuracyChart) accuracyChart.destroy();
-            accuracyChart = new Chart(ctxAcc, {
-                type: 'line',
+        if (document.getElementById('cardFamilyDecisionTimeChart')) {
+            destroyIfExists(cardFamilyDecisionTimeChart);
+            const decisionLookup = Object.fromEntries(decisionData.map(d => [d.family, d.avg]));
+            cardFamilyDecisionTimeChart = new Chart(document.getElementById('cardFamilyDecisionTimeChart'), {
+                type: 'bar',
                 data: {
-                    labels: attempts,
-                    datasets: [
-                        {
-                            label: '{% trans "Accuracy Over Time" %}',
-                            data: data.accuracy_values,
-                            borderColor: '#27ae60',
-                            backgroundColor: 'rgba(39, 174, 96, 0.1)',
-                            tension: 0.35
-                        }
-                    ]
-                },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
-
-            const ctxScore = document.getElementById('scoreCurveChart');
-            if (scoreChart) scoreChart.destroy();
-            scoreChart = new Chart(ctxScore, {
-                type: 'line',
-                data: {
-                    labels: attempts,
-                    datasets: [
-                        {
-                            label: '{% trans "Score Over Time" %}',
-                            data: data.score_values,
-                            borderColor: '#417690',
-                            backgroundColor: 'rgba(65, 118, 144, 0.1)',
-                            tension: 0.35
-                        }
-                    ]
-                },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
-
-            const ctxTime = document.getElementById('timeCurveChart');
-            if (timeChart) timeChart.destroy();
-            timeChart = new Chart(ctxTime, {
-                type: 'line',
-                data: {
-                    labels: attempts,
-                    datasets: [
-                        {
-                            label: '{% trans "Time Elapsed Over Time" %}',
-                            data: data.time_values,
-                            borderColor: '#f39c12',
-                            backgroundColor: 'rgba(243, 156, 18, 0.1)',
-                            tension: 0.35
-                        }
-                    ]
+                    labels: families.map(familyLabel),
+                    datasets: [{ label: '{% trans "Avg Time (ms)" %}', data: families.map(f => decisionLookup[f] || 0), backgroundColor: 'rgba(99, 102, 241, 0.7)' }]
                 },
                 options: { responsive: true, maintainAspectRatio: false }
             });
         }
-    </script>
+
+        if (document.getElementById('tileConditionalAccuracyChart')) {
+            destroyIfExists(tileConditionalAccuracyChart);
+            const tileLabels = [1, 2, 3, 4, 5, 6];
+            const tileLookup = Object.fromEntries(tileConditionalData.map(d => [d.tile_type, d.accuracy]));
+            tileConditionalAccuracyChart = new Chart(document.getElementById('tileConditionalAccuracyChart'), {
+                type: 'bar',
+                data: {
+                    labels: tileLabels.map(t => `Tile ${t}`),
+                    datasets: [{ label: '{% trans "Accuracy (%)" %}', data: tileLabels.map(t => tileLookup[t] || 0), backgroundColor: 'rgba(34, 197, 94, 0.7)' }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } } }
+            });
+        }
+
+        if (document.getElementById('bagConditionalAccuracyChart')) {
+            destroyIfExists(bagConditionalAccuracyChart);
+            bagConditionalAccuracyChart = null;
+            if (isBagLevel) {
+                const comparatorOrder = ['eq', 'lt', 'gt'];
+                const comparatorLookup = { eq: 0, lt: 0, gt: 0 };
+                bagConditionalData.forEach(entry => {
+                    if (Object.prototype.hasOwnProperty.call(comparatorLookup, entry.comparator)) {
+                        comparatorLookup[entry.comparator] = Number(entry.accuracy || 0);
+                    }
+                });
+
+                bagConditionalAccuracyChart = new Chart(document.getElementById('bagConditionalAccuracyChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: ['=', '<', '>'],
+                        datasets: [{ label: '{% trans "Accuracy (%)" %}', data: comparatorOrder.map(c => comparatorLookup[c]), backgroundColor: 'rgba(34, 197, 94, 0.7)' }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } } }
+                });
+            }
+        }
+
+        if (document.getElementById('conditionalElseRateChart')) {
+            destroyIfExists(conditionalElseRateChart);
+            const tileElse = tileElseRate.length ? tileElseRate[0].else_rate : 0;
+            const bagElse = bagElseRate.length ? bagElseRate[0].else_rate : 0;
+            conditionalElseRateChart = new Chart(document.getElementById('conditionalElseRateChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['Tile', 'Bag'],
+                    datasets: [{ label: '{% trans "Else Rate (%)" %}', data: [tileElse, bagElse], backgroundColor: ['rgba(59, 130, 246, 0.7)', 'rgba(245, 158, 11, 0.7)'] }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } } }
+            });
+        }
+
+        if (document.getElementById('backCardUsageChart')) {
+            destroyIfExists(backCardUsageChart);
+            backCardUsageChart = null;
+            if (isBackLevel) {
+                const placeLabels = [1, 2, 3, 4];
+                const placeLookup = Object.fromEntries(backUsageData.map(d => [d.place_before, d.count]));
+                backCardUsageChart = new Chart(document.getElementById('backCardUsageChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: placeLabels.map(p => `#${p}`),
+                        datasets: [{ label: '{% trans "Back Cards" %}', data: placeLabels.map(p => placeLookup[p] || 0), backgroundColor: 'rgba(239, 68, 68, 0.7)' }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+        }
+
+        if (document.getElementById('foreachContextChart')) {
+            destroyIfExists(foreachContextChart);
+            const contextEntry = foreachData.length ? foreachData[0] : { with_opponent: 0, without_opponent: 0 };
+            foreachContextChart = new Chart(document.getElementById('foreachContextChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['With Opponent', 'Without Opponent'],
+                    datasets: [{ label: '{% trans "Turns" %}', data: [contextEntry.with_opponent, contextEntry.without_opponent], backgroundColor: ['rgba(59, 130, 246, 0.7)', 'rgba(156, 163, 175, 0.7)'] }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        if (document.getElementById('specialChainLengthChart')) {
+            destroyIfExists(specialChainLengthChart);
+            const chainLabels = chainData.map(d => d.chain_length);
+            specialChainLengthChart = new Chart(document.getElementById('specialChainLengthChart'), {
+                type: 'bar',
+                data: {
+                    labels: chainLabels,
+                    datasets: [{ label: '{% trans "Turns" %}', data: chainData.map(d => d.turn_count), backgroundColor: 'rgba(59, 130, 246, 0.7)' }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        if (document.getElementById('numberChoiceChart')) {
+            destroyIfExists(numberChoiceChart);
+            numberChoiceChart = null;
+            if (isBagLevel) {
+                const numberLabels = numberChoiceData.map(d => d.chosen_number);
+                numberChoiceChart = new Chart(document.getElementById('numberChoiceChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: numberLabels,
+                        datasets: [{ label: '{% trans "Chosen Count" %}', data: numberChoiceData.map(d => d.count), backgroundColor: 'rgba(34, 197, 94, 0.7)' }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+        }
+
+        if (document.getElementById('numberDecisionTimeChart')) {
+            destroyIfExists(numberDecisionTimeChart);
+            numberDecisionTimeChart = null;
+            if (isBagLevel) {
+                const numberDecisionLabels = numberDecisionData.map(d => d.chosen_number);
+                numberDecisionTimeChart = new Chart(document.getElementById('numberDecisionTimeChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: numberDecisionLabels,
+                        datasets: [{ label: '{% trans "Avg Time (ms)" %}', data: numberDecisionData.map(d => d.avg_time_ms), backgroundColor: 'rgba(99, 102, 241, 0.7)' }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+        }
+    }
+
+    if (levelSelect) {
+        levelSelect.addEventListener('change', renderTurnInsightsCharts);
+        renderTurnInsightsCharts();
+    }
+
+    // Radar chart instances
+    let radarChart, studentRadarChart, crossLevelChart, accuracyChart, scoreChart, timeChart;
+
+    function updateRadarChart() {
+        const checkboxes = document.querySelectorAll('.classroom-checkbox:checked');
+        const selectedCount = checkboxes.length;
+        const counter = document.getElementById('selectionCounter');
+        const display = document.getElementById('radarChartDisplay');
+        const results = document.getElementById('radarChartResults');
+
+        counter.textContent = `${selectedCount}/5 {% trans "classrooms selected" %}`;
+        counter.style.color = selectedCount >= 2 && selectedCount <= 5 ? '#22c55e' : '#a3a3a3';
+
+        if (selectedCount > 5) { checkboxes[checkboxes.length - 1].checked = false; updateRadarChart(); return; }
+        if (selectedCount < 2) { display.classList.remove('hidden'); results.classList.add('hidden'); return; }
+
+        const selectedClassrooms = Array.from(checkboxes).map(cb => ({ id: String(cb.value), name: cb.getAttribute('data-name') }));
+        const dataMode = document.querySelector('input[name="radarDataMode"]:checked').value;
+        const selectedData = selectedClassrooms
+            .map(sc => comparisonClassroomData.find(cd => String(cd.id) === sc.id))
+            .filter(cd => cd !== undefined);
+
+        if (selectedData.length < 2) { display.classList.remove('hidden'); results.classList.add('hidden'); return; }
+
+        display.classList.add('hidden');
+        results.classList.remove('hidden');
+
+        const colors = ['rgba(59, 130, 246, 0.4)', 'rgba(34, 197, 94, 0.4)', 'rgba(245, 158, 11, 0.4)', 'rgba(239, 68, 68, 0.4)', 'rgba(168, 85, 247, 0.4)'];
+        const borderColors = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#a855f7'];
+
+        const datasets = selectedData.map((classData, index) => {
+            let radarData;
+            if (dataMode === 'normalized') {
+                const decisionSpeedScore = classData.avg_decision_time > 0 ? Math.max(0, 100 - (classData.avg_decision_time * 2)) : 50;
+                radarData = [classData.accuracy || 0, (classData.avg_score / 10) || 0, classData.win_rate || 0, decisionSpeedScore, Math.min(100, classData.engagement * 10) || 0];
+            } else {
+                const totalGames = classData.total_runs || 1;
+                radarData = [classData.accuracy || 0, (classData.avg_score * totalGames) / 10, ((classData.win_rate / 100) * totalGames) || 0, Math.max(0, 100 - (classData.avg_decision_time * totalGames)), classData.engagement * classData.student_count || 0];
+            }
+            return { label: classData.name, data: radarData, backgroundColor: colors[index % 5], borderColor: borderColors[index % 5], borderWidth: 2 };
+        });
+
+        if (radarChart) radarChart.destroy();
+        radarChart = new Chart(document.getElementById('radarComparisonChart'), {
+            type: 'radar',
+            data: { labels: ['{% trans "Accuracy" %}', '{% trans "Score" %}', '{% trans "Win Rate" %}', '{% trans "Speed" %}', '{% trans "Engagement" %}'], datasets },
+            options: { responsive: true, maintainAspectRatio: false, scales: { r: { beginAtZero: true, max: 100, ticks: { stepSize: 20 } } } }
+        });
+    }
+
+    function updateStudentComparison() {
+        const checkboxes = document.querySelectorAll('.student-checkbox:checked');
+        const selectedCount = checkboxes.length;
+        const counter = document.getElementById('studentSelectionCounter');
+        const display = document.getElementById('studentComparisonDisplay');
+        const results = document.getElementById('studentComparisonResults');
+
+        counter.textContent = `${selectedCount}/5 {% trans "students selected" %}`;
+        if (selectedCount > 5) { checkboxes[checkboxes.length - 1].checked = false; updateStudentComparison(); return; }
+        if (selectedCount < 2) { display.classList.remove('hidden'); results.classList.add('hidden'); return; }
+
+        const selectedStudents = Array.from(checkboxes)
+            .map(cb => studentData.find(s => String(s.id) === String(cb.value)))
+            .filter(s => s !== undefined);
+        if (selectedStudents.length < 2) { display.classList.remove('hidden'); results.classList.add('hidden'); return; }
+
+        display.classList.add('hidden');
+        results.classList.remove('hidden');
+
+        createStudentRadarChart(selectedStudents);
+        createStrengthsTable(selectedStudents);
+        createProgressionCharts(selectedStudents);
+    }
+
+    function createStudentRadarChart(students) {
+        const colors = ['rgba(59, 130, 246, 0.4)', 'rgba(34, 197, 94, 0.4)', 'rgba(245, 158, 11, 0.4)', 'rgba(239, 68, 68, 0.4)', 'rgba(168, 85, 247, 0.4)'];
+        const borderColors = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#a855f7'];
+        const datasets = students.map((student, index) => ({
+            label: `${student.name}`,
+            data: [student.accuracy || 0, student.avg_score/10 || 0, student.win_rate || 0, student.avg_decision_time > 0 ? 100 - (student.avg_decision_time * 2) : 50, student.improvement_rate + 50 || 50, student.consistency * 100 || 0],
+            backgroundColor: colors[index % 5], borderColor: borderColors[index % 5], borderWidth: 2
+        }));
+
+        if (studentRadarChart) studentRadarChart.destroy();
+        studentRadarChart = new Chart(document.getElementById('studentRadarChart'), {
+            type: 'radar',
+            data: { labels: ['{% trans "Accuracy" %}', '{% trans "Score" %}', '{% trans "Win Rate" %}', '{% trans "Speed" %}', '{% trans "Improvement" %}', '{% trans "Consistency" %}'], datasets },
+            options: { responsive: true, maintainAspectRatio: false, scales: { r: { beginAtZero: true, max: 100 } } }
+        });
+    }
+
+    function createStrengthsTable(students) {
+        const metrics = [
+            { key: 'accuracy', label: '{% trans "Accuracy" %}', unit: '%', higher: true },
+            { key: 'avg_score', label: '{% trans "Avg Score" %}', unit: '', higher: true },
+            { key: 'win_rate', label: '{% trans "Win Rate" %}', unit: '%', higher: true },
+            { key: 'avg_decision_time', label: '{% trans "Decision Time" %}', unit: 's', higher: false },
+            { key: 'improvement_rate', label: '{% trans "Improvement" %}', unit: '%', higher: true }
+        ];
+
+        let tableHTML = '<table class="w-full text-sm"><thead><tr class="border-b border-border"><th class="p-3 text-left font-medium text-muted-foreground">{% trans "Metric" %}</th>';
+        students.forEach(student => tableHTML += `<th class="p-3 text-center font-medium">${student.name}</th>`);
+        tableHTML += '</tr></thead><tbody>';
+
+        metrics.forEach((metric) => {
+            tableHTML += `<tr class="border-b border-border hover:bg-muted/30"><td class="p-3 font-medium">${metric.label}</td>`;
+            const values = students.map(s => s[metric.key] || 0);
+            const bestValue = metric.higher ? Math.max(...values) : Math.min(...values);
+            students.forEach(student => {
+                const value = student[metric.key] || 0;
+                const isBest = value === bestValue && Math.max(...values) !== Math.min(...values);
+                tableHTML += `<td class="p-3 text-center ${isBest ? 'text-success font-semibold' : ''}">${value.toFixed(1)}${metric.unit}${isBest ? ' ★' : ''}</td>`;
+            });
+            tableHTML += '</tr>';
+        });
+        tableHTML += '</tbody></table>';
+        document.getElementById('strengthsTable').innerHTML = tableHTML;
+    }
+
+    function createProgressionCharts(students) {
+        const colors = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#a855f7'];
+        const maxGames = Math.max(...students.map(s => s.total_runs || 0));
+        if (maxGames === 0) return;
+        const labels = Array.from({ length: maxGames }, (_, i) => `${i + 1}`);
+
+        const makeChart = (id, title, yLabel, dataFunc) => {
+            const ctx = document.getElementById(id);
+            if (window[id + 'Obj']) window[id + 'Obj'].destroy();
+            window[id + 'Obj'] = new Chart(ctx, {
+                type: 'line',
+                data: { labels, datasets: students.map((s, i) => ({ label: s.name, data: dataFunc(s), borderColor: colors[i % 5], tension: 0.4, pointRadius: 2 })) },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: title } }, scales: { y: { title: { display: true, text: yLabel } } } }
+            });
+        };
+
+        makeChart('accuracyProgressionChart', '{% trans "Accuracy" %}', '%', s => s.accuracy_per_game);
+        makeChart('scoreProgressionChart', '{% trans "Score" %}', '', s => s.scores);
+        makeChart('speedProgressionChart', '{% trans "Speed" %}', 's', s => s.times.map((t, i) => { const m = (s.correct_moves[i] || 0) + (s.wrong_moves[i] || 0); return t && m ? t / m : null; }));
+    }
+
+    function updateCrossLevelOptions() {
+        const studentSelect = document.getElementById('crossLevelStudentSelect');
+        const level1Select = document.getElementById('level1Select');
+        const level2Select = document.getElementById('level2Select');
+        if (!studentSelect.value) { level1Select.disabled = level2Select.disabled = true; return; }
+        crossLevelStudent = studentData.find(s => s.id == studentSelect.value) || null;
+        if (!crossLevelStudent) { level1Select.disabled = level2Select.disabled = true; return; }
+        const levelPerf = crossLevelStudent.level_performance || {};
+        const allLevels = Object.keys(levelPerf).filter(l => (levelPerf[l].attempts || []).length >= 7).sort((a, b) => a - b);
+        const options = allLevels.map(l => `<option value="${l}">{% trans "Level" %} ${l}</option>`).join('');
+        level1Select.innerHTML = level2Select.innerHTML = `<option value="">--</option>` + options;
+        level1Select.disabled = level2Select.disabled = allLevels.length < 2;
+    }
+
+    function compareLevels() {
+        const l1 = document.getElementById('level1Select').value;
+        const l2 = document.getElementById('level2Select').value;
+        if (!l1 || !l2 || l1 === l2) return;
+        const d1 = crossLevelStudent.level_performance[l1];
+        const d2 = crossLevelStudent.level_performance[l2];
+        const display = document.getElementById('crossLevelDisplay');
+        const results = document.getElementById('crossLevelResults');
+
+        const getFirstValid = values => values.find(v => v !== null && v !== undefined);
+        const getLastValid = values => { for (let i = values.length - 1; i >= 0; i--) if (values[i] !== null && values[i] !== undefined) return values[i]; return null; };
+
+        const initial1 = getFirstValid(d1.accuracy_values || []);
+        const final1 = getLastValid(d1.accuracy_values || []);
+        const initial2 = getFirstValid(d2.accuracy_values || []);
+        const final2 = getLastValid(d2.accuracy_values || []);
+
+        if (initial1 === null || final1 === null || initial2 === null || final2 === null) {
+            display.innerHTML = `<p>{% trans "Not enough data" %}</p>`;
+            display.classList.remove('hidden'); results.classList.add('hidden'); return;
+        }
+
+        display.classList.add('hidden'); results.classList.remove('hidden');
+
+        if (crossLevelChart) crossLevelChart.destroy();
+        crossLevelChart = new Chart(document.getElementById('crossLevelChart'), {
+            type: 'bar',
+            data: {
+                labels: [`{% trans "Level" %} ${l1}`, `{% trans "Level" %} ${l2}`],
+                datasets: [
+                    { label: '{% trans "Initial" %}', data: [initial1, initial2], backgroundColor: 'rgba(239, 68, 68, 0.6)' },
+                    { label: '{% trans "Final" %}', data: [final1, final2], backgroundColor: 'rgba(34, 197, 94, 0.6)' }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        const transfer = initial2 - initial1;
+        document.getElementById('transferInsights').innerHTML = transfer > 10 ? '<p class="text-success">{% trans "Excellent skill transfer detected!" %}</p>' : '<p>{% trans "Moderate or limited transfer" %}</p>';
+    }
+
+    function updateLevelOptions() {
+        const studentSelect = document.getElementById('studentSelect');
+        const levelSelect = document.getElementById('levelSelect');
+        if (!studentSelect.value) { selectedStudent = null; levelSelect.innerHTML = '<option value="">--</option>'; levelSelect.disabled = true; return; }
+        selectedStudent = studentData.find(s => s.id == studentSelect.value) || null;
+        if (!selectedStudent) { levelSelect.innerHTML = '<option value="">--</option>'; levelSelect.disabled = true; return; }
+        const levelPerf = selectedStudent.level_performance || {};
+        const levels = Object.keys(levelPerf).filter(l => (levelPerf[l].attempts || []).length >= 7);
+        if (levels.length === 0) { levelSelect.innerHTML = '<option value="">{% trans "Not enough data" %}</option>'; levelSelect.disabled = true; return; }
+        levelSelect.innerHTML = '<option value="">--</option>' + levels.map(l => `<option value="${l}">{% trans "Level" %} ${l}</option>`).join('');
+        levelSelect.disabled = false;
+    }
+
+    function showLearningCurve() {
+        const level = document.getElementById('levelSelect').value;
+        if (!selectedStudent || !level) return;
+        const data = selectedStudent.level_performance[level];
+        const attempts = (data.attempts && data.attempts.length > 0) ? data.attempts : data.accuracy_values.map((_, i) => i + 1);
+        
+        document.getElementById('learningCurveDisplay').classList.add('hidden');
+        document.getElementById('learningCurveCharts').classList.remove('hidden');
+        document.getElementById('learningCurveSummary').classList.remove('hidden');
+
+        const trendLabels = { improving: '{% trans "Improving" %}', declining: '{% trans "Declining" %}', plateaued: '{% trans "Plateaued" %}', mastered: '{% trans "Mastered" %}', insufficient_data: '{% trans "Insufficient" %}' };
+        document.getElementById('learningCurveTrend').textContent = trendLabels[data.learning_curve_trend] || data.learning_curve_trend;
+        document.getElementById('learningCurveSlope').textContent = Number.isFinite(data.learning_curve_slope) ? data.learning_curve_slope.toFixed(3) : '-';
+        document.getElementById('learningCurveAttempts').textContent = attempts.length;
+
+        if (accuracyChart) accuracyChart.destroy();
+        accuracyChart = new Chart(document.getElementById('accuracyCurveChart'), {
+            type: 'line',
+            data: { labels: attempts, datasets: [{ label: '{% trans "Accuracy" %}', data: data.accuracy_values, borderColor: '#22c55e', tension: 0.35 }] },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        if (scoreChart) scoreChart.destroy();
+        scoreChart = new Chart(document.getElementById('scoreCurveChart'), {
+            type: 'line',
+            data: { labels: attempts, datasets: [{ label: '{% trans "Score" %}', data: data.score_values, borderColor: '#3b82f6', tension: 0.35 }] },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        if (timeChart) timeChart.destroy();
+        timeChart = new Chart(document.getElementById('timeCurveChart'), {
+            type: 'line',
+            data: { labels: attempts, datasets: [{ label: '{% trans "Time" %}', data: data.time_values, borderColor: '#f59e0b', tension: 0.35 }] },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+</script>
 {% endblock %}

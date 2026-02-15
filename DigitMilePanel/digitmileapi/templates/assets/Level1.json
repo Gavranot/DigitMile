@@ -1,0 +1,25 @@
+{
+    "NumberCardsInDeck": false,
+    "cards": [
+        {
+            "cardName": "Move1",
+            "count": 7
+        },
+        {
+            "cardName": "Move2",
+            "count": 9
+        },
+        {
+            "cardName": "Move3",
+            "count": 9
+        },
+        {
+            "cardName": "Move4",
+            "count": 9
+        },
+        {
+            "cardName": "Move5",
+            "count": 7
+        }
+    ]
+}

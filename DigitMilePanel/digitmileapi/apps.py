@@ -7,7 +7,7 @@ def create_teacher_group(sender, **kwargs):
     from django.contrib.auth.models import Group, Permission
     from django.contrib.contenttypes.models import ContentType
     # Assuming your models are in 'models.py' in the same app
-    from .models import Student, Classroom, School, RunStatistics
+    from .models import Student, Classroom, School, Run, TurnEvent, SpecialTileTrigger
 
     # Get or create the 'Teachers' group
     teacher_group, created = Group.objects.get_or_create(name='Teachers')
@@ -22,7 +22,9 @@ def create_teacher_group(sender, **kwargs):
         student_ct = ContentType.objects.get_for_model(Student)
         classroom_ct = ContentType.objects.get_for_model(Classroom)
         school_ct = ContentType.objects.get_for_model(School)
-        run_statistics_ct = ContentType.objects.get_for_model(RunStatistics)
+        run_ct = ContentType.objects.get_for_model(Run)
+        turn_event_ct = ContentType.objects.get_for_model(TurnEvent)
+        special_tile_trigger_ct = ContentType.objects.get_for_model(SpecialTileTrigger)
 
         # Define the list of permissions to assign
         # These are model-level permissions. Object-level permissions (e.g., "can only edit own students")
@@ -37,7 +39,9 @@ def create_teacher_group(sender, **kwargs):
             Permission.objects.get(codename='delete_classroom', content_type=classroom_ct),
             Permission.objects.get(codename='view_classroom', content_type=classroom_ct),
             Permission.objects.get(codename='view_school', content_type=school_ct),
-            Permission.objects.get(codename='view_runstatistics', content_type=run_statistics_ct),
+            Permission.objects.get(codename='view_run', content_type=run_ct),
+            Permission.objects.get(codename='view_turnevent', content_type=turn_event_ct),
+            Permission.objects.get(codename='view_specialtiletrigger', content_type=special_tile_trigger_ct),
         ]
 
         # Assign the permissions to the group.

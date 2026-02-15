@@ -1,5 +1,7 @@
 # Visualizations and Statistics Guide
 
+> **Note**: This document describes the legacy dashboard using `RunStatistics`. For new analytics features, see [RUN_ANALYTICS_MODELS.md](./RUN_ANALYTICS_MODELS.md) which documents the newer `Run`, `TurnEvent`, and `SpecialTileTrigger` models that capture granular per-turn game data.
+
 This document explains how the teacher statistics dashboard works, what each visualization communicates, and the exact calculations used. It is intended for developers and administrators who need implementation-level detail and interpretable examples.
 
 ## Overview

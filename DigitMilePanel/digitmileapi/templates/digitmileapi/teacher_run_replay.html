@@ -1,0 +1,530 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Run Replay" %}{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+    theme: {
+        extend: {
+            colors: {
+                background: '#0a0a0a',
+                foreground: '#fafafa',
+                card: '#141414',
+                'card-foreground': '#fafafa',
+                border: '#262626',
+                muted: '#171717',
+                'muted-foreground': '#a3a3a3',
+                primary: '#3b82f6',
+                'primary-foreground': '#ffffff',
+                success: '#22c55e',
+                'success-foreground': '#ffffff',
+                warning: '#f59e0b',
+                'warning-foreground': '#ffffff',
+                danger: '#ef4444',
+                'danger-foreground': '#ffffff',
+            }
+        }
+    }
+}
+</script>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; }
+    #header, #branding, #user-tools, .breadcrumbs, #nav-sidebar { display: none !important; }
+    #container, #main, #content { padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
+
+    .map-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 6px; }
+    .tile { height: 34px; border-radius: 6px; border: 1px solid #262626; position: relative; display: flex; align-items: center; justify-content: center; font-size: 10px; color: rgba(255, 255, 255, 0.7); }
+    .tile .index { position: absolute; top: 2px; left: 4px; font-size: 9px; opacity: 0.6; }
+    .tile.player { outline: 2px solid #22c55e; }
+    .tile.bot1 { outline: 2px solid #3b82f6; }
+    .tile.bot2 { outline: 2px solid #f59e0b; }
+    .tile.player-before { box-shadow: inset 0 0 0 2px rgba(34, 197, 94, 0.35); }
+    .tile.bot1-before { box-shadow: inset 0 0 0 2px rgba(59, 130, 246, 0.35); }
+    .tile.bot2-before { box-shadow: inset 0 0 0 2px rgba(245, 158, 11, 0.35); }
+
+    .tile-type-0 { background: #334155; }
+    .tile-type-1 { background: #1d4ed8; }
+    .tile-type-2 { background: #0f766e; }
+    .tile-type-3 { background: #92400e; }
+    .tile-type-4 { background: #7f1d1d; }
+    .tile-type-5 { background: #14532d; }
+    .tile-type-6 { background: #155e75; }
+
+    .tile-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+    .tile-legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #a3a3a3; }
+    .tile-swatch { width: 12px; height: 12px; border-radius: 3px; border: 1px solid #262626; }
+
+    .marker { width: 8px; height: 8px; border-radius: 999px; display: inline-block; }
+    .marker.player { background: #22c55e; }
+    .marker.bot1 { background: #3b82f6; }
+    .marker.bot2 { background: #f59e0b; }
+</style>
+{% endblock %}
+
+{% block content_title %}{% endblock %}
+{% block nav-sidebar %}{% endblock %}
+{% block breadcrumbs %}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-background text-foreground">
+    <header class="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
+        <div class="flex h-14 items-center justify-between px-6">
+            <div class="flex items-center gap-4">
+                <a href="/panel/teacher/statistics/" class="text-sm text-muted-foreground hover:text-foreground">{% trans "Back to Dashboard" %}</a>
+                <h1 class="text-lg font-semibold">{% trans "Run Replay" %}</h1>
+            </div>
+            <div class="text-sm text-muted-foreground">{{ run.student.full_name }} - {% trans "Level" %} {{ run.level }}</div>
+        </div>
+    </header>
+
+    <main class="p-6">
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <div class="xl:col-span-2">
+                <div class="rounded-lg bg-card border border-border p-4">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="font-semibold">{% trans "Board" %}</h2>
+                        <div class="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span class="flex items-center gap-1"><span class="marker player"></span>{% trans "Player" %}</span>
+                            <span class="flex items-center gap-1"><span class="marker bot1"></span>Bot 1</span>
+                            <span class="flex items-center gap-1"><span class="marker bot2"></span>Bot 2</span>
+                        </div>
+                    </div>
+                    <div id="mapGrid" class="map-grid"></div>
+                    <div class="tile-legend">
+                        <span class="tile-legend-item"><span class="tile-swatch tile-type-0"></span>0 Start/End</span>
+                        <span class="tile-legend-item"><span class="tile-swatch tile-type-1"></span>1 Earth</span>
+                        <span class="tile-legend-item"><span class="tile-swatch tile-type-2"></span>2 Ice</span>
+                        <span class="tile-legend-item"><span class="tile-swatch tile-type-3"></span>3 Water</span>
+                        <span class="tile-legend-item"><span class="tile-swatch tile-type-4"></span>4 Clown</span>
+                        <span class="tile-legend-item"><span class="tile-swatch tile-type-5"></span>5 Skateboard</span>
+                        <span class="tile-legend-item"><span class="tile-swatch tile-type-6"></span>6 Cake</span>
+                    </div>
+                </div>
+
+                <div class="rounded-lg bg-card border border-border p-4 mt-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div class="flex items-center gap-3">
+                            <button id="prevTurn" class="h-9 px-3 rounded-md bg-muted text-foreground text-sm">{% trans "Prev" %}</button>
+                            <button id="nextTurn" class="h-9 px-3 rounded-md bg-muted text-foreground text-sm">{% trans "Next" %}</button>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-sm text-muted-foreground">{% trans "Turn" %}</span>
+                            <input id="turnSlider" type="range" min="0" max="0" value="0" class="w-60">
+                            <span id="turnCounter" class="text-sm text-muted-foreground">0/0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="xl:col-span-1">
+                <div class="rounded-lg bg-card border border-border p-4 mb-6">
+                    <h2 class="font-semibold mb-3">{% trans "Run Summary" %}</h2>
+                    <div class="space-y-2 text-sm text-muted-foreground">
+                        <div class="flex items-center justify-between"><span>{% trans "Run ID" %}</span><span class="text-foreground">{{ run.id }}</span></div>
+                        <div class="flex items-center justify-between"><span>{% trans "Score" %}</span><span class="text-foreground">{{ run.score }}</span></div>
+                        <div class="flex items-center justify-between"><span>{% trans "Elapsed" %}</span><span class="text-foreground">{{ run.elapsed_ms }} ms</span></div>
+                        <div class="flex items-center justify-between"><span>{% trans "Correct" %}</span><span class="text-foreground">{{ run.correct_moves }}</span></div>
+                        <div class="flex items-center justify-between"><span>{% trans "Wrong" %}</span><span class="text-foreground">{{ run.wrong_moves }}</span></div>
+                    </div>
+                </div>
+
+                <div class="rounded-lg bg-card border border-border p-4">
+                    <h2 class="font-semibold mb-3">{% trans "Turn Details" %}</h2>
+                    <div class="space-y-4 text-sm">
+                        <div>
+                            <div class="text-xs text-muted-foreground mb-1">{% trans "Chosen Card" %}</div>
+                            <div id="chosenCard" class="text-foreground"></div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-muted-foreground mb-1">{% trans "Offered Cards" %}</div>
+                            <div id="offeredCards" class="text-foreground"></div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-muted-foreground mb-1">{% trans "Numbers" %}</div>
+                            <div id="numbersInfo" class="text-foreground"></div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-muted-foreground mb-1">{% trans "Positions" %}</div>
+                            <div id="positionsInfo" class="text-foreground"></div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-muted-foreground mb-1">{% trans "Special Triggers" %}</div>
+                            <div id="triggersInfo" class="text-foreground"></div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-muted-foreground mb-1">{% trans "Info" %}</div>
+                            <div id="turnInfo" class="text-foreground"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+    const runData = {{ run_data_json|safe }};
+    const mapGrid = document.getElementById('mapGrid');
+    const slider = document.getElementById('turnSlider');
+    const counter = document.getElementById('turnCounter');
+    const prevBtn = document.getElementById('prevTurn');
+    const nextBtn = document.getElementById('nextTurn');
+
+    const chosenCardEl = document.getElementById('chosenCard');
+    const offeredCardsEl = document.getElementById('offeredCards');
+    const numbersInfoEl = document.getElementById('numbersInfo');
+    const positionsInfoEl = document.getElementById('positionsInfo');
+    const triggersInfoEl = document.getElementById('triggersInfo');
+    const turnInfoEl = document.getElementById('turnInfo');
+
+    const turns = runData.turns || [];
+    const tileTypeByIndex = new Map((runData.game_map || []).map(tile => [
+        tile.tileMapIndex ?? 0,
+        tile.tileType ?? tile.tileIndex ?? 0,
+    ]));
+
+    const tileTypeLabel = {
+        0: 'Start/End',
+        1: 'Type 1',
+        2: 'Type 2',
+        3: 'Type 3',
+        4: 'Clown',
+        5: 'Skateboard',
+        6: 'Type 6',
+    };
+
+    slider.max = Math.max(turns.length - 1, 0);
+    counter.textContent = `${turns.length ? 1 : 0}/${turns.length}`;
+
+    function escapeHtml(value) {
+        return String(value)
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#39;');
+    }
+
+    function parseIntSafe(value) {
+        if (value === null || value === undefined || value === '') return null;
+        const parsed = Number.parseInt(value, 10);
+        return Number.isNaN(parsed) ? null : parsed;
+    }
+
+    function parseCardData(dataString) {
+        const result = {
+            tileType: null,
+            ifSign: null,
+            ifValue: null,
+            thenValue: null,
+            elseValue: null,
+        };
+
+        if (!dataString) return result;
+        let raw = String(dataString).trim();
+        if (raw.startsWith('[CardData:')) raw = raw.slice(10).trim();
+        if (raw.startsWith('[')) raw = raw.slice(1);
+        if (raw.endsWith(']')) raw = raw.slice(0, -1);
+
+        raw.split(',').forEach(part => {
+            const splitIndex = part.indexOf('=');
+            if (splitIndex === -1) return;
+            const key = part.slice(0, splitIndex).trim();
+            const value = part.slice(splitIndex + 1).trim();
+            if (key === 'ifSign') {
+                result.ifSign = value || null;
+                return;
+            }
+            if (key === 'tileType') result.tileType = parseIntSafe(value);
+            if (key === 'ifValue') result.ifValue = parseIntSafe(value);
+            if (key === 'thenValue') result.thenValue = parseIntSafe(value);
+            if (key === 'elseValue') result.elseValue = parseIntSafe(value);
+        });
+        return result;
+    }
+
+    function normalizeCardType(rawType) {
+        if (!rawType) return 'Unknown';
+        if (rawType === 'Bug' || rawType === 'Back' || String(rawType).startsWith('AllBack')) return 'Back';
+        return rawType;
+    }
+
+    function cardTypeTitle(cardType) {
+        const titles = {
+            MoveX: 'Move',
+            Back: 'Back',
+            IfXMoveYElseMoveZ: 'If Tile Then Move Else Move',
+            IfBagEqualXMoveYElseMoveZ: 'If Bag = X Then Move Else Move',
+            IfBagLessXMoveYElseMoveZ: 'If Bag < X Then Move Else Move',
+            IfBagGreaterXMoveYElseMoveZ: 'If Bag > X Then Move Else Move',
+            BagCount: 'BagCount',
+            ForXMoveY: 'For Each On Tile Type, Move',
+        };
+        return titles[cardType] || cardType;
+    }
+
+    function computeBagBeforeByTurn(turnsList) {
+        const bagBefore = [];
+        let current = 1;
+        for (let i = 0; i < turnsList.length; i += 1) {
+            bagBefore[i] = current;
+            const chosen = turnsList[i]?.chosen_number;
+            if (chosen !== null && chosen !== undefined && chosen !== -1) {
+                current = chosen;
+            }
+        }
+        return bagBefore;
+    }
+
+    const bagBeforeByTurn = computeBagBeforeByTurn(turns);
+
+    function countPlayersOnTileType(turn, targetType) {
+        let count = 0;
+        if (tileTypeByIndex.get(turn.tile_before_index) === targetType) count += 1;
+        (turn.bot_positions_before || []).forEach(bot => {
+            if (tileTypeByIndex.get(bot.tileMapIndex) === targetType) count += 1;
+        });
+        return count;
+    }
+
+    function isBagCardType(type) {
+        const normalized = normalizeCardType(type);
+        return normalized === 'BagCount'
+            || normalized === 'IfBagEqualXMoveYElseMoveZ'
+            || normalized === 'IfBagLessXMoveYElseMoveZ'
+            || normalized === 'IfBagGreaterXMoveYElseMoveZ';
+    }
+
+    function isTileConditionalType(type) {
+        const normalized = normalizeCardType(type);
+        return normalized === 'ForXMoveY' || normalized === 'IfXMoveYElseMoveZ';
+    }
+
+    function formatBagCardCondition(card, turnIndex) {
+        const type = normalizeCardType(card?.type);
+        const parsed = parseCardData(card?.data);
+        const bagBefore = bagBeforeByTurn[turnIndex] ?? 1;
+
+        if (type === 'BagCount') {
+            return `BagCount -> move by bag number (${bagBefore})`;
+        }
+
+        if (type === 'IfBagEqualXMoveYElseMoveZ') {
+            return `If bag == ${parsed.ifValue ?? '?'} then +${parsed.thenValue ?? '?'} else +${parsed.elseValue ?? '?'}`;
+        }
+        if (type === 'IfBagLessXMoveYElseMoveZ') {
+            return `If bag < ${parsed.ifValue ?? '?'} then +${parsed.thenValue ?? '?'} else +${parsed.elseValue ?? '?'}`;
+        }
+        if (type === 'IfBagGreaterXMoveYElseMoveZ') {
+            return `If bag > ${parsed.ifValue ?? '?'} then +${parsed.thenValue ?? '?'} else +${parsed.elseValue ?? '?'}`;
+        }
+
+        return card?.data ? String(card.data) : 'Unknown bag card';
+    }
+
+    function getTilePresenceOnType(turn, tileType) {
+        const playerOn = tileTypeByIndex.get(turn.tile_before_index) === tileType;
+        const botOn = (turn.bot_positions_before || []).some(
+            bot => tileTypeByIndex.get(bot.tileMapIndex) === tileType
+        );
+        return { playerOn, botOn, any: playerOn || botOn };
+    }
+
+    function buildTurnInsights(turn, turnIndex) {
+        const lines = [];
+        lines.push(`Move result: ${turn.was_correct ? 'Correct' : 'Wrong'}.`);
+
+        const isBagLevel = runData.level === 5 || runData.level === 6;
+        if (isBagLevel) {
+            const bagCardsInHand = (turn.offered_cards || []).filter(card => isBagCardType(card?.type));
+            if (bagCardsInHand.length > 0) {
+                const chosenNumber = turn.chosen_number == null ? 'none' : turn.chosen_number;
+                const bagCardConditions = bagCardsInHand
+                    .map(card => formatBagCardCondition(card, turnIndex))
+                    .join(' | ');
+                lines.push(
+                    `The player picked number ${chosenNumber} while having a Bag card with the following conditions: ${bagCardConditions}.`
+                );
+            }
+        }
+
+        const chosenType = normalizeCardType(turn?.chosen_card?.type);
+        if (isTileConditionalType(chosenType)) {
+            const parsed = parseCardData(turn?.chosen_card?.data);
+            if (parsed.tileType == null) {
+                lines.push('The player chose a tile conditional card, but tile type is missing in card data.');
+            } else {
+                const presence = getTilePresenceOnType(turn, parsed.tileType);
+                lines.push(
+                    `The player chose a tile conditional card for tile type ${parsed.tileType}. Is a bot/the player standing on a tile of that type? ${presence.any ? 'Yes' : 'No'} (player: ${presence.playerOn ? 'Yes' : 'No'}, bot: ${presence.botOn ? 'Yes' : 'No'}).`
+                );
+            }
+        }
+
+        if (lines.length === 1) {
+            lines.push('No additional card-context insight for this turn.');
+        }
+
+        return lines;
+    }
+
+    function cardDescription(card, turn, turnIndex) {
+        const rawType = card?.type;
+        const type = normalizeCardType(rawType);
+        const parsed = parseCardData(card?.data);
+        const tile = parsed.tileType;
+        const ifValue = parsed.ifValue;
+        const thenValue = parsed.thenValue;
+        const elseValue = parsed.elseValue;
+        const bagBefore = bagBeforeByTurn[turnIndex] ?? 1;
+
+        if (type === 'MoveX') {
+            if (thenValue === null) return 'Invalid card data: missing thenValue.';
+            return `Move forward by ${thenValue} tile(s).`;
+        }
+
+        if (type === 'Back') {
+            const steps = thenValue ?? 1;
+            return `Move backward by ${steps} tile(s).`;
+        }
+
+        if (type === 'IfXMoveYElseMoveZ') {
+            if (tile === null || thenValue === null || elseValue === null) return 'Invalid tile-conditional card data.';
+            return `If player is on tile type ${tile} (${tileTypeLabel[tile] || 'Unknown'}), move +${thenValue}; otherwise move +${elseValue}.`;
+        }
+
+        if (type === 'IfBagEqualXMoveYElseMoveZ') {
+            if (ifValue === null || thenValue === null || elseValue === null) return 'Invalid bag-conditional card data.';
+            return `If bag number (${bagBefore}) == ${ifValue}, move +${thenValue}; otherwise move +${elseValue}.`;
+        }
+
+        if (type === 'IfBagLessXMoveYElseMoveZ') {
+            if (ifValue === null || thenValue === null || elseValue === null) return 'Invalid bag-conditional card data.';
+            return `If bag number (${bagBefore}) < ${ifValue}, move +${thenValue}; otherwise move +${elseValue}.`;
+        }
+
+        if (type === 'IfBagGreaterXMoveYElseMoveZ') {
+            if (ifValue === null || thenValue === null || elseValue === null) return 'Invalid bag-conditional card data.';
+            return `If bag number (${bagBefore}) > ${ifValue}, move +${thenValue}; otherwise move +${elseValue}.`;
+        }
+
+        if (type === 'BagCount') {
+            return `Move forward by bag number from previous turn: +${bagBefore}.`;
+        }
+
+        if (type === 'ForXMoveY') {
+            if (tile === null || thenValue === null) return 'Invalid ForXMoveY card data.';
+            const playersCount = countPlayersOnTileType(turn, tile);
+            const totalMove = playersCount * thenValue;
+            return `For each player on tile type ${tile} (${tileTypeLabel[tile] || 'Unknown'}), move +${thenValue}. Players on type: ${playersCount}, total move: +${totalMove}.`;
+        }
+
+        if (!card) return '-';
+        if (typeof card === 'string') return card;
+        return card.data ? `Card data: ${card.data}` : 'No card metadata.';
+    }
+
+    function renderCard(card, turn, turnIndex) {
+        if (!card) return '-';
+        if (typeof card === 'string') return escapeHtml(card);
+
+        const type = normalizeCardType(card.type || 'Unknown');
+        const title = cardTypeTitle(type);
+        const description = cardDescription(card, turn, turnIndex);
+        return `<div class="font-medium">${escapeHtml(title)}</div><div class="text-xs text-muted-foreground">${escapeHtml(description)}</div>`;
+    }
+
+    function buildMap() {
+        mapGrid.innerHTML = '';
+        (runData.game_map || []).forEach(tile => {
+            const tileIndex = tile.tileMapIndex ?? 0;
+            const tileType = tile.tileType ?? tile.tileIndex ?? 0;
+            const cell = document.createElement('div');
+            cell.className = `tile tile-type-${tileType}`;
+            cell.dataset.index = tileIndex;
+            cell.title = `Index ${tileIndex} • Type ${tileType} (${tileTypeLabel[tileType] || 'Unknown'})`;
+            cell.innerHTML = `<span class="index">${tileIndex}</span>`;
+            mapGrid.appendChild(cell);
+        });
+    }
+
+    function clearMarkers() {
+        document.querySelectorAll('.tile').forEach(tile => {
+            tile.classList.remove('player', 'bot1', 'bot2', 'player-before', 'bot1-before', 'bot2-before');
+        });
+    }
+
+    function markTile(index, className) {
+        const tile = mapGrid.querySelector(`[data-index="${index}"]`);
+        if (tile) {
+            tile.classList.add(className);
+        }
+    }
+
+    function updateTurn(index) {
+        if (!turns.length) return;
+        const turn = turns[index];
+        clearMarkers();
+
+        markTile(turn.tile_after_index, 'player');
+        markTile(turn.tile_before_index, 'player-before');
+
+        const botsBefore = turn.bot_positions_before || [];
+        const botsAfter = turn.bot_positions_after || [];
+
+        if (botsBefore[0]) markTile(botsBefore[0].tileMapIndex, 'bot1-before');
+        if (botsBefore[1]) markTile(botsBefore[1].tileMapIndex, 'bot2-before');
+        if (botsAfter[0]) markTile(botsAfter[0].tileMapIndex, 'bot1');
+        if (botsAfter[1]) markTile(botsAfter[1].tileMapIndex, 'bot2');
+
+        chosenCardEl.innerHTML = renderCard(turn.chosen_card, turn, index);
+        offeredCardsEl.innerHTML = (turn.offered_cards || [])
+            .map(card => `<div class="mb-2">${renderCard(card, turn, index)}</div>`)
+            .join('') || '-';
+
+        const offeredNumbers = (turn.offered_numbers || []).join(', ') || '-';
+        const chosenNumber = turn.chosen_number == null ? '-' : turn.chosen_number;
+        const numberDecision = turn.number_decision_time_ms == null ? '-' : `${turn.number_decision_time_ms} ms`;
+        const bagBefore = bagBeforeByTurn[index] ?? 1;
+        numbersInfoEl.innerHTML = `Offered: ${offeredNumbers}<br>Chosen: ${chosenNumber}<br>Decision: ${numberDecision}<br>Bag before turn: ${bagBefore}`;
+
+        const moveResult = turn.was_correct ? 'Correct' : 'Wrong';
+        positionsInfoEl.innerHTML = `Player ${turn.tile_before_index} -> ${turn.tile_after_index}<br>Place ${turn.place_before} -> ${turn.place_after}<br>Move result: ${moveResult}`;
+
+        const triggers = turn.special_triggers || [];
+        if (!triggers.length) {
+            triggersInfoEl.textContent = '-';
+        } else {
+            triggersInfoEl.innerHTML = triggers.map(t => `#${t.chain_index}: ${t.special_tile_index} (${t.effect_delta_tiles}) -> ${t.target_tile_index}`).join('<br>');
+        }
+
+        const insights = buildTurnInsights(turn, index);
+        turnInfoEl.innerHTML = insights.map(line => `<div>${escapeHtml(line)}</div>`).join('<br>');
+
+        slider.value = index;
+        counter.textContent = `${index + 1}/${turns.length}`;
+    }
+
+    prevBtn.addEventListener('click', () => {
+        const nextIndex = Math.max(0, parseInt(slider.value, 10) - 1);
+        updateTurn(nextIndex);
+    });
+
+    nextBtn.addEventListener('click', () => {
+        const nextIndex = Math.min(turns.length - 1, parseInt(slider.value, 10) + 1);
+        updateTurn(nextIndex);
+    });
+
+    slider.addEventListener('input', (event) => {
+        updateTurn(parseInt(event.target.value, 10));
+    });
+
+    buildMap();
+    updateTurn(0);
+</script>
+{% endblock %}

@@ -4,11 +4,14 @@ from django.db import transaction
 
 from digitmileapi.models import (
     Classroom,
+    Run,
     RunStatistics,
     School,
+    SpecialTileTrigger,
     Student,
     Teacher,
     TeacherSchoolAssignment,
+    TurnEvent,
 )
 
 
@@ -45,6 +48,10 @@ class Command(BaseCommand):
         User = get_user_model()
 
         with transaction.atomic():
+            # Delete in order of dependencies (children first)
+            SpecialTileTrigger.objects.all().delete()
+            TurnEvent.objects.all().delete()
+            Run.objects.all().delete()
             RunStatistics.objects.all().delete()
             Student.objects.all().delete()
             Classroom.objects.all().delete()
@@ -58,7 +65,10 @@ class Command(BaseCommand):
     def _get_counts(self):
         User = get_user_model()
         return {
-            "Run statistics": RunStatistics.objects.count(),
+            "Special tile triggers": SpecialTileTrigger.objects.count(),
+            "Turn events": TurnEvent.objects.count(),
+            "Runs (new)": Run.objects.count(),
+            "Run statistics (legacy)": RunStatistics.objects.count(),
             "Students": Student.objects.count(),
             "Classrooms": Classroom.objects.count(),
             "Teacher-school assignments": TeacherSchoolAssignment.objects.count(),

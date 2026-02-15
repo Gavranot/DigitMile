@@ -1,7 +1,9 @@
 # your_app_name/admin.py
 from django.contrib import admin
 from django import forms
-from .models import School, Teacher, Classroom, Student, RunStatistics, TeacherSchoolAssignment
+from django.urls import reverse
+from django.utils.html import format_html
+from .models import School, Teacher, Classroom, Student, RunStatistics, TeacherSchoolAssignment, Run, TurnEvent, SpecialTileTrigger
 from django.contrib.auth.models import User
 
 # Make sure TeacherProfileInline and UserAdmin are set up as discussed before
@@ -28,7 +30,7 @@ class SchoolAdmin(admin.ModelAdmin):
             'fields': ('status', 'created_at', 'updated_at'),
             'description': '<strong style="color: #ff9f43;">⚠️ WARNING:</strong> Changing status to REJECTED will cascade to teachers! '
                           'Teachers who ONLY have this school will be REJECTED and have their login access disabled. '
-                          'All data (classrooms, students, run statistics) will be preserved for audit purposes.'
+                          'All data (classrooms, students, game runs, and analytics) will be preserved for audit purposes.'
         }),
     )
 
@@ -615,10 +617,171 @@ class RunStatisticsAdmin(admin.ModelAdmin):
             return qs.filter(student__classroom__teacher=request.user.teacher_profile)
         return qs.none()
 
+    def has_module_permission(self, request):
+        return request.user.is_superuser
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_superuser
+
     # Teachers should not add, change, or delete RunStatistics directly (it's an audit/log table)
     def has_add_permission(self, request):
         return request.user.is_superuser
     def has_change_permission(self, request, obj=None):
         return request.user.is_superuser
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+
+# ==================== Run Analytics Admin ====================
+
+class TurnEventInline(admin.TabularInline):
+    """Inline display of turn events within Run admin."""
+    model = TurnEvent
+    extra = 0
+    readonly_fields = (
+        'turn_index', 'timestamp_played', 'was_correct',
+        'tile_before_index', 'tile_after_index',
+        'card_decision_time_ms', 'place_before', 'place_after'
+    )
+    fields = readonly_fields
+    can_delete = False
+    max_num = 0  # Prevent adding new records
+    show_change_link = True
+
+
+class SpecialTileTriggerInline(admin.TabularInline):
+    """Inline display of triggers within TurnEvent admin."""
+    model = SpecialTileTrigger
+    extra = 0
+    readonly_fields = (
+        'chain_index', 'special_tile_index', 'special_tile_type',
+        'effect_delta_tiles', 'target_tile_index', 'target_tile_type',
+        'place_before', 'place_after'
+    )
+    fields = readonly_fields
+    can_delete = False
+    max_num = 0
+
+
+@admin.register(Run)
+class RunAdmin(admin.ModelAdmin):
+    """Admin interface for Run model."""
+    list_display = (
+        'id', 'student', 'level', 'player_won', 'score',
+        'elapsed_ms', 'correct_moves', 'wrong_moves', 'created_at', 'replay_button'
+    )
+    list_filter = ('player_won', 'level', 'student__classroom__teacher')
+    search_fields = ('id', 'student__full_name')
+    readonly_fields = (
+        'id', 'student', 'level', 'player_won', 'score',
+        'elapsed_ms', 'correct_moves', 'wrong_moves',
+        'map_version', 'bot_version', 'rng_seed',
+        'created_at', 'updated_at'
+    )
+    inlines = [TurnEventInline]
+    date_hierarchy = 'created_at'
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        if hasattr(request.user, 'teacher_profile'):
+            return qs.filter(student__classroom__teacher=request.user.teacher_profile)
+        return qs.none()
+
+    def has_add_permission(self, request):
+        return False  # Runs are created via API only
+
+    def has_module_permission(self, request):
+        if request.user.is_superuser:
+            return True
+        return hasattr(request.user, 'teacher_profile')
+
+    def has_view_permission(self, request, obj=None):
+        if request.user.is_superuser:
+            return True
+        return hasattr(request.user, 'teacher_profile')
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def replay_button(self, obj):
+        replay_url = reverse("teacher_run_replay", args=[obj.id])
+        return format_html(
+            '<a class="button" href="{}" target="_blank">Run Replay</a>',
+            replay_url,
+        )
+    replay_button.short_description = "Replay"
+
+
+@admin.register(TurnEvent)
+class TurnEventAdmin(admin.ModelAdmin):
+    """Admin interface for TurnEvent model."""
+    list_display = (
+        'id', 'run', 'turn_index', 'was_correct',
+        'tile_before_index', 'tile_after_index',
+        'card_decision_time_ms', 'timestamp_played'
+    )
+    list_filter = ('was_correct', 'run__level', 'run__student__classroom__teacher')
+    search_fields = ('run__id', 'run__student__full_name')
+    readonly_fields = (
+        'run', 'turn_index', 'timestamp_played',
+        'chosen_card', 'offered_cards', 'was_correct',
+        'tile_before_index', 'tile_before_type', 'tile_after_index',
+        'place_before', 'place_after', 'card_decision_time_ms',
+        'offered_numbers', 'chosen_number', 'number_decision_time_ms'
+    )
+    inlines = [SpecialTileTriggerInline]
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        if hasattr(request.user, 'teacher_profile'):
+            return qs.filter(run__student__classroom__teacher=request.user.teacher_profile)
+        return qs.none()
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+
+@admin.register(SpecialTileTrigger)
+class SpecialTileTriggerAdmin(admin.ModelAdmin):
+    """Admin interface for SpecialTileTrigger model."""
+    list_display = (
+        'id', 'turn', 'chain_index', 'special_tile_type',
+        'effect_delta_tiles', 'place_before', 'place_after'
+    )
+    list_filter = ('special_tile_type', 'turn__run__level')
+    search_fields = ('turn__run__id',)
+    readonly_fields = (
+        'turn', 'chain_index', 'special_tile_index', 'special_tile_type',
+        'effect_delta_tiles', 'target_tile_index', 'target_tile_type',
+        'place_before', 'place_after'
+    )
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        if hasattr(request.user, 'teacher_profile'):
+            return qs.filter(turn__run__student__classroom__teacher=request.user.teacher_profile)
+        return qs.none()
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_superuser
+
     def has_delete_permission(self, request, obj=None):
         return request.user.is_superuser

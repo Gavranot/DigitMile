@@ -1,11 +1,13 @@
 from django.core.management.base import BaseCommand
 
+from digitmileapi.apps import create_teacher_group
+
 
 class Command(BaseCommand):
-    help = 'Deprecated: Teachers group setup runs in AppConfig post_migrate'
+    help = "Create/update the Teachers group permissions."
 
     def handle(self, *args, **options):
-        self.stdout.write(self.style.WARNING(
-            "Deprecated: Teachers group setup now runs automatically after migrations. "
-            "No changes were applied by this command."
-        ))
+        create_teacher_group(sender=None)
+        self.stdout.write(
+            self.style.SUCCESS("Teachers group permissions were created/updated.")
+        )

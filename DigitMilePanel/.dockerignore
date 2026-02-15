@@ -12,3 +12,4 @@ db.sqlite3
 htmlcov/
 .pytest_cache/
 staticfiles/
+MigrationsBackup/

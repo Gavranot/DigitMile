@@ -5,8 +5,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-01-11 00:15+0000\n"
-"PO-Revision-Date: 2026-01-11 01:20+0100\n"
+"POT-Creation-Date: 2026-02-15 11:56+0000\n"
+"PO-Revision-Date: 2026-02-15 13:45+0100\n"
 "Last-Translator: Gemini\n"
 "Language-Team: Albanian\n"
 "Language: sq\n"
@@ -14,6 +14,14 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: digitmileapi/templates/admin/base_site.html:4
+msgid "Django site admin"
+msgstr "Administrimi i faqes Django"
+
+#: digitmileapi/templates/admin/base_site.html:8
+msgid "Django administration"
+msgstr "Administrimi i Django-s"
 
 #: digitmileapi/templates/digitmileapi/home.html:275
 msgid "Teacher Login"
@@ -49,10 +57,10 @@ msgid ""
 "            "
 msgstr ""
 "\n"
-"            DigitMile është një platformë edukative që ndihmon mësuesit të krijojnë "
-"klasa, të ndjekin përparimin e nxënësve,\n"
-"            dhe të menaxhojnë mësimnxënien përmes një përvoje ndërvepruese të bazuar "
-"në lojë.\n"
+"            DigitMile është një platformë edukative që ndihmon mësuesit të "
+"krijojnë klasa, të ndjekin përparimin e nxënësve,\n"
+"            dhe të menaxhojnë mësimnxënien përmes një përvoje ndërvepruese "
+"të bazuar në lojë.\n"
 "            "
 
 #: digitmileapi/templates/digitmileapi/home.html:313
@@ -70,8 +78,8 @@ msgid ""
 "                "
 msgstr ""
 "\n"
-"                Nëse jeni mësues dhe dëshironi të përdorni DigitMile, duhet të "
-"regjistroheni fillimisht. Sigurohuni që shkolla juaj\n"
+"                Nëse jeni mësues dhe dëshironi të përdorni DigitMile, duhet "
+"të regjistroheni fillimisht. Sigurohuni që shkolla juaj\n"
 "                të jetë e regjistruar në sistemin tonë. Nëse jo, kontaktoni "
 "administratën e shkollës suaj për të regjistruar\n"
 "                shkollën përpara se të regjistroheni.\n"
@@ -91,8 +99,8 @@ msgid ""
 "                "
 msgstr ""
 "\n"
-"                Administratorët e shkollës mund të regjistrojnë institucionin e tyre "
-"për t'u mundësuar mësuesve të bashkohen me platformën.\n"
+"                Administratorët e shkollës mund të regjistrojnë "
+"institucionin e tyre për t'u mundësuar mësuesve të bashkohen me platformën.\n"
 "                Pasi të miratohet, mësuesit tuaj do të mund të krijojnë "
 "klasa dhe të shtojnë nxënës.\n"
 "                "
@@ -113,10 +121,11 @@ msgid ""
 "                "
 msgstr ""
 "\n"
-"                Pasi të identifikoheni si mësues, mund të krijoni klasa dhe të "
-"shtoni nxënës. Çdo nxënës do të regjistrohet automatikisht në sistem dhe mund "
-"të fillojë të luajë lojën për të mësuar dhe përmirësuar aftësitë e tyre. Ju do "
-"të mund të ndiqni përparimin e tyre përmes statistikave të detajuara.\n"
+"                Pasi të identifikoheni si mësues, mund të krijoni klasa dhe "
+"të shtoni nxënës. Çdo nxënës do të regjistrohet automatikisht në sistem dhe "
+"mund të fillojë të luajë lojën për të mësuar dhe përmirësuar aftësitë e "
+"tyre. Ju do të mund të ndiqni përparimin e tyre përmes statistikave të "
+"detajuara.\n"
 "                "
 
 #: digitmileapi/templates/digitmileapi/home.html:347
@@ -195,7 +204,8 @@ msgstr "Regjistrimi i shkollës"
 
 #: digitmileapi/templates/digitmileapi/register_school.html:267
 msgid "Register your school to join the DigitMile educational network"
-msgstr "Regjistroni shkollën tuaj për t'u bërë pjesë e rrjetit edukativ DigitMile"
+msgstr ""
+"Regjistroni shkollën tuaj për t'u bërë pjesë e rrjetit edukativ DigitMile"
 
 #: digitmileapi/templates/digitmileapi/register_school.html:271
 msgid "Locate Your School"
@@ -301,495 +311,803 @@ msgstr ""
 "Regjistrimi juaj është dërguar për miratim. Ju do të njoftoheni pasi të jetë "
 "shqyrtuar."
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:6
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:93
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:4
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:79
+msgid "Run Replay"
+msgstr "Riluaj Provën"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:78
+msgid "Back to Dashboard"
+msgstr "Kthehu te Paneli"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:81
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:334
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:796
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:933
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:951
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:967
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:980
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1035
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1492
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1525
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1547
+msgid "Level"
+msgstr "Niveli"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:90
+msgid "Board"
+msgstr "Tabela"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:92
+msgid "Player"
+msgstr "Lojtari"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:112
+msgid "Prev"
+msgstr "Para"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:113
+msgid "Next"
+msgstr "Tjetra"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:116
+msgid "Turn"
+msgstr "Radha"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:126
+msgid "Run Summary"
+msgstr "Përmbledhja e Provës"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:128
+msgid "Run ID"
+msgstr "ID e Provës"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:129
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1388
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1429
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1479
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1576
+msgid "Score"
+msgstr "Pikët"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:130
+msgid "Elapsed"
+msgstr "Koha e kaluar"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:131
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:953
+msgid "Correct"
+msgstr "Saktë"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:132
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:954
+msgid "Wrong"
+msgstr "Gabim"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:137
+msgid "Turn Details"
+msgstr "Detajet e Radhës"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:140
+msgid "Chosen Card"
+msgstr "Karta e Zgjedhur"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:144
+msgid "Offered Cards"
+msgstr "Kartat e Ofruara"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:148
+msgid "Numbers"
+msgstr "Numrat"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:152
+msgid "Positions"
+msgstr "Pozicionet"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:156
+msgid "Special Triggers"
+msgstr "Aktivizuesit Specialë"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:160
+msgid "Info"
+msgstr "Informacion"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:4
 msgid "Teacher Statistics Dashboard"
 msgstr "Paneli i Statistikave të Mësuesit"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:94
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:75
+msgid "Teacher Dashboard"
+msgstr "Paneli i Mësuesit"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:77
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:226
+msgid "Overview"
+msgstr "Përmbledhje"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:78
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:165
+msgid "Students"
+msgstr "Nxënësit"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:79
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:567
+msgid "Analytics"
+msgstr "Analitika"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:80
+msgid "Comparison"
+msgstr "Krahasimi"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:84
 msgid "Welcome,"
 msgstr "Mirë se vini,"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:96
-msgid "Admin Panel"
-msgstr "Paneli i Administratorit"
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:86
+msgid "Admin"
+msgstr "Admin"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:97
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:87
 msgid "Home"
 msgstr "Kreu"
 
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:97
 #: digitmileapi/templates/digitmileapi/teacher_statistics.html:102
-msgid "Filters"
-msgstr "Filtrat"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:106
-msgid "Student Grade"
-msgstr "Klasa e nxënësit"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:108
-msgid "All Grades"
-msgstr "Të gjitha klasat"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:111
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:135
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:140
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:198
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:203
 msgid "Grade"
 msgstr "Klasa"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:118
-msgid "Classroom"
-msgstr "Klasa (Fizike)"
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:99
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:137
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:200
+msgid "All Grades"
+msgstr "Të gjitha klasat"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:120
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:108
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:146
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:209
+msgid "Classroom"
+msgstr "Ushatimi (Klasa)"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:110
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:148
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:211
 msgid "All Classrooms"
 msgstr "Të gjitha klasat"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:135
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:120
+msgid "Clear Filters"
+msgstr "Pastro Filtrat"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:132
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:195
+msgid "Filters"
+msgstr "Filtrat"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:162
+msgid "Quick Stats"
+msgstr "Statistika të Shpejta"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:169
+msgid "Games"
+msgstr "Lojëra"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:173
+msgid "Avg Accuracy"
+msgstr "Saktësia Mesatare"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:185
+msgid "Attention Needed"
+msgstr "Nevojitet Vëmendje"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:187
+msgid "students need support"
+msgstr "nxënës kanë nevojë për mbështetje"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:231
 msgid "Total Students"
 msgstr "Gjithsej nxënës"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:139
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:235
 msgid "Total Games"
 msgstr "Gjithsej lojëra"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:143
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:239
 msgid "Average Accuracy"
 msgstr "Saktësia mesatare"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:147
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:568
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:646
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:243
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:903
 msgid "Average Score"
 msgstr "Pikët mesatare"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:155
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:257
 msgid "Students Needing Attention"
 msgstr "Nxënësit që kanë nevojë për vëmendje"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:156
-msgid ""
-"These students may be struggling and could benefit from additional support"
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:258
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:295
+msgid "students"
+msgstr "nxënës"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:279
+msgid "No students need urgent attention"
+msgstr "Asnjë nxënës nuk ka nevojë për vëmendje urgjente"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:294
+msgid "Ready for Rewards"
+msgstr "Gati për Shpërblime"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:316
+msgid "Students will appear here when they achieve exceptional performance"
 msgstr ""
-"Këta nxënës mund të kenë vështirësi dhe mund të përfitojnë nga mbështetja shtesë"
+"Nxënësit do të shfaqen këtu kur të arrijnë performancë të jashtëzakonshme"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:163
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:186
-msgid "Classroom:"
-msgstr "Klasa:"
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:330
+msgid "Turn Insights"
+msgstr "Analiza e Radhëve"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:163
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:186
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:364
-msgid "Accuracy:"
-msgstr "Saktësia:"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:169
-msgid "Great! No students currently need urgent attention."
-msgstr "Shkëlqyeshëm! Aktualisht asnjë nxënës nuk ka nevojë për vëmendje urgjente."
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:178
-msgid "Students Ready for Rewards"
-msgstr "Nxënësit gati për shpërblime"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:179
-msgid ""
-"These students have shown exceptional performance and deserve recognition"
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:331
+msgid "Per-level breakdown of choices, conditionals, and number mechanics"
 msgstr ""
-"Këta nxënës kanë treguar performancë të jashtëzakonshme dhe meritojnë mirënjohje"
+"Analiza sipas niveleve e zgjedhjeve, kushteve dhe mekanikës së numrave"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:192
-msgid "Students will appear here when they achieve exceptional performance."
-msgstr "Nxënësit do të shfaqen këtu kur të arrijnë performancë të jashtëzakonshme."
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:348
+msgid "Card Family Share (Offered vs Chosen vs Expected)"
+msgstr ""
+"Ndarja e Familjes së Kartave (Të Ofruara vs Të Zgjedhura vs Të Pritshme)"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:201
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:355
+msgid "Card Family Accuracy"
+msgstr "Saktësia e Familjes së Kartave"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:362
+msgid "Decision Time by Card Family"
+msgstr "Koha e Vendimmarrjes sipas Familjes së Kartave"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:369
+msgid "Tile Conditional Accuracy"
+msgstr "Saktësia e Kushteve të Fushave"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:376
+msgid "Bag Conditional Accuracy"
+msgstr "Saktësia e Kushteve të Çantës (Bag)"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:383
+msgid "Else-Branch Rates"
+msgstr "Normat e Degës Else"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:390
+msgid "Back Card Usage by Place"
+msgstr "Përdorimi i Kartës Back sipas Vendit"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:397
+msgid "ForXMoveY Context Usage"
+msgstr "Përdorimi i Kontekstit ForXMoveY"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:404
+msgid "Special Tile Chain Lengths"
+msgstr "Gjatësia e Zinxhirit të Fushave Speciale"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:411
+msgid "Number Choice Distribution"
+msgstr "Shpërndarja e Zgjedhjes së Numrave"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:418
+msgid "Number Decision Time"
+msgstr "Koha e Vendimmarrjes për Numrat"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:428
+msgid "Student Performance"
+msgstr "Performanca e Nxënësit"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:435
 msgid "Top Performing Students"
 msgstr "Nxënësit me performancën më të lartë"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:202
-msgid "Students with the highest performance metrics"
-msgstr "Nxënësit me metrikat më të larta të performancës"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:206
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:438
 msgid "By Accuracy"
 msgstr "Sipas saktësisë"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:207
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:439
 msgid "By Improvement"
 msgstr "Sipas përmirësimit"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:228
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:452
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:483
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:521
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:543
+msgid "Replay"
+msgstr "Riluaj"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:469
 msgid "Not enough data yet"
 msgstr "Nuk ka ende mjaftueshëm të dhëna"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:245
-msgid "Need at least 10 games per student to calculate improvement"
-msgstr ""
-"Duhen të paktën 10 lojëra për nxënës për të llogaritur përmirësimin"
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:493
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:556
+msgid "Need at least 7 games per student"
+msgstr "Duhen të paktën 7 lojëra për nxënës"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:254
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:504
 msgid "Students Who May Need Help"
 msgstr "Nxënësit që mund të kenë nevojë për ndihmë"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:255
-msgid "Identify students who are struggling or not improving"
-msgstr "Identifikoni nxënësit që kanë vështirësi ose nuk po përmirësohen"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:259
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:507
 msgid "Low Accuracy"
 msgstr "Saktësi e ulët"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:260
-msgid "Flat/Declining Curve"
-msgstr "Kurbë e pandryshuar/në rënie"
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:508
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1561
+msgid "Declining"
+msgstr "Në rënie"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:276
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:529
 msgid "No students with low accuracy"
 msgstr "Nuk ka nxënës me saktësi të ulët"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:294
-msgid "Need at least 7 games per student for learning curve analysis"
-msgstr "Duhen të paktën 7 lojëra për nxënës për analizën e kurbës së mësimit"
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:573
+msgid "Classroom Performance"
+msgstr "Performanca e Klasës"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:302
-msgid "Classroom Performance Comparison"
-msgstr "Krahasimi i performancës së klasave"
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:583
+msgid "Win Rate by Level"
+msgstr "Norma e Fitoreve sipas Nivelit"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:303
-msgid "Compare average performance across your classrooms"
-msgstr "Krahasoni performancën mesatare në klasat tuaja"
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:593
+msgid "Accuracy by Level"
+msgstr "Saktësia sipas Nivelit"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:313
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:603
+msgid "Time Distribution by Level"
+msgstr "Shpërndarja e Kohës sipas Nivelit"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:613
+msgid "Speed vs Accuracy"
+msgstr "Shpejtësia kundrejt Saktësisë"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:623
+msgid "Mistake Hotspots"
+msgstr "Pikat e Nxehta të Gabimeve"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:633
+msgid "Special Tile Triggers"
+msgstr "Aktivizuesit e Fushave Speciale"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:643
+msgid "Decision Time by Card Type"
+msgstr "Koha e Vendimmarrjes sipas Tipit të Kartës"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:654
+msgid "Comparisons"
+msgstr "Krahasimet"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:661
 msgid "Multi-Classroom Radar Comparison"
 msgstr "Krahasimi Radar i Shumë Klasave"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:314
-msgid ""
-"Compare 2-5 classrooms across multiple performance metrics simultaneously"
-msgstr ""
-"Krahasoni 2-5 klasa përmes metrikave të shumta të performancës njëkohësisht"
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:662
+msgid "Compare 2-5 classrooms across multiple metrics"
+msgstr "Krahasoni 2-5 klasa përmes metrikave të shumta"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:319
-msgid "Select Classrooms to Compare (2-5)"
-msgstr "Zgjidhni klasat për t'i krahasuar (2-5)"
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:667
+msgid "Normalized"
+msgstr "E normalizuar"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:333
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:601
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:671
+msgid "Raw Data"
+msgstr "Të dhëna bruto"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:684
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1353
 msgid "classrooms selected"
 msgstr "klasa të zgjedhura"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:341
-msgid "Normalized (Per Student)"
-msgstr "E normalizuar (për nxënës)"
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:687
+msgid "Select 2-5 classrooms to compare"
+msgstr "Zgjidhni 2-5 klasa për t'i krahasuar"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:345
-msgid "Raw Data (Totals)"
-msgstr "Të dhëna bruto (totalet)"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:348
-msgid "Tip:"
-msgstr "Sugjerim:"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:348
-msgid ""
-"Normalized view is better for fair comparison between different class sizes"
-msgstr ""
-"Pamja e normalizuar është më e mirë për krahasim të drejtë midis klasave me "
-"madhësi të ndryshme"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:354
-msgid ""
-"Select 2-5 classrooms to compare their performance across multiple metrics"
-msgstr ""
-"Zgjidhni 2-5 klasa për të krahasuar performancën e tyre në disa metrika"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:362
-msgid "Understanding the Metrics"
-msgstr "Kuptimi i metrikave"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:364
-msgid "Average percentage of correct moves across all games"
-msgstr "Përqindja mesatare e lëvizjeve të sakta në të gjitha lojërat"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:365
-msgid "Average Score:"
-msgstr "Pikët mesatare:"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:365
-msgid "Mean score achieved per game"
-msgstr "Pikët mesatare të arritura për lojë"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:366
-msgid "Win Rate:"
-msgstr "Shkalla e fitores:"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:366
-msgid "Percentage of games where students achieved first place"
-msgstr "Përqindja e lojërave ku nxënësit arritën vendin e parë"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:367
-msgid "Decision Speed:"
-msgstr "Shpejtësia e vendimmarrjes:"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:367
-msgid "Average time per move (inverted: faster = higher on chart)"
-msgstr "Koha mesatare për lëvizje (e anasjellë: më shpejt = më lart në grafik)"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:368
-msgid "Engagement:"
-msgstr "Angazhimi:"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:368
-msgid "Number of games played per student (higher = more engaged)"
-msgstr "Numri i lojërave të luajtura për nxënës (më lart = më i angazhuar)"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:371
-msgid "Interpretation:"
-msgstr "Interpretimi:"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:371
-msgid ""
-"Larger radar areas indicate better overall performance. Look for classrooms "
-"that excel in specific metrics versus those with well-rounded performance "
-"across all areas."
-msgstr ""
-"Zonat më të mëdha të radarit tregojnë performancë më të mirë të përgjithshme. "
-"Kërkoni për klasat që shkëlqejnë në metrika specifike kundrejt atyre me "
-"performancë të gjithanshme në të gjitha fushat."
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:381
-msgid "Cross-Level Learning Transfer"
-msgstr "Transferimi i Mësimit Ndër-Nivele"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:382
-msgid "Compare performance across levels to identify skill transfer"
-msgstr "Krahasoni performancën midis niveleve për të identifikuar transferimin e aftësive"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:387
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:436
-msgid "Select Student"
-msgstr "Zgjidhni nxënësin"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:389
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:438
-msgid "Choose a student"
-msgstr "Zgjidhni një nxënës"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:399
-msgid "First Level"
-msgstr "Niveli i parë"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:401
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:408
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:450
-msgid "Select student first"
-msgstr "Zgjidhni nxënësin fillimisht"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:406
-msgid "Second Level"
-msgstr "Niveli i dytë"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:414
-msgid "Select a student and two levels to compare learning transfer"
-msgstr "Zgjidhni një nxënës dhe dy nivele për të krahasuar transferimin e mësimit"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:430
-msgid "Student Learning Curves by Level"
-msgstr "Kurba e Mësimit të Nxënësit sipas Nivelit"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:431
-msgid "Track how students improve on specific levels over multiple attempts"
-msgstr ""
-"Ndiqni se si nxënësit përmirësohen në nivele specifike gjatë tentativave të "
-"shumta"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:448
-msgid "Select Level"
-msgstr "Zgjidhni nivelin"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:456
-msgid "Select a student and level to view learning curves"
-msgstr "Zgjidhni një nxënës dhe një nivel për të parë kurbat e mësimit"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:476
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:701
 msgid "Student Head-to-Head Comparison"
 msgstr "Krahasimi i Nxënësve Kokë më Kokë"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:477
-msgid "Compare 2-5 students across all performance metrics"
-msgstr "Krahasoni 2-5 nxënës në të gjitha metrikat e performancës"
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:702
+msgid "Compare 2-5 students across all metrics"
+msgstr "Krahasoni 2-5 nxënës në të gjitha metrikat"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:482
-msgid "Select Students to Compare (2-5)"
-msgstr "Zgjidhni nxënësit për t'i krahasuar (2-5)"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:500
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:680
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:716
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1400
 msgid "students selected"
 msgstr "nxënës të zgjedhur"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:507
-msgid "Select 2-5 students to compare their performance"
-msgstr "Zgjidhni 2-5 nxënës për të krahasuar performancën e tyre"
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:719
+msgid "Select 2-5 students to compare"
+msgstr "Zgjidhni 2-5 nxënës për t'i krahasuar"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:515
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:726
 msgid "Performance Progression Over Time"
-msgstr "Progresi i Performancës gjatë Kohës"
+msgstr "Progresi i Performancës me kalimin e kohës"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:532
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:747
+msgid "Cross-Level Learning Transfer"
+msgstr "Transferimi i Mësimit Ndër-Nivele"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:750
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:787
+msgid "Student"
+msgstr "Nxënësi"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:752
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:789
+msgid "Select"
+msgstr "Zgjidh"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:759
+msgid "Level 1"
+msgstr "Niveli 1"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:765
+msgid "Level 2"
+msgstr "Niveli 2"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:772
+msgid "Select a student and two levels"
+msgstr "Zgjidhni një nxënës dhe dy nivele"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:784
+msgid "Student Learning Curves by Level"
+msgstr "Kurba e Mësimit të Nxënësit sipas Nivelit"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:803
+msgid "Trend:"
+msgstr "Trendi:"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:804
+msgid "Slope:"
+msgstr "Pjerrësia:"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:805
+msgid "Attempts:"
+msgstr "Tentativa:"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:808
+msgid "Select a student and level"
+msgstr "Zgjidhni një nxënës dhe një nivel"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:825
 msgid "No Student Data Available"
 msgstr "Nuk ka të dhëna në dispozicion për nxënësin"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:533
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:826
 msgid "Students will appear here once they start playing the game."
 msgstr "Nxënësit do të shfaqen këtu pasi të fillojnë të luajnë lojën."
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:575
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:910
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:935
 #, python-format
 msgid "Win Rate (%%)"
 msgstr "Shkalla e fitores (%%)"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:646
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:707
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:718
-msgid "Accuracy"
-msgstr "Saktësia"
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:968
+msgid "Avg Time (s)"
+msgstr "Koha Mesatare (s)"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:646
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:707
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:720
-msgid "Win Rate"
-msgstr "Shkalla e fitores"
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:992
+msgid "Time (seconds)"
+msgstr "Koha (sekonda)"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:646
-msgid "Decision Speed"
-msgstr "Shpejtësia e vendimmarrjes"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:646
-msgid "Engagement"
-msgstr "Angazhimi"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:652
-msgid "Multi-Classroom Performance Comparison"
-msgstr "Krahasimi i Performancës midis Klasave"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:652
-msgid "Normalized"
-msgstr "E normalizuar"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:652
-msgid "Raw Data"
-msgstr "Të dhëna bruto"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:660
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:719
-msgid "pts"
-msgstr "pikë"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:661
-msgid "actual:"
-msgstr "reale:"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:662
-msgid "games"
-msgstr "lojëra"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:707
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:763
-msgid "Score"
-msgstr "Pikët"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:707
-msgid "Speed"
-msgstr "Shpejtësia"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:707
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:722
-msgid "Improvement"
-msgstr "Përmirësimi"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:707
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:723
-msgid "Consistency"
-msgstr "Qëndrueshmëria"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:710
-msgid "Student Performance Comparison - All Metrics"
-msgstr "Krahasimi i Performancës së Nxënësit - Të gjitha Metrikat"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:719
-msgid "Avg Score"
-msgstr "Pikët mesatare"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:721
-msgid "Decision Time"
-msgstr "Koha e vendimmarrjes"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:727
-msgid "Metric"
-msgstr "Metrika"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:742
-msgid "★ = Best in group"
-msgstr "★ = Më i miri në grup"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:750
-msgid "Game"
-msgstr "Loja"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:762
-msgid "Accuracy Progression Comparison"
-msgstr "Krahasimi i Progresionit të Saktësisë"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:762
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:993
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1192
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1219
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1241
 #, python-format
 msgid "Accuracy (%%)"
 msgstr "Saktësia (%%)"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:763
-msgid "Score Progression Comparison"
-msgstr "Krahasimi i Progresionit të Pikëve"
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1015
+msgid "Mistakes"
+msgstr "Gabimet"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:764
-msgid "Decision Speed Progression Comparison"
-msgstr "Krahasimi i Progresionit të Shpejtësisë së Vendimmarrjes"
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1037
+msgid "Skateboard"
+msgstr "Skejtbord"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:764
-msgid "Time (seconds)"
-msgstr "Koha (sekonda)"
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1038
+msgid "Clown"
+msgstr "Klloun"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:775
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:793
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:815
-msgid "Level"
-msgstr "Niveli"
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1053
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1205
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1330
+msgid "Avg Time (ms)"
+msgstr "Koha Mesatare (ms)"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:775
-msgid "attempts"
-msgstr "tentativa"
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1176
+msgid "Offered Share"
+msgstr "Pjesa e Ofruar"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:776
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:815
-msgid "Select level"
-msgstr "Zgjidhni nivelin"
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1177
+msgid "Chosen Share"
+msgstr "Pjesa e Zgjedhur"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:795
-msgid "Initial Performance"
-msgstr "Performanca Fillestare"
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1178
+msgid "Expected Share"
+msgstr "Pjesa e Pritshme"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:796
-msgid "Final Performance"
-msgstr "Performanca Përfundimtare"
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1256
+#, python-format
+msgid "Else Rate (%%)"
+msgstr "Norma Else (%%)"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:803
-msgid "Learning Transfer Analysis"
-msgstr "Analiza e Transferimit të Mësimit"
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1272
+msgid "Back Cards"
+msgstr "Kartat Back"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:804
-msgid "✓ Excellent Transfer: Skill transfer detected between levels."
-msgstr "✓ Transferim i Shkëlqyer: U diktua transferim i aftësive midis niveleve."
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1286
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1299
+msgid "Turns"
+msgstr "Radhët"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:805
-msgid "Moderate or Limited Transfer detected."
-msgstr "U diktua transferim i moderuar ose i kufizuar."
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1314
+msgid "Chosen Count"
+msgstr "Numri i të Zgjedhurave"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:829
-msgid "Accuracy Over Time"
-msgstr "Saktësia gjatë Kohës"
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1388
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1429
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1436
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1478
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1569
+msgid "Accuracy"
+msgstr "Saktësia"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1388
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1429
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1438
+msgid "Win Rate"
+msgstr "Shkalla e fitores"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1388
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1429
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1480
+msgid "Speed"
+msgstr "Shpejtësia"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1388
+msgid "Engagement"
+msgstr "Angazhimi"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1429
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1440
+msgid "Improvement"
+msgstr "Përmirësimi"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1429
+msgid "Consistency"
+msgstr "Qëndrueshmëria"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1437
+msgid "Avg Score"
+msgstr "Pikët mesatare"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1439
+msgid "Decision Time"
+msgstr "Koha e vendimmarrjes"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1443
+msgid "Metric"
+msgstr "Metrika"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1515
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1546
+msgid "Not enough data"
+msgstr "Nuk ka mjaftueshëm të dhëna"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1527
+msgid "Initial"
+msgstr "Fillestare"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1528
+msgid "Final"
+msgstr "Përfundimtare"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1535
+msgid "Excellent skill transfer detected!"
+msgstr "U diktua transferim i shkëlqyer i aftësive!"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1535
+msgid "Moderate or limited transfer"
+msgstr "Transferim i moderuar ose i kufizuar"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1561
+msgid "Improving"
+msgstr "Në përmirësim"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1561
+msgid "Plateaued"
+msgstr "E pandryshuar"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1561
+msgid "Mastered"
+msgstr "E zotëruar"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1561
+msgid "Insufficient"
+msgstr "E pamjaftueshme"
+
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1583
+msgid "Time"
+msgstr "Koha"
+
+#~ msgid ""
+#~ "These students may be struggling and could benefit from additional support"
+#~ msgstr ""
+#~ "Këta nxënës mund të kenë vështirësi dhe mund të përfitojnë nga mbështetja "
+#~ "shtesë"
+
+#~ msgid "Classroom:"
+#~ msgstr "Klasa:"
+
+#~ msgid "Accuracy:"
+#~ msgstr "Saktësia:"
+
+#~ msgid ""
+#~ "These students have shown exceptional performance and deserve recognition"
+#~ msgstr ""
+#~ "Këta nxënës kanë treguar performancë të jashtëzakonshme dhe meritojnë "
+#~ "mirënjohje"
+
+#~ msgid "Students with the highest performance metrics"
+#~ msgstr "Nxënësit me metrikat më të larta të performancës"
+
+#~ msgid "Need at least 10 games per student to calculate improvement"
+#~ msgstr "Duhen të paktën 10 lojëra për nxënës për të llogaritur përmirësimin"
+
+#~ msgid "Identify students who are struggling or not improving"
+#~ msgstr "Identifikoni nxënësit që kanë vështirësi ose nuk po përmirësohen"
+
+#~ msgid "Compare average performance across your classrooms"
+#~ msgstr "Krahasoni performancën mesatare në klasat tuaja"
+
+#~ msgid "Normalized (Per Student)"
+#~ msgstr "E normalizuar (për nxënës)"
+
+#~ msgid "Raw Data (Totals)"
+#~ msgstr "Të dhëna bruto (totalet)"
+
+#~ msgid "Tip:"
+#~ msgstr "Sugjerim:"
+
+#~ msgid ""
+#~ "Normalized view is better for fair comparison between different class "
+#~ "sizes"
+#~ msgstr ""
+#~ "Pamja e normalizuar është më e mirë për krahasim të drejtë midis klasave "
+#~ "me madhësi të ndryshme"
+
+#~ msgid ""
+#~ "Select 2-5 classrooms to compare their performance across multiple metrics"
+#~ msgstr ""
+#~ "Zgjidhni 2-5 klasa për të krahasuar performancën e tyre në disa metrika"
+
+#~ msgid "Understanding the Metrics"
+#~ msgstr "Kuptimi i metrikave"
+
+#~ msgid "Average percentage of correct moves across all games"
+#~ msgstr "Përqindja mesatare e lëvizjeve të sakta në të gjitha lojërat"
+
+#~ msgid "Average Score:"
+#~ msgstr "Pikët mesatare:"
+
+#~ msgid "Mean score achieved per game"
+#~ msgstr "Pikët mesatare të arritura për lojë"
+
+#~ msgid "Win Rate:"
+#~ msgstr "Shkalla e fitores:"
+
+#~ msgid "Percentage of games where students achieved first place"
+#~ msgstr "Përqindja e lojërave ku nxënësit arritën vendin e parë"
+
+#~ msgid "Decision Speed:"
+#~ msgstr "Shpejtësia e vendimmarrjes:"
+
+#~ msgid "Average time per move (inverted: faster = higher on chart)"
+#~ msgstr ""
+#~ "Koha mesatare për lëvizje (e anasjellë: më shpejt = më lart në grafik)"
+
+#~ msgid "Engagement:"
+#~ msgstr "Angazhimi:"
+
+#~ msgid "Number of games played per student (higher = more engaged)"
+#~ msgstr "Numri i lojërave të luajtura për nxënës (më lart = më i angazhuar)"
+
+#~ msgid "Interpretation:"
+#~ msgstr "Interpretimi:"
+
+#~ msgid ""
+#~ "Larger radar areas indicate better overall performance. Look for "
+#~ "classrooms that excel in specific metrics versus those with well-rounded "
+#~ "performance across all areas."
+#~ msgstr ""
+#~ "Zonat më të mëdha të radarit tregojnë performancë më të mirë të "
+#~ "përgjithshme. Kërkoni për klasat që shkëlqejnë në metrika specifike "
+#~ "kundrejt atyre me performancë të gjithanshme në të gjitha fushat."
+
+#~ msgid "Compare performance across levels to identify skill transfer"
+#~ msgstr ""
+#~ "Krahasoni performancën midis niveleve për të identifikuar transferimin e "
+#~ "aftësive"
+
+#~ msgid "Select Student"
+#~ msgstr "Zgjidhni nxënësin"
+
+#~ msgid "Choose a student"
+#~ msgstr "Zgjidhni një nxënës"
+
+#~ msgid "First Level"
+#~ msgstr "Niveli i parë"
+
+#~ msgid "Select student first"
+#~ msgstr "Zgjidhni nxënësin fillimisht"
+
+#~ msgid "Second Level"
+#~ msgstr "Niveli i dytë"
+
+#~ msgid "Select a student and two levels to compare learning transfer"
+#~ msgstr ""
+#~ "Zgjidhni një nxënës dhe dy nivele për të krahasuar transferimin e mësimit"
+
+#~ msgid "Track how students improve on specific levels over multiple attempts"
+#~ msgstr ""
+#~ "Ndiqni se si nxënësit përmirësohen në nivele specifike gjatë tentativave "
+#~ "të shumta"
+
+#~ msgid "Select Level"
+#~ msgstr "Zgjidhni nivelin"
+
+#~ msgid "Select 2-5 students to compare their performance"
+#~ msgstr "Zgjidhni 2-5 nxënës për të krahasuar performancën e tyre"
+
+#~ msgid "Decision Speed"
+#~ msgstr "Shpejtësia e vendimmarrjes"
+
+#~ msgid "Multi-Classroom Performance Comparison"
+#~ msgstr "Krahasimi i Performancës midis Klasave"
+
+#~ msgid "pts"
+#~ msgstr "pikë"
+
+#~ msgid "actual:"
+#~ msgstr "reale:"
+
+#~ msgid "games"
+#~ msgstr "lojëra"
+
+#~ msgid "Student Performance Comparison - All Metrics"
+#~ msgstr "Krahasimi i Performancës së Nxënësit - Të gjitha Metrikat"
+
+#~ msgid "★ = Best in group"
+#~ msgstr "★ = Më i miri në grup"
+
+#~ msgid "Accuracy Progression Comparison"
+#~ msgstr "Krahasimi i Progresionit të Saktësisë"
+
+#~ msgid "Score Progression Comparison"
+#~ msgstr "Krahasimi i Progresionit të Pikëve"
+
+#~ msgid "Decision Speed Progression Comparison"
+#~ msgstr "Krahasimi i Progresionit të Shpejtësisë së Vendimmarrjes"
+
+#~ msgid "Select level"
+#~ msgstr "Zgjidhni nivelin"
+
+#~ msgid "Final Performance"
+#~ msgstr "Performanca Përfundimtare"
+
+#~ msgid "Learning Transfer Analysis"
+#~ msgstr "Analiza e Transferimit të Mësimit"
+
+#~ msgid "Accuracy Over Time"
+#~ msgstr "Saktësia gjatë Kohës"

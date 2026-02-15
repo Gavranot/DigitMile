@@ -1,0 +1,89 @@
+{
+    "NumberCardsInDeck": false,
+    "cards": [
+        {
+            "cardName": "Move1",
+            "count": 1
+        },
+        {
+            "cardName": "Move2",
+            "count": 2
+        },
+        {
+            "cardName": "Move3",
+            "count": 2
+        },
+        {
+            "cardName": "Move4",
+            "count": 2
+        },
+        {
+            "cardName": "Move5",
+            "count": 1
+        },
+        {
+            "cardName": "Move2Else1",
+            "count": 1
+        },
+        {
+            "cardName": "Move2Else1",
+            "count": 1
+        },
+        {
+            "cardName": "Move2Else1",
+            "count": 1
+        },
+        {
+            "cardName": "Move2Else1",
+            "count": 1
+        },
+        {
+            "cardName": "Move3Else1",
+            "count": 1
+        },
+        {
+            "cardName": "Move3Else1",
+            "count": 1
+        },
+        {
+            "cardName": "Move3Else1",
+            "count": 1
+        },
+        {
+            "cardName": "Move3Else1",
+            "count": 1
+        },
+        {
+            "cardName": "Move4Else1",
+            "count": 1
+        },
+        {
+            "cardName": "Move4Else1",
+            "count": 1
+        },
+        {
+            "cardName": "Move4Else1",
+            "count": 1
+        },
+        {
+            "cardName": "Move4Else1",
+            "count": 1
+        },
+        {
+            "cardName": "Move5Else1",
+            "count": 1
+        },
+        {
+            "cardName": "Move5Else1",
+            "count": 1
+        },
+        {
+            "cardName": "Move5Else1",
+            "count": 1
+        },
+        {
+            "cardName": "Move5Else1",
+            "count": 1
+        }
+    ]
+}

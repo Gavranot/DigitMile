@@ -21,7 +21,7 @@ class HealthCheckMiddleware:
         # Intercept health check requests before host validation
         host = request.META.get('HTTP_HOST', 'unknown')
         remote_addr = request.META.get('REMOTE_ADDR', 'unknown')
-        logger.info(f"Request intercepted from {remote_addr} with Host header: {host}")
+        #logger.info(f"Request intercepted from {remote_addr} with Host header: {host}")
 
         if 'health' in request.path:
             
