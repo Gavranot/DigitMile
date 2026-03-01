@@ -128,6 +128,18 @@ tailwind.config = {
             <div class="flex items-center gap-4">
                 <span class="text-sm text-muted-foreground">{% trans "Welcome," %} <span class="text-foreground font-medium">{{ teacher.full_name }}</span></span>
                 <div class="flex gap-2">
+                    <form action="{% url 'set_language' %}" method="post">
+                        {% csrf_token %}
+                        <input name="next" type="hidden" value="{{ request.get_full_path }}">
+                        <label for="languageSwitcher" class="sr-only">{% trans "Language" %}</label>
+                        <select id="languageSwitcher" name="language" onchange="this.form.submit()" class="h-9 px-3 rounded-md bg-muted border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                            {% get_current_language as LANGUAGE_CODE %}
+                            {% get_available_languages as LANGUAGES %}
+                            {% for lang_code, lang_name in LANGUAGES %}
+                            <option value="{{ lang_code }}" {% if lang_code == LANGUAGE_CODE %}selected{% endif %}>{{ lang_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </form>
                     <a href="/panel/admin/" class="inline-flex items-center justify-center rounded-md text-sm font-medium h-9 px-4 bg-muted text-foreground hover:bg-muted/80 transition-colors">{% trans "Admin" %}</a>
                     <a href="/panel/" class="inline-flex items-center justify-center rounded-md text-sm font-medium h-9 px-4 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">{% trans "Home" %}</a>
                 </div>
@@ -917,6 +929,9 @@ tailwind.config = {
     </div>
 </div>
 
+{% trans "Else Rate (%%)" as else_rate_label %}
+{% trans "Back Cards" as back_cards_label %}
+
 <script>
     // Chart.js dark theme defaults
     Chart.defaults.color = '#a3a3a3';
@@ -1454,7 +1469,7 @@ tailwind.config = {
                 type: 'bar',
                 data: {
                     labels: ['Tile', 'Bag'],
-                    datasets: [{ label: '{% trans "Else Rate (%)" %}', data: [tileElse, bagElse], backgroundColor: ['rgba(59, 130, 246, 0.7)', 'rgba(245, 158, 11, 0.7)'] }]
+                    datasets: [{ label: '{{ else_rate_label|escapejs }}', data: [tileElse, bagElse], backgroundColor: ['rgba(59, 130, 246, 0.7)', 'rgba(245, 158, 11, 0.7)'] }]
                 },
                 options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } } }
             });
@@ -1470,7 +1485,7 @@ tailwind.config = {
                     type: 'bar',
                     data: {
                         labels: placeLabels.map(p => `#${p}`),
-                        datasets: [{ label: '{% trans "Back Cards" %}', data: placeLabels.map(p => placeLookup[p] || 0), backgroundColor: 'rgba(239, 68, 68, 0.7)' }]
+                        datasets: [{ label: '{{ back_cards_label|escapejs }}', data: placeLabels.map(p => placeLookup[p] || 0), backgroundColor: 'rgba(239, 68, 68, 0.7)' }]
                     },
                     options: { responsive: true, maintainAspectRatio: false }
                 });
