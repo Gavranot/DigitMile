@@ -170,12 +170,12 @@ Use this as canonical behavior when implementing analytics, replay, ingestion, o
   - `tileIndex` (texture/index enum value)
   - `tileType` (semantic tile type; use this for logic)
   - `special` (`"normal" | "clown" | "skateboard"`)
-  - `special_delta` (`0`, `-4`, `+4`)
+  - `special_delta` (`0`, `-4`, `+5`)
 - Tile type meanings:
   - `0`: start/end tiles
   - `1,2,3,6`: normal tiles
   - `4`: clown tile (special move `-4`)
-  - `5`: skateboard tile (special move `+4`)
+  - `5`: skateboard tile (special move `+5`)
 - Tile type `0` is not used in card conditionals.
 
 ### Card payload format
@@ -221,7 +221,7 @@ Cards are stored as:
 ### Special tile chain behavior
 - Special effects trigger after normal card movement and can chain.
 - Clown tile (`4`) applies `-4`.
-- Skateboard tile (`5`) applies `+4`.
+- Skateboard tile (`5`) applies `+5`.
 - Replay should use recorded positions and recorded trigger events (no simulation).
 
 ### Seeding expectations for production-like data

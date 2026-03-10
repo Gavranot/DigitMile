@@ -74,7 +74,7 @@ class Command(BaseCommand):
     BOARD_SIZE = 60
     START_END_TILE_TYPE = 0
     NORMAL_TILE_TYPES = [1, 2, 3, 6]
-    SPECIAL_TILE_DELTAS = {4: -4, 5: 4}
+    SPECIAL_TILE_DELTAS = {4: -4, 5: 5}
     LEVEL_RANGE = range(1, 7)
 
     # Macedonian-style names and locations for realistic data
@@ -755,7 +755,7 @@ Legacy statistics created:    {legacy_count}
 
         anchor = random.randint(8, self.BOARD_SIZE - 9)
         anchor_type = random.choice([4, 5])
-        pair_index = anchor + (4 if anchor_type == 5 else -4)
+        pair_index = anchor + (5 if anchor_type == 5 else -4)
         if 0 < pair_index < self.BOARD_SIZE - 1:
             tile_type_by_index[anchor] = anchor_type
             tile_type_by_index[pair_index] = random.choice([4, 5])
@@ -768,7 +768,7 @@ Legacy statistics created:    {legacy_count}
                 special_delta = -4
             elif tile_type == 5:
                 special = "skateboard"
-                special_delta = 4
+                special_delta = 5
             else:
                 special = "normal"
                 special_delta = 0
@@ -905,7 +905,9 @@ Legacy statistics created:    {legacy_count}
         if all_back_match:
             return {
                 "type": card_name,
-                "data": self._serialize_card_data(then_value=int(all_back_match.group(1))),
+                "data": self._serialize_card_data(
+                    then_value=int(all_back_match.group(1))
+                ),
             }
 
         if card_name == "BagMove":
@@ -1027,10 +1029,10 @@ Legacy statistics created:    {legacy_count}
 
             visited_positions.add(current_position)
             delta = self.SPECIAL_TILE_DELTAS[special_type]
-            target_position = max(
-                0, min(self.BOARD_SIZE - 1, current_position + delta)
+            target_position = max(0, min(self.BOARD_SIZE - 1, current_position + delta))
+            target_type = tile_type_by_index.get(
+                target_position, self.START_END_TILE_TYPE
             )
-            target_type = tile_type_by_index.get(target_position, self.START_END_TILE_TYPE)
 
             trigger = SpecialTileTrigger(
                 turn=turn,

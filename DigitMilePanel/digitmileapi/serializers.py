@@ -367,7 +367,7 @@ class UnityTileSnapshotSerializer(serializers.Serializer):
     special = serializers.CharField(
         max_length=20, required=False, default="normal"
     )  # "skateboard", "clown", "normal"
-    special_delta = serializers.IntegerField(required=False, default=0)  # 5, -3, 0
+    special_delta = serializers.IntegerField(required=False, default=0)  # 5, -4, 0
 
 
 class UnityPlayerPositionSnapshotSerializer(serializers.Serializer):
@@ -401,7 +401,7 @@ class UnitySpecialTileTriggerSerializer(serializers.Serializer):
     positionOnSpecialTile = (
         UnityPlayerPositionSnapshotSerializer()
     )  # Player position when stepping on it
-    effectDeltaTiles = serializers.IntegerField()  # +5 for skateboard, -3 for clown
+    effectDeltaTiles = serializers.IntegerField()  # +5 for skateboard, -4 for clown
     positionAfterEffect = (
         UnityPlayerPositionSnapshotSerializer()
     )  # Player position after effect
