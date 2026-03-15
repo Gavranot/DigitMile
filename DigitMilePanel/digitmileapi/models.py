@@ -54,6 +54,68 @@ def generate_special_tile_trigger_id():
     return f"stt_{uuid.uuid4().hex[:12]}"
 
 
+def generate_replay_archive_id():
+    """Generate a prefixed ID for ReplayArchive: rar_xxxxxxxx"""
+    return f"rar_{uuid.uuid4().hex[:12]}"
+
+
+def generate_weekly_compaction_id():
+    """Generate a prefixed ID for WeeklyCompactionRun: wcr_xxxxxxxx"""
+    return f"wcr_{uuid.uuid4().hex[:12]}"
+
+
+def generate_student_week_stats_id():
+    return f"sws_{uuid.uuid4().hex[:12]}"
+
+
+def generate_student_week_level_stats_id():
+    return f"swl_{uuid.uuid4().hex[:12]}"
+
+
+def generate_student_week_hotspot_stats_id():
+    return f"swh_{uuid.uuid4().hex[:12]}"
+
+
+def generate_student_week_special_tile_stats_id():
+    return f"spt_{uuid.uuid4().hex[:12]}"
+
+
+def generate_student_week_chain_length_stats_id():
+    return f"scl_{uuid.uuid4().hex[:12]}"
+
+
+def generate_student_week_card_family_stats_id():
+    return f"scf_{uuid.uuid4().hex[:12]}"
+
+
+def generate_student_week_card_type_stats_id():
+    return f"sct_{uuid.uuid4().hex[:12]}"
+
+
+def generate_student_run_bucket_trend_id():
+    return f"srb_{uuid.uuid4().hex[:12]}"
+
+
+def generate_student_week_conditional_stats_id():
+    return f"scd_{uuid.uuid4().hex[:12]}"
+
+
+def generate_student_week_back_card_usage_stats_id():
+    return f"sbk_{uuid.uuid4().hex[:12]}"
+
+
+def generate_student_week_foreach_context_stats_id():
+    return f"sfc_{uuid.uuid4().hex[:12]}"
+
+
+def generate_student_week_number_choice_stats_id():
+    return f"snc_{uuid.uuid4().hex[:12]}"
+
+
+def generate_classroom_week_stats_id():
+    return f"cws_{uuid.uuid4().hex[:12]}"
+
+
 class SchoolManager(models.Manager):
     """Custom manager to easily filter schools by status"""
 
@@ -414,6 +476,7 @@ class Run(models.Model):
     rng_seed = models.IntegerField(
         null=True, blank=True, help_text="Random seed for reproducibility"
     )
+    raw_data_compacted_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -553,3 +616,567 @@ class SpecialTileTrigger(models.Model):
 
     def __str__(self):
         return f"Trigger {self.chain_index} - Turn {self.turn.turn_index} - Tile {self.special_tile_type}"
+
+
+class ReplayArchive(models.Model):
+    class ArchiveStatus(models.TextChoices):
+        PENDING = "PENDING", "Pending"
+        READY = "READY", "Ready"
+        FAILED = "FAILED", "Failed"
+        MISSING = "MISSING", "Missing"
+        CORRUPT = "CORRUPT", "Corrupt"
+
+    id = models.CharField(
+        max_length=16,
+        primary_key=True,
+        default=generate_replay_archive_id,
+        editable=False,
+    )
+    run = models.OneToOneField(
+        Run, on_delete=models.CASCADE, related_name="replay_archive"
+    )
+    archive_status = models.CharField(
+        max_length=16,
+        choices=ArchiveStatus.choices,
+        default=ArchiveStatus.PENDING,
+        db_index=True,
+    )
+    archive_format = models.CharField(max_length=32, default="json.gz")
+    archive_schema_version = models.PositiveIntegerField(default=1)
+    storage_path = models.CharField(max_length=500, blank=True, default="")
+    compressed_size_bytes = models.BigIntegerField(null=True, blank=True)
+    uncompressed_size_bytes = models.BigIntegerField(null=True, blank=True)
+    checksum_sha256 = models.CharField(max_length=64, blank=True, default="")
+    archived_at = models.DateTimeField(null=True, blank=True)
+    verified_at = models.DateTimeField(null=True, blank=True)
+    verification_error = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["archive_status", "archived_at"])]
+
+    def __str__(self):
+        return f"Replay archive for {self.run_id} ({self.archive_status})"
+
+
+class WeeklyCompactionRun(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "PENDING", "Pending"
+        AGGREGATED = "AGGREGATED", "Aggregated"
+        ARCHIVED = "ARCHIVED", "Archived"
+        VERIFIED = "VERIFIED", "Verified"
+        COMPACTED = "COMPACTED", "Compacted"
+        FAILED = "FAILED", "Failed"
+
+    id = models.CharField(
+        max_length=16,
+        primary_key=True,
+        default=generate_weekly_compaction_id,
+        editable=False,
+    )
+    week_start = models.DateField(unique=True)
+    week_end = models.DateField()
+    status = models.CharField(
+        max_length=16,
+        choices=Status.choices,
+        default=Status.PENDING,
+        db_index=True,
+    )
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    run_count = models.PositiveIntegerField(default=0)
+    turn_count = models.PositiveIntegerField(default=0)
+    trigger_count = models.PositiveIntegerField(default=0)
+    archive_runs_written = models.PositiveIntegerField(default=0)
+    archive_runs_verified = models.PositiveIntegerField(default=0)
+    turn_rows_deleted = models.PositiveIntegerField(default=0)
+    trigger_rows_deleted = models.PositiveIntegerField(default=0)
+    archive_bytes_written = models.BigIntegerField(default=0)
+    notes = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-week_start"]
+
+    def __str__(self):
+        return f"Weekly compaction {self.week_start} ({self.status})"
+
+
+class StudentWeekBase(models.Model):
+    student = models.ForeignKey(Student, on_delete=models.CASCADE)
+    classroom = models.ForeignKey(Classroom, on_delete=models.CASCADE)
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE)
+    week_start = models.DateField(db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+
+
+class StudentWeekRunStatsBase(StudentWeekBase):
+    runs = models.PositiveIntegerField(default=0)
+    wins = models.PositiveIntegerField(default=0)
+    correct_moves = models.PositiveIntegerField(default=0)
+    wrong_moves = models.PositiveIntegerField(default=0)
+    score_sum = models.BigIntegerField(default=0)
+    score_count = models.PositiveIntegerField(default=0)
+    score_sum_sq = models.BigIntegerField(default=0)
+    score_min = models.IntegerField(null=True, blank=True)
+    score_max = models.IntegerField(null=True, blank=True)
+    elapsed_sum_ms = models.BigIntegerField(default=0)
+    elapsed_count = models.PositiveIntegerField(default=0)
+    elapsed_sum_sq = models.BigIntegerField(default=0)
+    elapsed_min_ms = models.IntegerField(null=True, blank=True)
+    elapsed_max_ms = models.IntegerField(null=True, blank=True)
+    latest_run = models.ForeignKey(
+        Run,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    latest_run_created_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        abstract = True
+
+
+class StudentWeekStats(StudentWeekRunStatsBase):
+    id = models.CharField(
+        max_length=16,
+        primary_key=True,
+        default=generate_student_week_stats_id,
+        editable=False,
+    )
+    first_run_created_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["student", "week_start"],
+                name="unique_student_week_stats",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["teacher", "week_start"], name="sws_teacher_week_idx"),
+            models.Index(
+                fields=["classroom", "week_start"],
+                name="sws_classroom_week_idx",
+            ),
+        ]
+        ordering = ["student", "week_start"]
+
+
+class StudentWeekLevelStats(StudentWeekRunStatsBase):
+    id = models.CharField(
+        max_length=16,
+        primary_key=True,
+        default=generate_student_week_level_stats_id,
+        editable=False,
+    )
+    level = models.IntegerField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["student", "week_start", "level"],
+                name="unique_student_week_level_stats",
+            )
+        ]
+        indexes = [
+            models.Index(
+                fields=["teacher", "week_start", "level"],
+                name="swl_teacher_week_level_idx",
+            ),
+            models.Index(
+                fields=["classroom", "week_start", "level"],
+                name="swl_classroom_week_level_idx",
+            ),
+        ]
+        ordering = ["student", "week_start", "level"]
+
+
+class StudentWeekHotspotStats(StudentWeekBase):
+    id = models.CharField(
+        max_length=16,
+        primary_key=True,
+        default=generate_student_week_hotspot_stats_id,
+        editable=False,
+    )
+    level = models.IntegerField()
+    tile_before_index = models.IntegerField()
+    mistake_count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["student", "week_start", "level", "tile_before_index"],
+                name="unique_student_week_hotspot_stats",
+            )
+        ]
+        indexes = [
+            models.Index(
+                fields=["teacher", "week_start", "level"],
+                name="swh_teacher_week_level_idx",
+            ),
+            models.Index(
+                fields=["classroom", "week_start", "level"],
+                name="swh_classroom_week_level_idx",
+            ),
+        ]
+        ordering = ["student", "week_start", "level", "tile_before_index"]
+
+
+class StudentWeekSpecialTileStats(StudentWeekBase):
+    id = models.CharField(
+        max_length=16,
+        primary_key=True,
+        default=generate_student_week_special_tile_stats_id,
+        editable=False,
+    )
+    level = models.IntegerField()
+    special_tile_type = models.IntegerField()
+    trigger_count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["student", "week_start", "level", "special_tile_type"],
+                name="unique_student_week_special_tile_stats",
+            )
+        ]
+        indexes = [
+            models.Index(
+                fields=["teacher", "week_start", "level"],
+                name="spt_teacher_week_level_idx",
+            )
+        ]
+        ordering = ["student", "week_start", "level", "special_tile_type"]
+
+
+class StudentWeekChainLengthStats(StudentWeekBase):
+    id = models.CharField(
+        max_length=16,
+        primary_key=True,
+        default=generate_student_week_chain_length_stats_id,
+        editable=False,
+    )
+    level = models.IntegerField()
+    chain_length = models.PositiveIntegerField()
+    turn_count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["student", "week_start", "level", "chain_length"],
+                name="unique_student_week_chain_length_stats",
+            )
+        ]
+        indexes = [
+            models.Index(
+                fields=["teacher", "week_start", "level"],
+                name="scl_teacher_week_level_idx",
+            )
+        ]
+        ordering = ["student", "week_start", "level", "chain_length"]
+
+
+class StudentWeekCardFamilyStats(StudentWeekBase):
+    id = models.CharField(
+        max_length=16,
+        primary_key=True,
+        default=generate_student_week_card_family_stats_id,
+        editable=False,
+    )
+    level = models.IntegerField()
+    card_family = models.CharField(max_length=64)
+    offered_count = models.PositiveIntegerField(default=0)
+    chosen_count = models.PositiveIntegerField(default=0)
+    correct_count = models.PositiveIntegerField(default=0)
+    wrong_count = models.PositiveIntegerField(default=0)
+    decision_time_sum_ms = models.BigIntegerField(default=0)
+    decision_time_count = models.PositiveIntegerField(default=0)
+    decision_time_sum_sq_ms = models.BigIntegerField(default=0)
+    decision_time_min_ms = models.IntegerField(null=True, blank=True)
+    decision_time_max_ms = models.IntegerField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["student", "week_start", "level", "card_family"],
+                name="unique_student_week_card_family_stats",
+            )
+        ]
+        indexes = [
+            models.Index(
+                fields=["teacher", "week_start", "level", "card_family"],
+                name="scf_tchr_wk_lvl_fam_idx",
+            )
+        ]
+        ordering = ["student", "week_start", "level", "card_family"]
+
+
+class StudentWeekCardTypeStats(StudentWeekBase):
+    id = models.CharField(
+        max_length=16,
+        primary_key=True,
+        default=generate_student_week_card_type_stats_id,
+        editable=False,
+    )
+    level = models.IntegerField()
+    card_type = models.CharField(max_length=64)
+    chosen_count = models.PositiveIntegerField(default=0)
+    decision_time_sum_ms = models.BigIntegerField(default=0)
+    decision_time_count = models.PositiveIntegerField(default=0)
+    decision_time_sum_sq_ms = models.BigIntegerField(default=0)
+    decision_time_min_ms = models.IntegerField(null=True, blank=True)
+    decision_time_max_ms = models.IntegerField(null=True, blank=True)
+    clipped_decision_time_sum_ms = models.BigIntegerField(default=0)
+    clipped_decision_time_sum_sq_ms = models.BigIntegerField(default=0)
+    outlier_count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["student", "week_start", "level", "card_type"],
+                name="unique_student_week_card_type_stats",
+            )
+        ]
+        indexes = [
+            models.Index(
+                fields=["teacher", "week_start", "level", "card_type"],
+                name="sct_tchr_wk_lvl_type_idx",
+            ),
+            models.Index(
+                fields=["classroom", "week_start", "level"],
+                name="sct_clsrm_wk_lvl_idx",
+            ),
+        ]
+        ordering = ["student", "week_start", "level", "card_type"]
+
+
+class StudentRunBucketTrend(models.Model):
+    id = models.CharField(
+        max_length=16,
+        primary_key=True,
+        default=generate_student_run_bucket_trend_id,
+        editable=False,
+    )
+    student = models.ForeignKey(Student, on_delete=models.CASCADE)
+    classroom = models.ForeignKey(Classroom, on_delete=models.CASCADE)
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE)
+    level = models.IntegerField()
+    bucket_index = models.PositiveIntegerField()
+    bucket_size_runs = models.PositiveIntegerField(default=5)
+    first_run_created_at = models.DateTimeField()
+    last_run_created_at = models.DateTimeField()
+    run_count = models.PositiveIntegerField(default=0)
+    wins = models.PositiveIntegerField(default=0)
+    correct_moves = models.PositiveIntegerField(default=0)
+    wrong_moves = models.PositiveIntegerField(default=0)
+    score_sum = models.BigIntegerField(default=0)
+    score_count = models.PositiveIntegerField(default=0)
+    score_sum_sq = models.BigIntegerField(default=0)
+    elapsed_sum_ms = models.BigIntegerField(default=0)
+    elapsed_count = models.PositiveIntegerField(default=0)
+    elapsed_sum_sq = models.BigIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["student", "level", "bucket_index"],
+                name="unique_student_run_bucket_trend",
+            )
+        ]
+        indexes = [
+            models.Index(
+                fields=["teacher", "level", "bucket_index"],
+                name="srb_tchr_lvl_bucket_idx",
+            ),
+            models.Index(
+                fields=["classroom", "level", "bucket_index"],
+                name="srb_clsrm_lvl_bucket_idx",
+            ),
+            models.Index(
+                fields=["student", "level", "first_run_created_at"],
+                name="srb_student_level_first_idx",
+            ),
+        ]
+        ordering = ["student", "level", "bucket_index"]
+
+
+class StudentWeekConditionalStats(StudentWeekBase):
+    class ConditionalKind(models.TextChoices):
+        TILE = "tile", "Tile"
+        BAG = "bag", "Bag"
+
+    id = models.CharField(
+        max_length=16,
+        primary_key=True,
+        default=generate_student_week_conditional_stats_id,
+        editable=False,
+    )
+    level = models.IntegerField()
+    conditional_kind = models.CharField(max_length=16, choices=ConditionalKind.choices)
+    bucket_key = models.CharField(max_length=32)
+    total_count = models.PositiveIntegerField(default=0)
+    correct_count = models.PositiveIntegerField(default=0)
+    else_count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "student",
+                    "week_start",
+                    "level",
+                    "conditional_kind",
+                    "bucket_key",
+                ],
+                name="unique_student_week_conditional_stats",
+            )
+        ]
+        indexes = [
+            models.Index(
+                fields=["teacher", "week_start", "level", "conditional_kind"],
+                name="scd_tchr_wk_lvl_kind_idx",
+            )
+        ]
+        ordering = [
+            "student",
+            "week_start",
+            "level",
+            "conditional_kind",
+            "bucket_key",
+        ]
+
+
+class StudentWeekBackCardUsageStats(StudentWeekBase):
+    id = models.CharField(
+        max_length=16,
+        primary_key=True,
+        default=generate_student_week_back_card_usage_stats_id,
+        editable=False,
+    )
+    level = models.IntegerField()
+    place_before = models.IntegerField()
+    count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["student", "week_start", "level", "place_before"],
+                name="unique_student_week_back_card_usage_stats",
+            )
+        ]
+        indexes = [
+            models.Index(
+                fields=["teacher", "week_start", "level"],
+                name="sbk_teacher_week_level_idx",
+            )
+        ]
+        ordering = ["student", "week_start", "level", "place_before"]
+
+
+class StudentWeekForeachContextStats(StudentWeekBase):
+    id = models.CharField(
+        max_length=16,
+        primary_key=True,
+        default=generate_student_week_foreach_context_stats_id,
+        editable=False,
+    )
+    level = models.IntegerField()
+    with_opponent_count = models.PositiveIntegerField(default=0)
+    without_opponent_count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["student", "week_start", "level"],
+                name="unique_student_week_foreach_context_stats",
+            )
+        ]
+        indexes = [
+            models.Index(
+                fields=["teacher", "week_start", "level"],
+                name="sfc_teacher_week_level_idx",
+            )
+        ]
+        ordering = ["student", "week_start", "level"]
+
+
+class StudentWeekNumberChoiceStats(StudentWeekBase):
+    id = models.CharField(
+        max_length=16,
+        primary_key=True,
+        default=generate_student_week_number_choice_stats_id,
+        editable=False,
+    )
+    level = models.IntegerField()
+    chosen_number = models.IntegerField()
+    choice_count = models.PositiveIntegerField(default=0)
+    decision_time_sum_ms = models.BigIntegerField(default=0)
+    decision_time_count = models.PositiveIntegerField(default=0)
+    decision_time_sum_sq_ms = models.BigIntegerField(default=0)
+    decision_time_min_ms = models.IntegerField(null=True, blank=True)
+    decision_time_max_ms = models.IntegerField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["student", "week_start", "level", "chosen_number"],
+                name="unique_student_week_number_choice_stats",
+            )
+        ]
+        indexes = [
+            models.Index(
+                fields=["teacher", "week_start", "level"],
+                name="snc_teacher_week_level_idx",
+            )
+        ]
+        ordering = ["student", "week_start", "level", "chosen_number"]
+
+
+class ClassroomWeekStats(models.Model):
+    id = models.CharField(
+        max_length=16,
+        primary_key=True,
+        default=generate_classroom_week_stats_id,
+        editable=False,
+    )
+    classroom = models.ForeignKey(Classroom, on_delete=models.CASCADE)
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE)
+    week_start = models.DateField(db_index=True)
+    student_count = models.PositiveIntegerField(default=0)
+    runs = models.PositiveIntegerField(default=0)
+    wins = models.PositiveIntegerField(default=0)
+    correct_moves = models.PositiveIntegerField(default=0)
+    wrong_moves = models.PositiveIntegerField(default=0)
+    score_sum = models.BigIntegerField(default=0)
+    score_count = models.PositiveIntegerField(default=0)
+    score_sum_sq = models.BigIntegerField(default=0)
+    elapsed_sum_ms = models.BigIntegerField(default=0)
+    elapsed_count = models.PositiveIntegerField(default=0)
+    elapsed_sum_sq = models.BigIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["classroom", "week_start"],
+                name="unique_classroom_week_stats",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["teacher", "week_start"], name="cws_teacher_week_idx")
+        ]
+        ordering = ["classroom", "week_start"]
+
+    def __str__(self):
+        return f"Classroom weekly stats for {self.classroom_id} on {self.week_start}"

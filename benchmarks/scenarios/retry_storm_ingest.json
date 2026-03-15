@@ -1,0 +1,30 @@
+{
+  "name": "retry_storm_ingest",
+  "dataset": {
+    "teachers": 1,
+    "classrooms_per_teacher": 1,
+    "students_per_classroom": 10,
+    "weeks": 3,
+    "runs_per_student_per_week": 2,
+    "avg_turns_per_run": 4,
+    "card_mix_profile": "move_heavy",
+    "bag_level_ratio": 0.2,
+    "compact_weeks": "1",
+    "hot_weeks": 2
+  },
+  "traffic": {
+    "base_url": "http://digitmile-backend:8000",
+    "request_host_header": "localhost",
+    "duration": "30s",
+    "vus_players": 12,
+    "vus_teachers": 2,
+    "hot_replay_ratio": 0.2,
+    "grade_filter_ratio": 0.2,
+    "classroom_filter_ratio": 0.2,
+    "scripts": ["ingest.js", "mixed_weekly_cycle.js"]
+  },
+  "verification": {
+    "benchmark_iterations": 3
+  },
+  "report_output": "benchmarks/reports/retry_storm_ingest.json"
+}

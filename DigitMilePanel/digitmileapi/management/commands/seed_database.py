@@ -20,9 +20,22 @@ from pathlib import Path
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import Group, User
 from digitmileapi.models import (
+    ClassroomWeekStats,
+    ReplayArchive,
     School,
+    StudentWeekBackCardUsageStats,
+    StudentWeekCardFamilyStats,
+    StudentWeekChainLengthStats,
+    StudentWeekConditionalStats,
+    StudentWeekForeachContextStats,
+    StudentWeekHotspotStats,
+    StudentWeekLevelStats,
+    StudentWeekNumberChoiceStats,
+    StudentWeekSpecialTileStats,
+    StudentWeekStats,
     Teacher,
     TeacherSchoolAssignment,
+    WeeklyCompactionRun,
     Classroom,
     Student,
     RunStatistics,
@@ -373,10 +386,23 @@ Legacy statistics created:    {legacy_count}
         self.stdout.write(self.style.WARNING("Clearing existing data..."))
 
         # Delete in reverse order of dependencies
+        ReplayArchive.objects.all().delete()
         SpecialTileTrigger.objects.all().delete()
         TurnEvent.objects.all().delete()
         Run.objects.all().delete()
         RunStatistics.objects.all().delete()
+        StudentWeekBackCardUsageStats.objects.all().delete()
+        StudentWeekCardFamilyStats.objects.all().delete()
+        StudentWeekChainLengthStats.objects.all().delete()
+        StudentWeekConditionalStats.objects.all().delete()
+        StudentWeekForeachContextStats.objects.all().delete()
+        StudentWeekHotspotStats.objects.all().delete()
+        StudentWeekLevelStats.objects.all().delete()
+        StudentWeekNumberChoiceStats.objects.all().delete()
+        StudentWeekSpecialTileStats.objects.all().delete()
+        StudentWeekStats.objects.all().delete()
+        ClassroomWeekStats.objects.all().delete()
+        WeeklyCompactionRun.objects.all().delete()
         Student.objects.all().delete()
         Classroom.objects.all().delete()
         TeacherSchoolAssignment.objects.all().delete()

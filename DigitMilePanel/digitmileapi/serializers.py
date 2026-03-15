@@ -1,5 +1,6 @@
 # myapi/serializers.py
 from rest_framework import serializers
+
 from .models import (
     School,
     Teacher,
@@ -10,6 +11,7 @@ from .models import (
     TurnEvent,
     SpecialTileTrigger,
 )
+from .run_ingestion import clamp_elapsed_ms, normalize_unity_run_ingestion_payload
 
 
 class SchoolSerializer(serializers.ModelSerializer):
@@ -208,20 +210,26 @@ class TurnEventInputSerializer(serializers.Serializer):
         return value
 
 
-class RunIngestionSerializer(serializers.Serializer):
+class CanonicalRunIngestionPayloadSerializer(serializers.Serializer):
     """
-    Main serializer for run ingestion endpoint.
-    Validates the entire payload structure from Unity client.
+    Canonical normalized serializer for run ingestion endpoint.
+    Accepts snake_case fields after any Unity payload translation.
     """
 
     run_id = serializers.CharField(max_length=36)  # Prefixed ID: run_<32-char-hex>
     student_id = serializers.CharField(max_length=16)  # Prefixed ID: stu_<12-char-hex>
     level = serializers.IntegerField(min_value=1)
-    player_won = serializers.BooleanField()
+    player_won = serializers.BooleanField(required=False)
     score = serializers.IntegerField(min_value=0)
-    elapsed_ms = serializers.IntegerField(min_value=0)
+    place = serializers.IntegerField(min_value=1, max_value=4, required=False)
+    elapsed_ms = serializers.IntegerField(min_value=0, required=False)
+    run_started_unix_ms = serializers.IntegerField(required=False)
+    run_ended_unix_ms = serializers.IntegerField(required=False)
     correct_moves = serializers.IntegerField(min_value=0)
     wrong_moves = serializers.IntegerField(min_value=0)
+    game_map = serializers.ListField(
+        child=serializers.DictField(), required=False, default=list
+    )
     map_version = serializers.CharField(max_length=50, required=False, default="1")
     bot_version = serializers.CharField(max_length=50, required=False, default="1")
     rng_seed = serializers.IntegerField(required=False, allow_null=True)
@@ -262,7 +270,57 @@ class RunIngestionSerializer(serializers.Serializer):
 
     def validate(self, data):
         """Cross-field validation."""
-        total_turns = len(data.get("turn_events", []))
+        place = data.get("place")
+        derived_player_won = place == 1 if place is not None else None
+
+        if derived_player_won is not None:
+            reported_player_won = data.get("player_won")
+            if (
+                reported_player_won is not None
+                and reported_player_won != derived_player_won
+            ):
+                raise serializers.ValidationError(
+                    "player_won must match the value derived from place"
+                )
+            data["player_won"] = derived_player_won
+        elif "player_won" not in data:
+            raise serializers.ValidationError(
+                "Either player_won or place must be provided"
+            )
+
+        start_ms = data.get("run_started_unix_ms")
+        end_ms = data.get("run_ended_unix_ms")
+        if start_ms is not None or end_ms is not None:
+            if start_ms is None or end_ms is None:
+                raise serializers.ValidationError(
+                    "run_started_unix_ms and run_ended_unix_ms must be provided together"
+                )
+            data["elapsed_ms"] = clamp_elapsed_ms(start_ms, end_ms)
+        elif "elapsed_ms" not in data:
+            raise serializers.ValidationError(
+                "Either elapsed_ms or run_started_unix_ms/run_ended_unix_ms must be provided"
+            )
+
+        turn_events = data.get("turn_events", [])
+        total_turns = len(turn_events)
+        correct_from_turns = sum(1 for event in turn_events if event["was_correct"])
+        wrong_from_turns = total_turns - correct_from_turns
+
+        if place is not None:
+            adjustable_correct_moves = (
+                data["correct_moves"] - 1 if place == 1 else data["correct_moves"]
+            )
+            if adjustable_correct_moves != correct_from_turns:
+                raise serializers.ValidationError(
+                    f"correct_moves mismatch: reported {data['correct_moves']} but turns show {correct_from_turns}"
+                )
+
+            if data["wrong_moves"] != wrong_from_turns:
+                raise serializers.ValidationError(
+                    f"wrong_moves mismatch: reported {data['wrong_moves']} but turns show {wrong_from_turns}"
+                )
+            return data
+
         reported_moves = data["correct_moves"] + data["wrong_moves"]
 
         if total_turns != reported_moves:
@@ -569,3 +627,33 @@ class UnityRunUploadPayloadSerializer(serializers.Serializer):
             )
 
         return data
+
+
+def _looks_like_unity_run_payload(data):
+    return (
+        isinstance(data, dict)
+        and "run" in data
+        and ("userID" in data or "classroomKey" in data or "user" in data)
+    )
+
+
+class RunIngestionSerializer(serializers.Serializer):
+    """
+    Wrapper serializer that accepts either the canonical snake_case contract
+    or the full Unity payload shape and normalizes into one validated payload.
+    """
+
+    def to_internal_value(self, data):
+        normalized_data = data
+        if _looks_like_unity_run_payload(data):
+            unity_serializer = UnityRunUploadPayloadSerializer(data=data)
+            unity_serializer.is_valid(raise_exception=True)
+            normalized_data = normalize_unity_run_ingestion_payload(
+                unity_serializer.validated_data
+            )
+
+        canonical_serializer = CanonicalRunIngestionPayloadSerializer(
+            data=normalized_data
+        )
+        canonical_serializer.is_valid(raise_exception=True)
+        return canonical_serializer.validated_data

@@ -1,6 +1,6 @@
 # DigitMilePanel Backend Docs
 
-Last updated: 2026-03-09
+Last updated: 2026-03-12
 
 This documentation set is a fresh backend-focused map of the Django implementation in `DigitMilePanel/`, built from source inspection rather than the older iterative docs in `DigitMilePanel/docs/`.
 
@@ -12,6 +12,10 @@ This documentation set is a fresh backend-focused map of the Django implementati
 - [`docs/backend-analytics-and-dashboard.md`](backend-analytics-and-dashboard.md) - how statistics are computed and how the teacher dashboard consumes them.
 - [`docs/backend-registration-and-admin-workflows.md`](backend-registration-and-admin-workflows.md) - school and teacher registration, approval/rejection, permissions, and admin behavior.
 - [`docs/backend-operations-and-config.md`](backend-operations-and-config.md) - environment, deployment, logging, caching, security posture, and troubleshooting.
+- [`docs/weekly-rollup-replay-refactor-prd.md`](weekly-rollup-replay-refactor-prd.md) - detailed product and implementation plan for weekly analytics rollups plus indefinite replay archives.
+- [`docs/weekly-rollup-replay-schema-spec.md`](weekly-rollup-replay-schema-spec.md) - concrete schema proposal and metric-to-rollup mapping for the refactor.
+- [`docs/next-phase-implementation-checklist.md`](next-phase-implementation-checklist.md) - explicit implementation checklist for the next analytics, ingest, and benchmark phase.
+- [`docs/weekly-rollup-operator-runbook.md`](weekly-rollup-operator-runbook.md) - operator commands, benchmark workflow, archive troubleshooting, and manual phase validation map.
 - [`docs/glossary.md`](glossary.md) - backend and gameplay terms used across the docs.
 
 ## Quick orientation

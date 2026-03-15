@@ -1,0 +1,31 @@
+{
+  "name": "mixed_semester_medium",
+  "dataset": {
+    "teachers": 2,
+    "classrooms_per_teacher": 2,
+    "students_per_classroom": 12,
+    "weeks": 8,
+    "runs_per_student_per_week": 3,
+    "avg_turns_per_run": 5,
+    "card_mix_profile": "balanced",
+    "bag_level_ratio": 0.35,
+    "compact_weeks": "1-6",
+    "hot_weeks": 2
+  },
+  "traffic": {
+    "base_url": "http://digitmile-backend:8000",
+    "request_host_header": "localhost",
+    "duration": "45s",
+    "vus_players": 8,
+    "vus_teachers": 4,
+    "hot_replay_ratio": 0.5,
+    "grade_filter_ratio": 0.4,
+    "classroom_filter_ratio": 0.35,
+    "scripts": ["mixed_weekly_cycle.js"]
+  },
+  "verification": {
+    "benchmark_iterations": 5,
+    "compact_after_traffic_week_index": 6
+  },
+  "report_output": "benchmarks/reports/mixed_semester_medium.json"
+}

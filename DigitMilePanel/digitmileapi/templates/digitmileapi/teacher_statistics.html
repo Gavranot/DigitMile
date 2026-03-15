@@ -1259,7 +1259,8 @@ tailwind.config = {
 
     // Decision Time
     if (document.getElementById('decisionTimeChart') && starterVizData.decision_time_by_card && Object.keys(starterVizData.decision_time_by_card).length > 0) {
-        const cardData = starterVizData.decision_time_by_card;
+        const decisionTimePayload = starterVizData.decision_time_by_card;
+        const cardData = decisionTimePayload.summary_by_card_type || decisionTimePayload;
         const cardTypes = Object.keys(cardData);
         new Chart(document.getElementById('decisionTimeChart'), {
             type: 'bar',
@@ -1712,7 +1713,7 @@ tailwind.config = {
         crossLevelStudent = studentData.find(s => s.id == studentSelect.value) || null;
         if (!crossLevelStudent) { level1Select.disabled = level2Select.disabled = true; return; }
         const levelPerf = crossLevelStudent.level_performance || {};
-        const allLevels = Object.keys(levelPerf).filter(l => (levelPerf[l].attempts || []).length >= 7).sort((a, b) => a - b);
+        const allLevels = Object.keys(levelPerf).filter(l => (levelPerf[l].attempts || []).length >= 3).sort((a, b) => a - b);
         const options = allLevels.map(l => `<option value="${l}">{% trans "Level" %} ${l}</option>`).join('');
         level1Select.innerHTML = level2Select.innerHTML = `<option value="">--</option>` + options;
         level1Select.disabled = level2Select.disabled = allLevels.length < 2;
@@ -1766,7 +1767,7 @@ tailwind.config = {
         selectedStudent = studentData.find(s => s.id == studentSelect.value) || null;
         if (!selectedStudent) { levelSelect.innerHTML = '<option value="">--</option>'; levelSelect.disabled = true; return; }
         const levelPerf = selectedStudent.level_performance || {};
-        const levels = Object.keys(levelPerf).filter(l => (levelPerf[l].attempts || []).length >= 7);
+        const levels = Object.keys(levelPerf).filter(l => (levelPerf[l].attempts || []).length >= 3);
         if (levels.length === 0) { levelSelect.innerHTML = '<option value="">{% trans "Not enough data" %}</option>'; levelSelect.disabled = true; return; }
         levelSelect.innerHTML = '<option value="">--</option>' + levels.map(l => `<option value="${l}">{% trans "Level" %} ${l}</option>`).join('');
         levelSelect.disabled = false;

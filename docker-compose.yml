@@ -32,9 +32,12 @@ services:
     container_name: digitmile-backend
     env_file:
       - .env
+    environment:
+      REPLAY_ARCHIVE_ROOT: /var/lib/digitmile/replay-archives
     volumes:
       # Mount code for development (changes reflect immediately without rebuild)
       - ./DigitMilePanel:/app
+      - replay_archives_data:/var/lib/digitmile/replay-archives
     ports:
       - "8000:8000"
     depends_on:
@@ -67,3 +70,4 @@ networks:
 
 volumes:
   postgres_data:
+  replay_archives_data:

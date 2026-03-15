@@ -193,9 +193,9 @@ LOCALE_PATHS = [
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 # Static files with WhiteNoise
-STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 
 # Default primary key field type
@@ -218,6 +218,16 @@ EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@digitmile.com")
 SITE_URL = os.getenv("SITE_URL", "http://localhost:8000")
+
+REPLAY_ARCHIVE_ROOT = Path(
+    os.getenv("REPLAY_ARCHIVE_ROOT", BASE_DIR / "replay_archives")
+)
+REPLAY_ARCHIVE_COMPRESSION_LEVEL = int(
+    os.getenv("REPLAY_ARCHIVE_COMPRESSION_LEVEL", "6")
+)
+REPLAY_ARCHIVE_HOT_RETENTION_DAYS = int(
+    os.getenv("REPLAY_ARCHIVE_HOT_RETENTION_DAYS", "7")
+)
 
 # Logging configuration
 LOGGING = {

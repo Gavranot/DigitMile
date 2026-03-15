@@ -1,0 +1,30 @@
+{
+  "name": "hot_only_small",
+  "dataset": {
+    "teachers": 1,
+    "classrooms_per_teacher": 1,
+    "students_per_classroom": 8,
+    "weeks": 2,
+    "runs_per_student_per_week": 2,
+    "avg_turns_per_run": 4,
+    "card_mix_profile": "balanced",
+    "bag_level_ratio": 0.25,
+    "compact_weeks": "",
+    "hot_weeks": 2
+  },
+  "traffic": {
+    "base_url": "http://digitmile-backend:8000",
+    "request_host_header": "localhost",
+    "duration": "20s",
+    "vus_players": 4,
+    "vus_teachers": 2,
+    "hot_replay_ratio": 0.8,
+    "grade_filter_ratio": 0.3,
+    "classroom_filter_ratio": 0.3,
+    "scripts": ["ingest.js", "teacher_dashboard.js"]
+  },
+  "verification": {
+    "benchmark_iterations": 3
+  },
+  "report_output": "benchmarks/reports/hot_only_small.json"
+}

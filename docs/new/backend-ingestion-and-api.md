@@ -229,20 +229,25 @@ That means the server currently trusts the client not to mismatch these fields.
 
 ### Why it exists
 
-This endpoint is a cleaner, more backend-native run ingestion path that expects normalized snake_case field names and explicit `run_id` for idempotency.
+This endpoint is now the preferred canonical ingestion path for Unity and any backend-native client. It preserves the idempotent `run_id` contract while also accepting the full Unity gameplay payload shape.
 
-### Key differences from `insertRunData/`
+### Current behavior
 
-- requires client-supplied `run_id`
+- accepts either:
+  - canonical snake_case payloads, or
+  - the same full-fidelity Unity payload shape accepted by `insertRunData/`
+- derives a deterministic `run_id` when the Unity payload omits it
 - returns `200` if the run already exists
 - catches duplicate-key race conditions and also returns `200`
-- does not populate `place` explicitly
-- does not populate `game_map` explicitly
-- expects already-normalized turn/trigger payloads rather than the Unity-specific nested shape
+- persists `place`, `game_map`, normalized card metadata, turns, and special-tile triggers with Unity parity
+- derives `player_won` from `place == 1` when Unity payloads use final place semantics
+- derives elapsed time from `runStartedUnixMs` and `runEndedUnixMs` with the same clamp rules as `insertRunData/`
+- rejects writes for closed reporting weeks with a business error response instead of a generic server error
+- logs structured ingest accept, duplicate/idempotent, and closed-week rejection events
 
 ### Practical implication
 
-It is safer for idempotent ingestion but currently produces less complete `Run` rows than the Unity-specific path.
+Future Unity ingestion work should target `/panel/api/runs/ingest/` first. `insertRunData/` remains a legacy compatibility path until the Unity client migration is complete.
 
 ## Teacher-scoped CRUD/API endpoints
 

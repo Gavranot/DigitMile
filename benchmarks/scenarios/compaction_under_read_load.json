@@ -1,0 +1,31 @@
+{
+  "name": "compaction_under_read_load",
+  "dataset": {
+    "teachers": 2,
+    "classrooms_per_teacher": 2,
+    "students_per_classroom": 10,
+    "weeks": 6,
+    "runs_per_student_per_week": 3,
+    "avg_turns_per_run": 5,
+    "card_mix_profile": "balanced",
+    "bag_level_ratio": 0.35,
+    "compact_weeks": "1-4",
+    "hot_weeks": 2
+  },
+  "traffic": {
+    "base_url": "http://digitmile-backend:8000",
+    "request_host_header": "localhost",
+    "duration": "40s",
+    "vus_players": 4,
+    "vus_teachers": 6,
+    "hot_replay_ratio": 0.3,
+    "grade_filter_ratio": 0.5,
+    "classroom_filter_ratio": 0.5,
+    "scripts": ["teacher_dashboard.js", "replay.js"]
+  },
+  "verification": {
+    "benchmark_iterations": 4,
+    "compact_after_traffic_week_index": 4
+  },
+  "report_output": "benchmarks/reports/compaction_under_read_load.json"
+}

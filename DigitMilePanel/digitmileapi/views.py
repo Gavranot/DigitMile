@@ -20,8 +20,11 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .models import (
+    ClassroomWeekStats,
     Classroom,
     Student,
+    StudentWeekLevelStats,
+    StudentWeekStats,
     Teacher,
     School,
     RunStatistics,
@@ -46,8 +49,39 @@ from django.conf import settings
 from django.http import JsonResponse
 import logging
 
+from .replay_archives import get_replay_payload_for_run
+from .run_ingestion import (
+    clamp_elapsed_ms,
+    get_recording_window_status_for_run_finish,
+    unix_ms_to_datetime,
+)
+from .run_bucket_trends import get_student_run_bucket_points
+from .rollup_analytics import (
+    back_card_usage_by_place_by_level as rollup_back_card_usage_by_place_by_level,
+    bag_conditional_accuracy_by_comparator_by_level as rollup_bag_conditional_accuracy_by_comparator_by_level,
+    card_accuracy_by_family_by_level as rollup_card_accuracy_by_family_by_level,
+    decision_time_by_card_type as rollup_decision_time_by_card_type,
+    decision_time_by_family_by_level as rollup_decision_time_by_family_by_level,
+    foreach_tile_context_usage_by_level as rollup_foreach_tile_context_usage_by_level,
+    mistake_hotspots_by_level as rollup_mistake_hotspots_by_level,
+    number_choice_distribution_by_level as rollup_number_choice_distribution_by_level,
+    number_decision_time_by_choice_by_level as rollup_number_decision_time_by_choice_by_level,
+    offer_choice_share_by_family as rollup_offer_choice_share_by_family,
+    special_tile_chain_length_distribution_by_level as rollup_special_tile_chain_length_distribution_by_level,
+    special_tile_breakdown as rollup_special_tile_breakdown,
+    time_distribution_by_level as rollup_time_distribution_by_level,
+    tile_conditional_accuracy_by_tile_type_by_level as rollup_tile_conditional_accuracy_by_tile_type_by_level,
+    win_rate_by_level as rollup_win_rate_by_level,
+    wrong_moves_rate_by_level as rollup_wrong_moves_rate_by_level,
+)
+
 # Set up logger for email operations
 logger = logging.getLogger(__name__)
+
+
+def _log_run_ingest_event(level, event, **context):
+    logger.log(level, "%s %s", event, context)
+
 
 CARD_FAMILY_BY_TYPE = {
     "MoveX": "move",
@@ -375,24 +409,16 @@ class InsertRunDataView(APIView):
         place = run_data["place"]
         correct_moves = run_data["correct_moves"]
         wrong_moves = run_data["wrong_moves"]
-        elapsed_ms = run_data["runEndedUnixMs"] - run_data["runStartedUnixMs"]
+        elapsed_ms = clamp_elapsed_ms(
+            run_data["runStartedUnixMs"],
+            run_data["runEndedUnixMs"],
+        )
 
         # Player wins if they finish in 1st place
         player_won = place == 1
 
         # Extract game map from Unity
         game_map = run_data["gameMap"]["mapTiles"]
-
-        # Validate elapsed_ms is reasonable (cap at 2 hours if timestamps are wrong)
-        MAX_GAME_DURATION_MS = 7_200_000  # 2 hours
-        if elapsed_ms < 0:
-            logger.warning(f"Negative elapsed time: {elapsed_ms}ms. Setting to 0.")
-            elapsed_ms = 0
-        elif elapsed_ms > MAX_GAME_DURATION_MS:
-            logger.warning(
-                f"Unusually long game: {elapsed_ms}ms. Capping to {MAX_GAME_DURATION_MS}ms."
-            )
-            elapsed_ms = MAX_GAME_DURATION_MS
 
         try:
             with transaction.atomic():
@@ -632,11 +658,43 @@ class RunIngestionView(APIView):
 
         # Check for existing run (idempotency)
         if Run.objects.filter(id=run_id).exists():
-            logger.info(f"Run {run_id} already exists, returning 200 (idempotent)")
+            _log_run_ingest_event(
+                logging.INFO,
+                "run_ingest_duplicate",
+                run_id=run_id,
+                student_id=data.get("student_id"),
+                reason="existing_run_id",
+            )
             return Response(
                 {"message": "Run already ingested", "run_id": str(run_id)},
                 status=status.HTTP_200_OK,
             )
+
+        recording_window = None
+        run_ended_unix_ms = data.get("run_ended_unix_ms")
+        if run_ended_unix_ms is not None:
+            recording_window = get_recording_window_status_for_run_finish(
+                unix_ms_to_datetime(run_ended_unix_ms)
+            )
+            if not recording_window["is_open"]:
+                _log_run_ingest_event(
+                    logging.WARNING,
+                    "run_ingest_closed_week_rejected",
+                    run_id=run_id,
+                    student_id=data.get("student_id"),
+                    week_start=str(recording_window["week_start"]),
+                    close_at=recording_window["close_at"].isoformat(),
+                    run_finished_at=recording_window["run_finished_at"].isoformat(),
+                )
+                return Response(
+                    {
+                        "error": "Statistics recording for this week is closed until the next week.",
+                        "run_id": str(run_id),
+                        "week_start": str(recording_window["week_start"]),
+                        "recording_closed_at": recording_window["close_at"].isoformat(),
+                    },
+                    status=status.HTTP_409_CONFLICT,
+                )
 
         try:
             with transaction.atomic():
@@ -647,9 +705,11 @@ class RunIngestionView(APIView):
                     level=data["level"],
                     player_won=data["player_won"],
                     score=data["score"],
+                    place=data.get("place", 1 if data["player_won"] else 4),
                     elapsed_ms=data["elapsed_ms"],
                     correct_moves=data["correct_moves"],
                     wrong_moves=data["wrong_moves"],
+                    game_map=data.get("game_map", []),
                     map_version=data.get("map_version", "1"),
                     bot_version=data.get("bot_version", "1"),
                     rng_seed=data.get("rng_seed"),
@@ -662,9 +722,7 @@ class RunIngestionView(APIView):
                 for event_data in data.get("turn_events", []):
                     # Convert Unix timestamp to timezone-aware datetime
                     timestamp_ms = event_data["timestamp_played_unix_ms"]
-                    timestamp_played = datetime.fromtimestamp(
-                        timestamp_ms / 1000.0, tz=dt_timezone.utc
-                    )
+                    timestamp_played = unix_ms_to_datetime(timestamp_ms)
                     chosen_card, offered_cards = _normalize_cards_for_ingestion(
                         event_data.get("chosen_card"), event_data.get("offered_cards")
                     )
@@ -737,10 +795,18 @@ class RunIngestionView(APIView):
                 if triggers_to_create:
                     SpecialTileTrigger.objects.bulk_create(triggers_to_create)
 
-                logger.info(
-                    f"Successfully ingested run {run_id}: "
-                    f"{len(created_turn_events)} turns, "
-                    f"{len(triggers_to_create)} triggers"
+                _log_run_ingest_event(
+                    logging.INFO,
+                    "run_ingest_accept",
+                    run_id=run_id,
+                    student_id=data["student_id"],
+                    place=run.place,
+                    player_won=run.player_won,
+                    week_start=str(recording_window["week_start"])
+                    if recording_window
+                    else None,
+                    turn_events_count=len(created_turn_events),
+                    triggers_count=len(triggers_to_create),
                 )
 
                 return Response(
@@ -761,6 +827,13 @@ class RunIngestionView(APIView):
             ):
                 logger.warning(
                     f"Race condition detected for run {run_id}, returning 200"
+                )
+                _log_run_ingest_event(
+                    logging.WARNING,
+                    "run_ingest_duplicate",
+                    run_id=run_id,
+                    student_id=data.get("student_id"),
+                    reason="race_condition_duplicate_key",
                 )
                 return Response(
                     {
@@ -1502,7 +1575,9 @@ ENABLED_VISUALIZATIONS = {
 }
 
 
-def _get_filtered_students_for_teacher(teacher, grade_filter=None, classroom_filter=None):
+def _get_filtered_students_for_teacher(
+    teacher, grade_filter=None, classroom_filter=None
+):
     students = Student.objects.filter(classroom__teacher=teacher)
     if grade_filter:
         students = students.filter(grade=grade_filter)
@@ -1516,18 +1591,18 @@ def _build_teacher_statistics_viz_payload(section, student_ids):
 
     if section == "analytics":
         if ENABLED_VISUALIZATIONS.get("win_rate_by_level"):
-            payload["win_rate_by_level"] = list(
-                RunAnalytics.win_rate_by_level(student_ids=student_ids)
+            payload["win_rate_by_level"] = rollup_win_rate_by_level(
+                student_ids=student_ids
             )
 
         if ENABLED_VISUALIZATIONS.get("accuracy_by_level"):
-            payload["accuracy_by_level"] = list(
-                RunAnalytics.wrong_moves_rate_by_level(student_ids=student_ids)
+            payload["accuracy_by_level"] = rollup_wrong_moves_rate_by_level(
+                student_ids=student_ids
             )
 
         if ENABLED_VISUALIZATIONS.get("time_by_level"):
-            payload["time_by_level"] = list(
-                RunAnalytics.time_distribution_by_level(student_ids=student_ids)
+            payload["time_by_level"] = rollup_time_distribution_by_level(
+                student_ids=student_ids
             )
 
         if ENABLED_VISUALIZATIONS.get("speed_vs_accuracy"):
@@ -1536,24 +1611,24 @@ def _build_teacher_statistics_viz_payload(section, student_ids):
             )
 
         if ENABLED_VISUALIZATIONS.get("mistake_hotspots"):
-            payload["mistake_hotspots"] = RunAnalytics.mistake_hotspots_by_level(
+            payload["mistake_hotspots"] = rollup_mistake_hotspots_by_level(
                 student_ids=student_ids
             )
 
         if ENABLED_VISUALIZATIONS.get("special_tile_breakdown"):
-            payload["special_tile_breakdown"] = list(
-                RunAnalytics.special_tile_breakdown(student_ids=student_ids)
+            payload["special_tile_breakdown"] = rollup_special_tile_breakdown(
+                student_ids=student_ids
             )
 
         if ENABLED_VISUALIZATIONS.get("decision_time_by_card"):
-            payload["decision_time_by_card"] = RunAnalytics.decision_time_by_card_type(
+            payload["decision_time_by_card"] = rollup_decision_time_by_card_type(
                 student_ids=student_ids
             )
 
     elif section == "turn_insights":
         if ENABLED_VISUALIZATIONS.get("card_exposure_by_family"):
             payload["offer_choice_share_by_family"] = (
-                RunAnalytics.offer_choice_share_by_family(student_ids=student_ids)
+                rollup_offer_choice_share_by_family(student_ids=student_ids)
             )
             payload["deck_expected_share_by_family"] = (
                 RunAnalytics.deck_expected_share_by_family()
@@ -1561,55 +1636,53 @@ def _build_teacher_statistics_viz_payload(section, student_ids):
 
         if ENABLED_VISUALIZATIONS.get("card_accuracy_by_family"):
             payload["card_accuracy_by_family"] = (
-                RunAnalytics.card_accuracy_by_family_by_level(student_ids=student_ids)
+                rollup_card_accuracy_by_family_by_level(student_ids=student_ids)
             )
 
         if ENABLED_VISUALIZATIONS.get("decision_time_by_family"):
             payload["decision_time_by_family"] = (
-                RunAnalytics.decision_time_by_family_by_level(student_ids=student_ids)
+                rollup_decision_time_by_family_by_level(student_ids=student_ids)
             )
 
         if ENABLED_VISUALIZATIONS.get("tile_conditional_accuracy"):
             payload["tile_conditional_accuracy"] = (
-                RunAnalytics.tile_conditional_accuracy_by_tile_type_by_level(
+                rollup_tile_conditional_accuracy_by_tile_type_by_level(
                     student_ids=student_ids
                 )
             )
 
         if ENABLED_VISUALIZATIONS.get("bag_conditional_accuracy"):
             payload["bag_conditional_accuracy"] = (
-                RunAnalytics.bag_conditional_accuracy_by_comparator_by_level(
+                rollup_bag_conditional_accuracy_by_comparator_by_level(
                     student_ids=student_ids
                 )
             )
 
         if ENABLED_VISUALIZATIONS.get("back_card_usage"):
-            payload["back_card_usage"] = (
-                RunAnalytics.back_card_usage_by_place_by_level(student_ids=student_ids)
+            payload["back_card_usage"] = rollup_back_card_usage_by_place_by_level(
+                student_ids=student_ids
             )
 
         if ENABLED_VISUALIZATIONS.get("foreach_tile_context"):
             payload["foreach_tile_context"] = (
-                RunAnalytics.foreach_tile_context_usage_by_level(student_ids=student_ids)
+                rollup_foreach_tile_context_usage_by_level(student_ids=student_ids)
             )
 
         if ENABLED_VISUALIZATIONS.get("special_chain_lengths"):
             payload["special_chain_lengths"] = (
-                RunAnalytics.special_tile_chain_length_distribution_by_level(
+                rollup_special_tile_chain_length_distribution_by_level(
                     student_ids=student_ids
                 )
             )
 
         if ENABLED_VISUALIZATIONS.get("number_choice_distribution"):
             payload["number_choice_distribution"] = (
-                RunAnalytics.number_choice_distribution_by_level(student_ids=student_ids)
+                rollup_number_choice_distribution_by_level(student_ids=student_ids)
             )
 
         if ENABLED_VISUALIZATIONS.get("number_decision_time"):
             payload["number_decision_time"] = (
-                RunAnalytics.number_decision_time_by_choice_by_level(
-                    student_ids=student_ids
-                )
+                rollup_number_decision_time_by_choice_by_level(student_ids=student_ids)
             )
 
     return payload
@@ -1668,13 +1741,13 @@ def calculate_weighted_metric(values, timestamps=None, use_recency_weight=True):
     return weighted_sum / total_weight if total_weight > 0 else 0
 
 
-def calculate_learning_curve_slope(metric_values):
+def calculate_learning_curve_slope(metric_values, min_points=7):
     """
     Calculate the slope of learning curve using simple linear regression.
     Positive = improving, Negative = declining, ~0 = plateaued
     Returns: (slope, trend_label)
     """
-    if len(metric_values) < 7:
+    if len(metric_values) < min_points:
         return 0, "insufficient_data"
 
     n = len(metric_values)
@@ -1720,6 +1793,333 @@ def calculate_consistency_score(values):
 
     consistency = 1 - (std_val / mean_val)
     return max(0, min(1, consistency))  # Clamp between 0 and 1
+
+
+def _student_weekly_history(student):
+    weekly_rows = list(
+        StudentWeekStats.objects.filter(student=student)
+        .order_by("week_start")
+        .values(
+            "week_start",
+            "runs",
+            "wins",
+            "correct_moves",
+            "wrong_moves",
+            "score_sum",
+            "score_count",
+            "elapsed_sum_ms",
+            "elapsed_count",
+            "latest_run_id",
+            "latest_run__level",
+            "latest_run_created_at",
+            "first_run_created_at",
+        )
+    )
+    hot_runs = list(
+        Run.objects.filter(student=student, raw_data_compacted_at__isnull=True)
+        .order_by("created_at")
+        .values(
+            "id",
+            "player_won",
+            "level",
+            "score",
+            "correct_moves",
+            "wrong_moves",
+            "elapsed_ms",
+            "created_at",
+        )
+    )
+    return weekly_rows, hot_runs
+
+
+def _student_weekly_level_history(student):
+    return list(
+        StudentWeekLevelStats.objects.filter(student=student)
+        .order_by("week_start", "level")
+        .values(
+            "week_start",
+            "level",
+            "runs",
+            "wins",
+            "correct_moves",
+            "wrong_moves",
+            "score_sum",
+            "score_count",
+            "elapsed_sum_ms",
+            "elapsed_count",
+            "latest_run_created_at",
+        )
+    )
+
+
+def _build_student_dashboard_info(student):
+    weekly_rows, hot_runs = _student_weekly_history(student)
+    if not weekly_rows and not hot_runs:
+        return None
+
+    bucket_data = get_student_run_bucket_points(student)
+    bucket_points = bucket_data["points"]
+    total_runs = sum(row["runs"] or 0 for row in weekly_rows) + len(hot_runs)
+    wins = sum(row["wins"] or 0 for row in weekly_rows) + sum(
+        1 for run in hot_runs if run["player_won"]
+    )
+
+    total_correct = sum(row["correct_moves"] or 0 for row in weekly_rows)
+    total_wrong = sum(row["wrong_moves"] or 0 for row in weekly_rows)
+    total_elapsed_ms = sum(row["elapsed_sum_ms"] or 0 for row in weekly_rows)
+
+    score_values = []
+    score_timestamps = []
+    time_values = []
+    accuracy_values = []
+    correct_moves_list = []
+    wrong_moves_list = []
+    scores = []
+    times = []
+    levels = []
+    accuracy_per_game = []
+    latest_run_id = None
+    latest_run_level = None
+    latest_run_created_at = None
+
+    for run in hot_runs:
+        correct = run["correct_moves"] or 0
+        wrong = run["wrong_moves"] or 0
+        total_correct += correct
+        total_wrong += wrong
+        total_elapsed_ms += run["elapsed_ms"] or 0
+
+        if latest_run_created_at is None or run["created_at"] > latest_run_created_at:
+            latest_run_id = run["id"]
+            latest_run_level = run["level"]
+            latest_run_created_at = run["created_at"]
+
+    for row in weekly_rows:
+        if row["latest_run_created_at"] and (
+            latest_run_created_at is None
+            or row["latest_run_created_at"] > latest_run_created_at
+        ):
+            latest_run_id = row["latest_run_id"]
+            latest_run_level = row["latest_run__level"]
+            latest_run_created_at = row["latest_run_created_at"]
+
+    for point in bucket_points:
+        if point["score"] is not None:
+            score_values.append(point["score"])
+            score_timestamps.append(point["last_run_created_at"])
+        if point["time_seconds"] is not None:
+            time_values.append(point["time_seconds"])
+
+        scores.append(point["score"])
+        times.append(point["time_seconds"])
+        accuracy_values.append(point["accuracy"])
+        accuracy_per_game.append(point["accuracy"])
+        correct_moves_list.append(point["correct_moves"])
+        wrong_moves_list.append(point["wrong_moves"])
+        levels.append(point["level"])
+
+    overall_accuracy = calculate_accuracy_rate(total_correct, total_wrong)
+    avg_decision_time = calculate_decision_time(
+        total_elapsed_ms / 1000,
+        total_correct,
+        total_wrong,
+    )
+    weighted_avg_score = calculate_weighted_metric(
+        score_values,
+        timestamps=score_timestamps,
+        use_recency_weight=True,
+    )
+
+    improvement_rate = 0
+    if len(accuracy_values) >= 3:
+        sample_size = min(3, max(2, len(accuracy_values) // 2))
+        initial_avg = sum(accuracy_values[:sample_size]) / sample_size
+        recent_avg = sum(accuracy_values[-sample_size:]) / sample_size
+        if initial_avg > 0:
+            improvement_rate = ((recent_avg - initial_avg) / initial_avg) * 100
+
+    consistency = calculate_consistency_score(score_values) if score_values else 0
+    learning_curve_slope = 0
+    learning_curve_trend = "insufficient_data"
+    if len(accuracy_values) >= 3:
+        learning_curve_slope, learning_curve_trend = calculate_learning_curve_slope(
+            accuracy_values,
+            min_points=3,
+        )
+
+    level_performance = defaultdict(
+        lambda: {
+            "attempts": [],
+            "accuracy_values": [],
+            "score_values": [],
+            "time_values": [],
+            "learning_curve_slope": 0,
+            "learning_curve_trend": "insufficient_data",
+        }
+    )
+
+    for level, points in bucket_data["by_level"].items():
+        for point in points:
+            level_performance[level]["attempts"].append(
+                len(level_performance[level]["attempts"]) + 1
+            )
+            level_performance[level]["accuracy_values"].append(point["accuracy"])
+            level_performance[level]["score_values"].append(point["score"])
+            level_performance[level]["time_values"].append(point["time_seconds"])
+
+    for level, data in level_performance.items():
+        accuracy_values_for_trend = [
+            value for value in data["accuracy_values"] if value is not None
+        ]
+        if len(accuracy_values_for_trend) >= 3:
+            slope, trend = calculate_learning_curve_slope(
+                accuracy_values_for_trend,
+                min_points=3,
+            )
+            data["learning_curve_slope"] = slope
+            data["learning_curve_trend"] = trend
+
+    wrong_move_ratio = (
+        (total_wrong / (total_correct + total_wrong))
+        if (total_correct + total_wrong) > 0
+        else 0
+    )
+    needs_attention = False
+    attention_reason = []
+    if learning_curve_trend == "declining":
+        needs_attention = True
+        attention_reason.append("Declining performance")
+    if wrong_move_ratio > 0.5:
+        needs_attention = True
+        attention_reason.append(
+            f"High error rate ({wrong_move_ratio * 100:.1f}% wrong moves)"
+        )
+
+    ready_for_reward = False
+    reward_reason = []
+    if learning_curve_trend == "improving" and learning_curve_slope > 0.1:
+        ready_for_reward = True
+        reward_reason.append("Strong improvement")
+    if overall_accuracy >= 90:
+        ready_for_reward = True
+        reward_reason.append("Exceptional accuracy")
+    if consistency > 0.85 and weighted_avg_score > 0:
+        ready_for_reward = True
+        reward_reason.append("Consistent excellence")
+
+    return {
+        "id": student.id,
+        "name": student.full_name,
+        "classroom": student.classroom.classroom_name,
+        "classroom_id": student.classroom.id,
+        "classroom_key": student.classroom.classroom_key,
+        "grade": student.grade,
+        "total_runs": total_runs,
+        "wins": wins,
+        "win_rate": (wins / total_runs * 100) if total_runs > 0 else 0,
+        "latest_run_id": latest_run_id,
+        "latest_run_level": latest_run_level,
+        "latest_run_created_at": latest_run_created_at,
+        "accuracy": overall_accuracy,
+        "avg_score": weighted_avg_score,
+        "avg_decision_time": avg_decision_time,
+        "improvement_rate": improvement_rate,
+        "consistency": consistency,
+        "learning_curve_slope": learning_curve_slope,
+        "learning_curve_trend": learning_curve_trend,
+        "level_performance": dict(level_performance),
+        "levels": levels,
+        "scores": scores,
+        "times": times,
+        "correct_moves": correct_moves_list,
+        "wrong_moves": wrong_moves_list,
+        "places": [None for _ in levels],
+        "accuracy_per_game": accuracy_per_game,
+        "needs_attention": needs_attention,
+        "attention_reason": ", ".join(attention_reason),
+        "ready_for_reward": ready_for_reward,
+        "reward_reason": ", ".join(reward_reason),
+    }
+
+
+def _build_classroom_dashboard_stats(classroom, grade_filter=None):
+    if grade_filter and str(classroom.grade) != str(grade_filter):
+        return None
+
+    weekly_rows = list(
+        ClassroomWeekStats.objects.filter(classroom=classroom).values(
+            "student_count",
+            "runs",
+            "wins",
+            "correct_moves",
+            "wrong_moves",
+            "score_sum",
+            "score_count",
+            "elapsed_sum_ms",
+        )
+    )
+    hot_runs = Run.objects.filter(
+        student__classroom=classroom,
+        raw_data_compacted_at__isnull=True,
+    )
+
+    if grade_filter:
+        hot_runs = hot_runs.filter(student__grade=grade_filter)
+
+    if not weekly_rows and not hot_runs.exists():
+        return None
+
+    total_correct = sum(row["correct_moves"] or 0 for row in weekly_rows)
+    total_wrong = sum(row["wrong_moves"] or 0 for row in weekly_rows)
+    total_elapsed_ms = sum(row["elapsed_sum_ms"] or 0 for row in weekly_rows)
+    total_runs = sum(row["runs"] or 0 for row in weekly_rows)
+    wins = sum(row["wins"] or 0 for row in weekly_rows)
+    score_sum = sum(row["score_sum"] or 0 for row in weekly_rows)
+    score_count = sum(row["score_count"] or 0 for row in weekly_rows)
+
+    hot_agg = hot_runs.aggregate(
+        total_correct=Sum("correct_moves"),
+        total_wrong=Sum("wrong_moves"),
+        total_elapsed_ms=Sum("elapsed_ms"),
+        score_sum=Sum("score"),
+        total_runs=Count("id"),
+        wins=Count("id", filter=Q(player_won=True)),
+    )
+
+    total_correct += hot_agg["total_correct"] or 0
+    total_wrong += hot_agg["total_wrong"] or 0
+    total_elapsed_ms += hot_agg["total_elapsed_ms"] or 0
+    total_runs += hot_agg["total_runs"] or 0
+    wins += hot_agg["wins"] or 0
+    score_sum += hot_agg["score_sum"] or 0
+    score_count += hot_agg["total_runs"] or 0
+
+    student_count = (
+        classroom.students.filter(grade=grade_filter).count()
+        if grade_filter
+        else classroom.students.count()
+    )
+    classroom_accuracy = calculate_accuracy_rate(total_correct, total_wrong)
+    avg_decision_time = calculate_decision_time(
+        total_elapsed_ms / 1000,
+        total_correct,
+        total_wrong,
+    )
+    engagement = (total_runs / student_count) if student_count > 0 else 0
+
+    return {
+        "id": classroom.id,
+        "name": classroom.classroom_name,
+        "key": classroom.classroom_key,
+        "grade": classroom.grade,
+        "student_count": student_count,
+        "total_runs": total_runs,
+        "avg_score": (score_sum / score_count) if score_count > 0 else 0,
+        "win_rate": (wins / total_runs * 100) if total_runs > 0 else 0,
+        "accuracy": classroom_accuracy,
+        "avg_decision_time": avg_decision_time,
+        "engagement": engagement,
+    }
 
 
 @login_required
@@ -1803,209 +2203,7 @@ def teacher_statistics_dashboard(request):
     students_ready_for_rewards = []
 
     def build_student_info(student):
-        """Build computed dashboard metrics for one student from Run model data."""
-        runs = Run.objects.filter(student=student).order_by("created_at")
-        if not runs.exists():
-            return None
-
-        stats_list = list(
-            runs.values(
-                "id",
-                "player_won",
-                "level",
-                "score",
-                "correct_moves",
-                "wrong_moves",
-                "elapsed_ms",
-                "created_at",
-            )
-        )
-
-        total_runs = len(stats_list)
-        wins = sum(1 for s in stats_list if s["player_won"])
-        win_rate = (wins / total_runs * 100) if total_runs > 0 else 0
-        latest_run = stats_list[-1] if stats_list else None
-
-        correct_moves_list = []
-        wrong_moves_list = []
-        scores = []
-        score_values = []
-        score_timestamps = []
-        times = []
-        time_values = []
-        accuracy_per_game = []
-        accuracy_values = []
-        total_correct = 0
-        total_wrong = 0
-
-        for stat in stats_list:
-            correct_moves_list.append(stat["correct_moves"])
-            wrong_moves_list.append(stat["wrong_moves"])
-
-            correct = stat["correct_moves"] if stat["correct_moves"] is not None else 0
-            wrong = stat["wrong_moves"] if stat["wrong_moves"] is not None else 0
-            total_correct += correct
-            total_wrong += wrong
-
-            if stat["score"] is not None:
-                score_values.append(stat["score"])
-                score_timestamps.append(stat["created_at"])
-                scores.append(stat["score"])
-            else:
-                scores.append(None)
-
-            if stat["elapsed_ms"] is not None:
-                time_seconds = stat["elapsed_ms"] / 1000
-                time_values.append(time_seconds)
-                times.append(time_seconds)
-            else:
-                times.append(None)
-
-            if stat["correct_moves"] is not None and stat["wrong_moves"] is not None:
-                game_accuracy = calculate_accuracy_rate(correct, wrong)
-                accuracy_per_game.append(game_accuracy)
-                accuracy_values.append(game_accuracy)
-            else:
-                accuracy_per_game.append(None)
-
-        overall_accuracy = calculate_accuracy_rate(total_correct, total_wrong)
-
-        total_time = sum(time_values) if time_values else 0
-        avg_decision_time = calculate_decision_time(
-            total_time, total_correct, total_wrong
-        )
-
-        weighted_avg_score = calculate_weighted_metric(
-            score_values,
-            timestamps=score_timestamps,
-            use_recency_weight=True,
-        )
-
-        improvement_rate = 0
-        if len(accuracy_values) >= 7:
-            sample_size = min(5, max(3, len(accuracy_values) // 2))
-            initial_avg = sum(accuracy_values[:sample_size]) / sample_size
-            recent_avg = sum(accuracy_values[-sample_size:]) / sample_size
-            if initial_avg > 0:
-                improvement_rate = ((recent_avg - initial_avg) / initial_avg) * 100
-
-        consistency = calculate_consistency_score(score_values) if score_values else 0
-
-        learning_curve_slope = 0
-        learning_curve_trend = "insufficient_data"
-        if len(accuracy_values) >= 7:
-            learning_curve_slope, learning_curve_trend = calculate_learning_curve_slope(
-                accuracy_values
-            )
-
-        level_performance = defaultdict(
-            lambda: {
-                "attempts": [],
-                "accuracy_values": [],
-                "score_values": [],
-                "time_values": [],
-                "learning_curve_slope": 0,
-                "learning_curve_trend": "insufficient_data",
-            }
-        )
-
-        for stat in stats_list:
-            if stat["level"] is None:
-                continue
-
-            level = stat["level"]
-            level_performance[level]["attempts"].append(
-                len(level_performance[level]["attempts"]) + 1
-            )
-
-            if stat["correct_moves"] is not None and stat["wrong_moves"] is not None:
-                level_accuracy = calculate_accuracy_rate(
-                    stat["correct_moves"], stat["wrong_moves"]
-                )
-                level_performance[level]["accuracy_values"].append(level_accuracy)
-            else:
-                level_performance[level]["accuracy_values"].append(None)
-
-            level_performance[level]["score_values"].append(
-                stat["score"] if stat["score"] is not None else None
-            )
-            level_performance[level]["time_values"].append(
-                stat["elapsed_ms"] / 1000 if stat["elapsed_ms"] is not None else None
-            )
-
-        for level, data in level_performance.items():
-            accuracy_values_for_trend = [
-                value for value in data["accuracy_values"] if value is not None
-            ]
-            if len(accuracy_values_for_trend) >= 7:
-                slope, trend = calculate_learning_curve_slope(accuracy_values_for_trend)
-                data["learning_curve_slope"] = slope
-                data["learning_curve_trend"] = trend
-
-        level_performance = dict(level_performance)
-
-        wrong_move_ratio = (
-            (total_wrong / (total_correct + total_wrong))
-            if (total_correct + total_wrong) > 0
-            else 0
-        )
-
-        needs_attention = False
-        attention_reason = []
-        if learning_curve_trend == "declining":
-            needs_attention = True
-            attention_reason.append("Declining performance")
-        if wrong_move_ratio > 0.5:
-            needs_attention = True
-            attention_reason.append(
-                f"High error rate ({wrong_move_ratio * 100:.1f}% wrong moves)"
-            )
-
-        ready_for_reward = False
-        reward_reason = []
-        if learning_curve_trend == "improving" and learning_curve_slope > 0.1:
-            ready_for_reward = True
-            reward_reason.append("Strong improvement")
-        if overall_accuracy >= 90:
-            ready_for_reward = True
-            reward_reason.append("Exceptional accuracy")
-        if consistency > 0.85 and weighted_avg_score > 0:
-            ready_for_reward = True
-            reward_reason.append("Consistent excellence")
-
-        return {
-            "id": student.id,
-            "name": student.full_name,
-            "classroom": student.classroom.classroom_name,
-            "classroom_id": student.classroom.id,
-            "classroom_key": student.classroom.classroom_key,
-            "grade": student.grade,
-            "total_runs": total_runs,
-            "wins": wins,
-            "win_rate": win_rate,
-            "latest_run_id": latest_run["id"] if latest_run else None,
-            "latest_run_level": latest_run["level"] if latest_run else None,
-            "latest_run_created_at": latest_run["created_at"] if latest_run else None,
-            "accuracy": overall_accuracy,
-            "avg_score": weighted_avg_score,
-            "avg_decision_time": avg_decision_time,
-            "improvement_rate": improvement_rate,
-            "consistency": consistency,
-            "learning_curve_slope": learning_curve_slope,
-            "learning_curve_trend": learning_curve_trend,
-            "level_performance": level_performance,
-            "levels": [s["level"] for s in stats_list],
-            "scores": scores,
-            "times": times,
-            "correct_moves": correct_moves_list,
-            "wrong_moves": wrong_moves_list,
-            "places": [None for _ in stats_list],
-            "accuracy_per_game": accuracy_per_game,
-            "needs_attention": needs_attention,
-            "attention_reason": ", ".join(attention_reason),
-            "ready_for_reward": ready_for_reward,
-            "reward_reason": ", ".join(reward_reason),
-        }
+        return _build_student_dashboard_info(student)
 
     for student in students:
         student_info = build_student_info(student)
@@ -2054,53 +2252,12 @@ def teacher_statistics_dashboard(request):
     def build_classroom_stats(classrooms_queryset):
         stats = []
         for classroom in classrooms_queryset:
-            classroom_students = classroom.students.all()
-            if grade_filter:
-                classroom_students = classroom_students.filter(grade=grade_filter)
-
-            student_ids = list(classroom_students.values_list("id", flat=True))
-            all_runs = Run.objects.filter(student_id__in=student_ids)
-
-            if all_runs.exists():
-                student_count = classroom_students.count()
-
-                agg = all_runs.aggregate(
-                    total_correct=Sum("correct_moves"),
-                    total_wrong=Sum("wrong_moves"),
-                    total_elapsed_ms=Sum("elapsed_ms"),
-                    avg_score=Avg("score"),
-                    total_runs=Count("id"),
-                    wins=Count("id", filter=Q(player_won=True)),
-                )
-
-                total_correct = agg["total_correct"] or 0
-                total_wrong = agg["total_wrong"] or 0
-                classroom_accuracy = calculate_accuracy_rate(total_correct, total_wrong)
-                total_time_seconds = (agg["total_elapsed_ms"] or 0) / 1000
-                avg_decision_time = calculate_decision_time(
-                    total_time_seconds, total_correct, total_wrong
-                )
-                engagement = (
-                    agg["total_runs"] / student_count if student_count > 0 else 0
-                )
-
-                stats.append(
-                    {
-                        "id": classroom.id,
-                        "name": classroom.classroom_name,
-                        "key": classroom.classroom_key,
-                        "grade": classroom.grade,
-                        "student_count": student_count,
-                        "total_runs": agg["total_runs"],
-                        "avg_score": agg["avg_score"] or 0,
-                        "win_rate": (agg["wins"] / agg["total_runs"] * 100)
-                        if agg["total_runs"] > 0
-                        else 0,
-                        "accuracy": classroom_accuracy,
-                        "avg_decision_time": avg_decision_time,
-                        "engagement": engagement,
-                    }
-                )
+            classroom_info = _build_classroom_dashboard_stats(
+                classroom,
+                grade_filter=grade_filter,
+            )
+            if classroom_info:
+                stats.append(classroom_info)
         return stats
 
     # Top-level sections use classroom filter; comparison section uses all classrooms.
@@ -2171,73 +2328,7 @@ def teacher_run_replay(request, run_id):
             student__classroom__teacher=teacher,
         )
 
-    turns_queryset = TurnEvent.objects.filter(run=run).order_by("turn_index")
-    turns_data = []
-    for turn in turns_queryset:
-        turns_data.append(
-            {
-                "turn_index": turn.turn_index,
-                "timestamp_played": turn.timestamp_played.isoformat(),
-                "chosen_card": turn.chosen_card,
-                "offered_cards": turn.offered_cards,
-                "was_correct": turn.was_correct,
-                "tile_before_index": turn.tile_before_index,
-                "tile_before_type": turn.tile_before_type,
-                "tile_after_index": turn.tile_after_index,
-                "place_before": turn.place_before,
-                "place_after": turn.place_after,
-                "bot_positions_before": turn.bot_positions_before,
-                "bot_positions_after": turn.bot_positions_after,
-                "card_decision_time_ms": turn.card_decision_time_ms,
-                "offered_numbers": turn.offered_numbers,
-                "chosen_number": turn.chosen_number,
-                "number_decision_time_ms": turn.number_decision_time_ms,
-            }
-        )
-
-    triggers = SpecialTileTrigger.objects.filter(turn__run=run).values(
-        "turn__turn_index",
-        "chain_index",
-        "special_tile_index",
-        "special_tile_type",
-        "effect_delta_tiles",
-        "target_tile_index",
-        "target_tile_type",
-        "place_before",
-        "place_after",
-    )
-
-    triggers_by_turn = defaultdict(list)
-    for trigger in triggers:
-        turn_index = trigger["turn__turn_index"]
-        triggers_by_turn[turn_index].append(
-            {
-                "chain_index": trigger["chain_index"],
-                "special_tile_index": trigger["special_tile_index"],
-                "special_tile_type": trigger["special_tile_type"],
-                "effect_delta_tiles": trigger["effect_delta_tiles"],
-                "target_tile_index": trigger["target_tile_index"],
-                "target_tile_type": trigger["target_tile_type"],
-                "place_before": trigger["place_before"],
-                "place_after": trigger["place_after"],
-            }
-        )
-
-    for turn in turns_data:
-        turn["special_triggers"] = triggers_by_turn.get(turn["turn_index"], [])
-
-    run_data = {
-        "run_id": run.id,
-        "student": run.student.full_name,
-        "level": run.level,
-        "player_won": run.player_won,
-        "score": run.score,
-        "elapsed_ms": run.elapsed_ms,
-        "correct_moves": run.correct_moves,
-        "wrong_moves": run.wrong_moves,
-        "game_map": run.game_map,
-        "turns": turns_data,
-    }
+    run_data = get_replay_payload_for_run(run)
 
     context = {
         "teacher": teacher,
