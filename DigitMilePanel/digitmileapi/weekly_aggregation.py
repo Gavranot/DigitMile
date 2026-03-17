@@ -2,11 +2,13 @@ from collections import defaultdict
 
 from django.db import transaction
 from django.db.models import Count
+from django.db.models import Prefetch
 
 from .analytics import BAG_COMPARATOR_BY_TYPE, parse_card
 from .models import (
     ClassroomWeekStats,
     Run,
+    SpecialTileTrigger,
     Student,
     StudentWeekBackCardUsageStats,
     StudentWeekCardFamilyStats,
@@ -19,6 +21,7 @@ from .models import (
     StudentWeekNumberChoiceStats,
     StudentWeekSpecialTileStats,
     StudentWeekStats,
+    TurnEvent,
 )
 from .weekly_rollups import clip_decision_time_ms, week_end_for, week_start_for
 
@@ -158,13 +161,22 @@ def _update_decision_time_stats(target, decision_time, include_clipped=False):
 def aggregate_weekly_rollups(week_start):
     week_start = week_start_for(week_start)
     week_end = week_end_for(week_start)
+    ordered_turns = Prefetch(
+        "turn_events",
+        queryset=TurnEvent.objects.order_by("turn_index").prefetch_related(
+            Prefetch(
+                "special_tile_triggers",
+                queryset=SpecialTileTrigger.objects.order_by("chain_index"),
+            )
+        ),
+    )
 
     runs = list(
         Run.objects.filter(
             created_at__date__gte=week_start, created_at__date__lte=week_end
         )
         .select_related("student__classroom__teacher")
-        .prefetch_related("turn_events__special_tile_triggers")
+        .prefetch_related(ordered_turns)
         .order_by("student_id", "created_at", "id")
     )
 

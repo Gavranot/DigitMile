@@ -5,7 +5,11 @@ import logging
 from django.core.management.base import BaseCommand, CommandError
 from django.db.models import Count, Q, Sum
 
-from digitmileapi.analytics import BAG_COMPARATOR_BY_TYPE, parse_card
+from digitmileapi.analytics import (
+    BAG_COMPARATOR_BY_TYPE,
+    _iter_turns_with_bag_number,
+    parse_card,
+)
 from digitmileapi.models import (
     ClassroomWeekStats,
     ReplayArchive,
@@ -319,20 +323,14 @@ class Command(BaseCommand):
             raw[key]["correct_count"] += 1 if turn["was_correct"] else 0
             raw[key]["else_count"] += 1 if turn["tile_before_type"] != tile_type else 0
 
-        bag_turns = (
-            TurnEvent.objects.filter(
-                run__in=runs,
-                chosen_card_family__in=[
-                    "conditional_bag_eq",
-                    "conditional_bag_lt",
-                    "conditional_bag_gt",
-                ],
-            )
+        all_turns = (
+            TurnEvent.objects.filter(run__in=runs)
             .values(
                 "run_id",
                 "run__level",
                 "turn_index",
                 "chosen_card_type",
+                "chosen_card_family",
                 "chosen_card",
                 "was_correct",
                 "chosen_number",
@@ -340,18 +338,17 @@ class Command(BaseCommand):
             .order_by("run_id", "turn_index")
         )
 
-        current_run_id = None
-        bag_number = 1
-        for turn in bag_turns:
-            if turn["run_id"] != current_run_id:
-                current_run_id = turn["run_id"]
-                bag_number = 1
+        for turn, bag_number in _iter_turns_with_bag_number(all_turns):
+            if turn["chosen_card_family"] not in {
+                "conditional_bag_eq",
+                "conditional_bag_lt",
+                "conditional_bag_gt",
+            }:
+                continue
 
             comparator = BAG_COMPARATOR_BY_TYPE.get(turn["chosen_card_type"])
             threshold = parse_card(turn["chosen_card"]).get("if_value")
             if comparator is None or threshold is None:
-                if turn["chosen_number"] is not None:
-                    bag_number = turn["chosen_number"]
                 continue
 
             key = (
@@ -368,9 +365,6 @@ class Command(BaseCommand):
             else:
                 condition_met = bag_number > threshold
             raw[key]["else_count"] += 0 if condition_met else 1
-
-            if turn["chosen_number"] is not None:
-                bag_number = turn["chosen_number"]
 
         rollup = {}
         for row in (

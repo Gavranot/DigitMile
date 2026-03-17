@@ -498,6 +498,75 @@ class RunIngestionTests(TestCase):
             )
             self.assertEqual(legacy_trigger.place_after, canonical_trigger.place_after)
 
+    @override_settings(BENCHMARK_TIME_OVERRIDE_ENABLED=True)
+    def test_runs_ingest_accepts_synthetic_open_week_benchmark_time(self):
+        started_at = datetime(2026, 3, 11, 9, 0, tzinfo=dt_timezone.utc)
+        finished_at = datetime(2026, 3, 11, 9, 0, 45, tzinfo=dt_timezone.utc)
+        payload = self._unity_payload()
+        payload["run"]["runStartedUnixMs"] = int(started_at.timestamp() * 1000)
+        payload["run"]["runEndedUnixMs"] = int(finished_at.timestamp() * 1000)
+
+        response = self.client.post(
+            "/panel/api/runs/ingest/",
+            payload,
+            format="json",
+            HTTP_X_BENCHMARK_REFERENCE_TIME="2026-03-13T19:59:00Z",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(Run.objects.count(), 1)
+
+    @override_settings(BENCHMARK_TIME_OVERRIDE_ENABLED=True)
+    def test_runs_ingest_rejects_synthetic_closed_week_benchmark_time(self):
+        started_at = datetime(2026, 3, 11, 9, 0, tzinfo=dt_timezone.utc)
+        finished_at = datetime(2026, 3, 11, 9, 0, 45, tzinfo=dt_timezone.utc)
+        payload = self._unity_payload()
+        payload["run"]["runStartedUnixMs"] = int(started_at.timestamp() * 1000)
+        payload["run"]["runEndedUnixMs"] = int(finished_at.timestamp() * 1000)
+
+        response = self.client.post(
+            "/panel/api/runs/ingest/",
+            payload,
+            format="json",
+            HTTP_X_BENCHMARK_REFERENCE_TIME="2026-03-13T20:00:00Z",
+        )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(Run.objects.count(), 0)
+
+    @override_settings(BENCHMARK_TIME_OVERRIDE_ENABLED=False)
+    @mock.patch(
+        "digitmileapi.views.get_recording_window_status_for_run_finish",
+    )
+    def test_runs_ingest_ignores_benchmark_header_when_override_disabled(
+        self,
+        recording_window_mock,
+    ):
+        recording_window_mock.return_value = self._open_recording_window()
+
+        response = self.client.post(
+            "/panel/api/runs/ingest/",
+            self._unity_payload(),
+            format="json",
+            HTTP_X_BENCHMARK_REFERENCE_TIME="2026-03-13T20:00:00Z",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        _, kwargs = recording_window_mock.call_args
+        self.assertIsNone(kwargs.get("reference_time"))
+
+    @override_settings(BENCHMARK_TIME_OVERRIDE_ENABLED=True)
+    def test_runs_ingest_rejects_invalid_benchmark_reference_time(self):
+        response = self.client.post(
+            "/panel/api/runs/ingest/",
+            self._unity_payload(),
+            format="json",
+            HTTP_X_BENCHMARK_REFERENCE_TIME="not-a-datetime",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(Run.objects.count(), 0)
+
 
 class RecordingWindowPolicyTests(TestCase):
     def test_recording_window_is_open_before_cutoff(self):
@@ -741,6 +810,81 @@ class WeeklyAggregationTests(ReplayArchiveTests):
         self.assertEqual(conditional_stats.decision_time_sum_ms, 130000)
         self.assertEqual(conditional_stats.clipped_decision_time_sum_ms, clipped_value)
         self.assertEqual(conditional_stats.outlier_count, 1)
+
+    def test_bag_conditional_rollups_follow_turn_order_for_else_count(self):
+        self.turn.chosen_card = {
+            "type": "IfBagEqualXMoveYElseMoveZ",
+            "data": "[CardData: tileType=, ifSign===, ifValue=2, thenValue=3, elseValue=1]",
+        }
+        self.turn.chosen_card_type = "IfBagEqualXMoveYElseMoveZ"
+        self.turn.chosen_card_family = "conditional_bag_eq"
+        self.turn.chosen_card_tile_type = None
+        self.turn.chosen_number = 4
+        self.turn.number_decision_time_ms = 900
+        self.turn.save(
+            update_fields=[
+                "chosen_card",
+                "chosen_card_type",
+                "chosen_card_family",
+                "chosen_card_tile_type",
+                "chosen_number",
+                "number_decision_time_ms",
+            ]
+        )
+
+        TurnEvent.objects.create(
+            run=self.run,
+            turn_index=1,
+            timestamp_played=timezone.now(),
+            chosen_card={
+                "type": "IfBagGreaterXMoveYElseMoveZ",
+                "data": "[CardData: tileType=, ifSign=>, ifValue=3, thenValue=2, elseValue=1]",
+            },
+            chosen_card_type="IfBagGreaterXMoveYElseMoveZ",
+            chosen_card_family="conditional_bag_gt",
+            chosen_card_tile_type=None,
+            offered_cards=[
+                {
+                    "type": "IfBagGreaterXMoveYElseMoveZ",
+                    "data": "[CardData: tileType=, ifSign=>, ifValue=3, thenValue=2, elseValue=1]",
+                }
+            ],
+            was_correct=True,
+            tile_before_index=2,
+            tile_before_type=1,
+            tile_after_index=4,
+            place_before=1,
+            place_after=1,
+            bot_positions_before=[],
+            bot_positions_after=[],
+            card_decision_time_ms=1400,
+            offered_numbers=[1, 3, 5],
+            chosen_number=1,
+            number_decision_time_ms=700,
+        )
+
+        aggregate_weekly_rollups(self.run.created_at.date())
+
+        eq_stats = StudentWeekConditionalStats.objects.get(
+            student=self.student,
+            conditional_kind=StudentWeekConditionalStats.ConditionalKind.BAG,
+            bucket_key="eq",
+        )
+        gt_stats = StudentWeekConditionalStats.objects.get(
+            student=self.student,
+            conditional_kind=StudentWeekConditionalStats.ConditionalKind.BAG,
+            bucket_key="gt",
+        )
+
+        self.assertEqual(eq_stats.total_count, 1)
+        self.assertEqual(eq_stats.else_count, 1)
+        self.assertEqual(gt_stats.total_count, 1)
+        self.assertEqual(gt_stats.else_count, 0)
+
+        call_command(
+            "verify_weekly_rollups",
+            self.run.created_at.date().isoformat(),
+        )
 
     def test_rollup_analytics_reads_compacted_history(self):
         aggregate_weekly_rollups(self.run.created_at.date())
@@ -1107,12 +1251,21 @@ class BenchmarkToolingTests(TestCase):
                 card_mix_profile="balanced",
                 bag_level_ratio=0.3,
                 hot_weeks=1,
+                anchor_week_start="2026-03-09",
                 clear=True,
                 output=report_path,
             )
 
             report = json.loads(Path(report_path).read_text(encoding="utf-8"))
 
+            self.assertEqual(report["anchor_week_start"], "2026-03-09")
+            self.assertEqual(report["hot_week_start"], "2026-03-09")
+            self.assertEqual(report["hot_week_end"], "2026-03-15")
+            self.assertEqual(report["synthetic_now"], "2026-03-13T19:00:00+00:00")
+            self.assertEqual(
+                report["synthetic_week_close_at"],
+                "2026-03-13T20:00:00+00:00",
+            )
             self.assertEqual(report["counts"]["teachers"], 1)
             self.assertEqual(report["counts"]["classrooms"], 1)
             self.assertEqual(report["counts"]["students"], 2)
@@ -1120,6 +1273,37 @@ class BenchmarkToolingTests(TestCase):
             self.assertEqual(len(report["compactions"]), 1)
             self.assertTrue(report["weeks"][0]["compacted"])
             self.assertTrue(report["weeks"][1]["hot"])
+            self.assertEqual(report["weeks"][0]["week_start"], "2026-03-02")
+            self.assertEqual(report["weeks"][1]["week_start"], "2026-03-09")
+            self.assertTrue(report["ingest_targets_hot_week"])
+            self.assertTrue(report["teacher_targets"])
+            self.assertTrue(report["dashboard_filter_targets"])
+            self.assertTrue(report["replay_targets_hot"])
+
+    def test_prepare_benchmark_dataset_normalizes_anchor_week_start(self):
+        with TemporaryDirectory() as temp_dir:
+            report_path = f"{temp_dir}/dataset-report.json"
+
+            call_command(
+                "prepare_benchmark_dataset",
+                teachers=1,
+                classrooms_per_teacher=1,
+                students_per_classroom=1,
+                weeks=1,
+                runs_per_student_per_week=1,
+                avg_turns_per_run=3,
+                card_mix_profile="balanced",
+                bag_level_ratio=0.3,
+                hot_weeks=1,
+                anchor_week_start="2026-03-11",
+                clear=True,
+                output=report_path,
+            )
+
+            report = json.loads(Path(report_path).read_text(encoding="utf-8"))
+
+            self.assertEqual(report["anchor_week_start"], "2026-03-09")
+            self.assertEqual(report["weeks"][0]["week_start"], "2026-03-09")
 
     def test_benchmark_teacher_analytics_writes_report(self):
         with TemporaryDirectory() as temp_dir:
@@ -1137,6 +1321,7 @@ class BenchmarkToolingTests(TestCase):
                 card_mix_profile="balanced",
                 bag_level_ratio=0.3,
                 hot_weeks=1,
+                anchor_week_start="2026-03-09",
                 clear=True,
                 output=dataset_path,
             )

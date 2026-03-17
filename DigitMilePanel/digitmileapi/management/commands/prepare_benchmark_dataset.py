@@ -94,6 +94,9 @@ CARD_MIX_PROFILES = {
 class Command(BaseCommand):
     help = "Prepare a reproducible benchmark dataset and optionally compact historical weeks"
 
+    def _log_progress(self, event, **context):
+        logger.info("%s %s", event, context or {})
+
     def add_arguments(self, parser):
         parser.add_argument("--teachers", type=int, required=True)
         parser.add_argument("--classrooms-per-teacher", type=int, required=True)
@@ -113,25 +116,28 @@ class Command(BaseCommand):
             help="Comma-separated oldest-first week indices or ranges, for example 1-8,10. Defaults to all non-hot weeks.",
         )
         parser.add_argument("--hot-weeks", type=int, default=1)
+        parser.add_argument(
+            "--anchor-week-start",
+            default="",
+            help="Benchmark anchor week start date; normalized to the Monday of that week (YYYY-MM-DD)",
+        )
         parser.add_argument("--clear", action="store_true")
         parser.add_argument("--seed", type=int, default=20260312)
         parser.add_argument("--output", default="")
 
     def handle(self, *args, **options):
-        logger.info(
-            "benchmark_dataset_preparation_start %s",
-            {
-                "teachers": options["teachers"],
-                "classrooms_per_teacher": options["classrooms_per_teacher"],
-                "students_per_classroom": options["students_per_classroom"],
-                "weeks": options["weeks"],
-                "runs_per_student_per_week": options["runs_per_student_per_week"],
-                "avg_turns_per_run": options["avg_turns_per_run"],
-                "card_mix_profile": options["card_mix_profile"],
-                "bag_level_ratio": options["bag_level_ratio"],
-                "compact_weeks": options["compact_weeks"],
-                "hot_weeks": options["hot_weeks"],
-            },
+        self._log_progress(
+            "benchmark_dataset_preparation_start",
+            teachers=options["teachers"],
+            classrooms_per_teacher=options["classrooms_per_teacher"],
+            students_per_classroom=options["students_per_classroom"],
+            weeks=options["weeks"],
+            runs_per_student_per_week=options["runs_per_student_per_week"],
+            avg_turns_per_run=options["avg_turns_per_run"],
+            card_mix_profile=options["card_mix_profile"],
+            bag_level_ratio=options["bag_level_ratio"],
+            compact_weeks=options["compact_weeks"],
+            hot_weeks=options["hot_weeks"],
         )
 
         if options["weeks"] <= 0:
@@ -149,20 +155,36 @@ class Command(BaseCommand):
         self.tile_type_by_index = {
             tile["tileMapIndex"]: tile["tileType"] for tile in self.game_map
         }
+        self.anchor_week_start = self._anchor_week_start(options["anchor_week_start"])
 
         if options["clear"]:
+            self._log_progress("benchmark_dataset_clear_start")
             self._clear_existing_benchmark_data()
+            self._log_progress("benchmark_dataset_clear_complete")
 
         school = self._create_school()
+        self._log_progress("benchmark_dataset_school_created", school_id=school.id)
         teachers = self._create_teachers(school, options["teachers"])
+        self._log_progress(
+            "benchmark_dataset_teachers_created",
+            teacher_count=len(teachers),
+        )
         classrooms = self._create_classrooms(
             school,
             teachers,
             options["classrooms_per_teacher"],
         )
+        self._log_progress(
+            "benchmark_dataset_classrooms_created",
+            classroom_count=len(classrooms),
+        )
         students = self._create_students(
             classrooms,
             options["students_per_classroom"],
+        )
+        self._log_progress(
+            "benchmark_dataset_students_created",
+            student_count=len(students),
         )
         week_starts = self._week_starts(options["weeks"])
         compact_week_starts = self._resolve_compact_week_starts(
@@ -170,9 +192,39 @@ class Command(BaseCommand):
             options["compact_weeks"],
             options["hot_weeks"],
         )
+        hot_week_starts = [
+            week_start
+            for week_start in week_starts
+            if week_start not in compact_week_starts
+        ]
+        active_hot_week_start = (
+            hot_week_starts[-1] if hot_week_starts else week_starts[-1]
+        )
+        synthetic_week_close_at = timezone.make_aware(
+            datetime.combine(active_hot_week_start + timedelta(days=4), time(20, 0)),
+            timezone.get_current_timezone(),
+        )
+        synthetic_now = synthetic_week_close_at - timedelta(hours=1)
+        self._log_progress(
+            "benchmark_dataset_generation_plan",
+            anchor_week_start=self.anchor_week_start.isoformat(),
+            week_count=len(week_starts),
+            hot_week_count=len(hot_week_starts),
+            compact_week_count=len(compact_week_starts),
+            expected_runs=len(students)
+            * len(week_starts)
+            * options["runs_per_student_per_week"],
+            approx_expected_turns=(
+                len(students)
+                * len(week_starts)
+                * options["runs_per_student_per_week"]
+                * self.avg_turns_per_run
+            ),
+        )
         dataset_report = self._generate_runs(
             students=students,
             week_starts=week_starts,
+            hot_week_starts=set(hot_week_starts),
             runs_per_student_per_week=options["runs_per_student_per_week"],
         )
         compaction_reports = self._compact_weeks(compact_week_starts)
@@ -183,6 +235,11 @@ class Command(BaseCommand):
 
         report = {
             "seed": options["seed"],
+            "anchor_week_start": self.anchor_week_start.isoformat(),
+            "hot_week_start": active_hot_week_start.isoformat(),
+            "hot_week_end": (active_hot_week_start + timedelta(days=6)).isoformat(),
+            "synthetic_now": synthetic_now.isoformat(),
+            "synthetic_week_close_at": synthetic_week_close_at.isoformat(),
             "teacher_password": BENCHMARK_PASSWORD,
             "teachers": [
                 {
@@ -221,7 +278,12 @@ class Command(BaseCommand):
                 "uncompressed_size_bytes": archive_totals["uncompressed"] or 0,
             },
             "ingest_targets": dataset_report["ingest_targets"],
+            "ingest_targets_hot_week": dataset_report["ingest_targets_hot_week"],
             "replay_run_ids": dataset_report["replay_run_ids"],
+            "replay_targets_hot": dataset_report["replay_targets_hot"],
+            "replay_targets_cold": dataset_report["replay_targets_cold"],
+            "teacher_targets": dataset_report["teacher_targets"],
+            "dashboard_filter_targets": dataset_report["dashboard_filter_targets"],
             "classrooms": [
                 {
                     "classroom_id": classroom.id,
@@ -240,17 +302,32 @@ class Command(BaseCommand):
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_text(report_text + "\n", encoding="utf-8")
 
-        logger.info(
-            "benchmark_dataset_preparation_complete %s",
-            {
-                "runs": report["counts"]["runs"],
-                "turns": report["counts"]["turns"],
-                "triggers": report["counts"]["triggers"],
-                "compacted_weeks": [value.isoformat() for value in compact_week_starts],
-                "output": options["output"],
-            },
+        self._log_progress(
+            "benchmark_dataset_preparation_complete",
+            runs=report["counts"]["runs"],
+            turns=report["counts"]["turns"],
+            triggers=report["counts"]["triggers"],
+            anchor_week_start=report["anchor_week_start"],
+            hot_week_start=report["hot_week_start"],
+            synthetic_now=report["synthetic_now"],
+            compacted_weeks=[value.isoformat() for value in compact_week_starts],
+            output=options["output"],
         )
         self.stdout.write(report_text)
+
+    def _anchor_week_start(self, anchor_week_start_value):
+        if anchor_week_start_value:
+            try:
+                anchor_date = datetime.strptime(
+                    anchor_week_start_value, "%Y-%m-%d"
+                ).date()
+            except ValueError as exc:
+                raise CommandError(
+                    "--anchor-week-start must be in YYYY-MM-DD format"
+                ) from exc
+            return week_start_for(anchor_date)
+
+        return week_start_for(timezone.now().date())
 
     def _clear_existing_benchmark_data(self):
         benchmark_users = list(
@@ -272,6 +349,15 @@ class Command(BaseCommand):
             )
             if value is not None
         }
+
+        self._log_progress(
+            "benchmark_dataset_clear_targets",
+            school_count=benchmark_schools.count(),
+            teacher_count=benchmark_teachers.count(),
+            classroom_count=benchmark_classrooms.count(),
+            student_count=benchmark_students.count(),
+            existing_week_count=len(benchmark_week_starts),
+        )
 
         ReplayArchive.objects.filter(run__student__in=benchmark_students).delete()
         SpecialTileTrigger.objects.filter(
@@ -390,14 +476,17 @@ class Command(BaseCommand):
         return students
 
     def _week_starts(self, week_count):
-        current_week = week_start_for(timezone.now().date())
         return [
-            current_week - timedelta(weeks=offset)
+            self.anchor_week_start - timedelta(weeks=offset)
             for offset in range(week_count - 1, -1, -1)
         ]
 
     def _resolve_compact_week_starts(self, week_starts, compact_weeks, hot_weeks):
-        if compact_weeks:
+        if compact_weeks is not None:
+            compact_weeks = str(compact_weeks).strip()
+            if compact_weeks.lower() in {"", "none", "off", "false", "no"}:
+                return set()
+
             selected = set()
             for part in compact_weeks.split(","):
                 token = part.strip()
@@ -562,14 +651,62 @@ class Command(BaseCommand):
             return self.rng.choice([5, 6])
         return self.rng.choice([1, 2, 3, 4])
 
-    def _generate_runs(self, students, week_starts, runs_per_student_per_week):
+    def _generate_runs(
+        self, students, week_starts, hot_week_starts, runs_per_student_per_week
+    ):
         run_count = 0
         turn_count = 0
         trigger_count = 0
         ingest_targets = []
+        ingest_target_ids = set()
+        ingest_targets_hot_week = []
+        ingest_target_hot_week_ids = set()
         replay_run_ids = []
+        replay_targets_hot = []
+        replay_targets_cold = []
+        teacher_targets = []
+        teacher_target_ids = set()
+        dashboard_filter_targets = []
+        dashboard_filter_ids = set()
+        total_students = len(students)
+        total_runs_expected = (
+            total_students * len(week_starts) * runs_per_student_per_week
+        )
+        progress_interval = max(250, total_runs_expected // 20 or 1)
+
+        self._log_progress(
+            "benchmark_dataset_run_generation_start",
+            student_count=total_students,
+            week_count=len(week_starts),
+            runs_per_student_per_week=runs_per_student_per_week,
+            expected_runs=total_runs_expected,
+            progress_interval=progress_interval,
+        )
 
         for student in students:
+            teacher = student.classroom.teacher
+            if teacher.id not in teacher_target_ids:
+                teacher_targets.append(
+                    {
+                        "teacher_id": teacher.id,
+                        "username": teacher.user.username if teacher.user else "",
+                        "classroom_id": student.classroom.id,
+                        "classroom_key": student.classroom.classroom_key,
+                    }
+                )
+                teacher_target_ids.add(teacher.id)
+            if student.classroom.id not in dashboard_filter_ids:
+                dashboard_filter_targets.append(
+                    {
+                        "classroom_id": student.classroom.id,
+                        "classroom_key": student.classroom.classroom_key,
+                        "teacher_id": teacher.id,
+                        "grade": student.classroom.grade,
+                    }
+                )
+                dashboard_filter_ids.add(student.classroom.id)
+
+        for student_index, student in enumerate(students, start=1):
             for week_start in week_starts:
                 for _ in range(runs_per_student_per_week):
                     level = self._run_level()
@@ -732,30 +869,88 @@ class Command(BaseCommand):
                         wrong_moves=wrong_moves,
                     )
                     run_count += 1
-                    if len(ingest_targets) < 25:
-                        ingest_targets.append(
-                            {
-                                "student_id": student.id,
-                                "student_name": student.full_name,
-                                "classroom_key": student.classroom.classroom_key,
-                            }
-                        )
+                    ingest_target = {
+                        "student_id": student.id,
+                        "student_name": student.full_name,
+                        "classroom_key": student.classroom.classroom_key,
+                    }
+                    if student.id not in ingest_target_ids:
+                        ingest_targets.append(ingest_target)
+                        ingest_target_ids.add(student.id)
+                    if (
+                        week_start in hot_week_starts
+                        and student.id not in ingest_target_hot_week_ids
+                    ):
+                        ingest_targets_hot_week.append(ingest_target)
+                        ingest_target_hot_week_ids.add(student.id)
                     if len(replay_run_ids) < 50:
                         replay_run_ids.append(run.id)
+                    replay_target = {
+                        "run_id": run.id,
+                        "student_id": student.id,
+                        "week_start": week_start.isoformat(),
+                        "hot": week_start in hot_week_starts,
+                    }
+                    if week_start in hot_week_starts:
+                        if len(replay_targets_hot) < 50:
+                            replay_targets_hot.append(replay_target)
+                    elif len(replay_targets_cold) < 50:
+                        replay_targets_cold.append(replay_target)
+
+                    if run_count % progress_interval == 0:
+                        self._log_progress(
+                            "benchmark_dataset_run_generation_progress",
+                            runs_created=run_count,
+                            expected_runs=total_runs_expected,
+                            turns_created=turn_count,
+                            triggers_created=trigger_count,
+                            current_student_index=student_index,
+                            total_students=total_students,
+                            current_week_start=week_start.isoformat(),
+                        )
+
+            if student_index % max(1, total_students // 10 or 1) == 0:
+                self._log_progress(
+                    "benchmark_dataset_student_progress",
+                    students_processed=student_index,
+                    total_students=total_students,
+                    runs_created=run_count,
+                )
+
+        self._log_progress(
+            "benchmark_dataset_run_generation_complete",
+            runs_created=run_count,
+            turns_created=turn_count,
+            triggers_created=trigger_count,
+        )
 
         return {
             "run_count": run_count,
             "turn_count": turn_count,
             "trigger_count": trigger_count,
             "ingest_targets": ingest_targets,
+            "ingest_targets_hot_week": ingest_targets_hot_week,
             "replay_run_ids": replay_run_ids,
+            "replay_targets_hot": replay_targets_hot,
+            "replay_targets_cold": replay_targets_cold,
+            "teacher_targets": teacher_targets,
+            "dashboard_filter_targets": dashboard_filter_targets,
         }
 
     def _compact_weeks(self, compact_week_starts):
         reports = []
+        if compact_week_starts:
+            self._log_progress(
+                "benchmark_dataset_compaction_start",
+                compact_week_count=len(compact_week_starts),
+            )
         for week_start in sorted(compact_week_starts):
             started = perf_counter()
             command_output = StringIO()
+            self._log_progress(
+                "benchmark_dataset_compaction_week_start",
+                week_start=week_start.isoformat(),
+            )
             call_command(
                 "compact_weekly_runs",
                 week_start.isoformat(),
@@ -773,5 +968,18 @@ class Command(BaseCommand):
                     "trigger_rows_deleted": compaction.trigger_rows_deleted,
                     "stdout": command_output.getvalue().strip(),
                 }
+            )
+            self._log_progress(
+                "benchmark_dataset_compaction_week_complete",
+                week_start=week_start.isoformat(),
+                duration_ms=duration_ms,
+                status=compaction.status,
+                turn_rows_deleted=compaction.turn_rows_deleted,
+                trigger_rows_deleted=compaction.trigger_rows_deleted,
+            )
+        if compact_week_starts:
+            self._log_progress(
+                "benchmark_dataset_compaction_complete",
+                compact_week_count=len(compact_week_starts),
             )
         return reports

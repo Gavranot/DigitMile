@@ -42,6 +42,7 @@ from .serializers import (
 )
 from django.db import transaction, IntegrityError
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from datetime import datetime, timezone as dt_timezone
 from django.core.mail import send_mail
 from django.core.cache import cache
@@ -81,6 +82,31 @@ logger = logging.getLogger(__name__)
 
 def _log_run_ingest_event(level, event, **context):
     logger.log(level, "%s %s", event, context)
+
+
+def _benchmark_reference_time_from_request(request):
+    if not getattr(settings, "BENCHMARK_TIME_OVERRIDE_ENABLED", False):
+        return None, None
+
+    header_value = request.headers.get("X-Benchmark-Reference-Time")
+    if not header_value:
+        return None, None
+
+    parsed_value = parse_datetime(header_value)
+    if parsed_value is None:
+        return None, Response(
+            {
+                "error": "Invalid X-Benchmark-Reference-Time header; expected ISO-8601 datetime.",
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if timezone.is_naive(parsed_value):
+        parsed_value = timezone.make_aware(
+            parsed_value, timezone.get_current_timezone()
+        )
+
+    return parsed_value, None
 
 
 CARD_FAMILY_BY_TYPE = {
@@ -645,9 +671,29 @@ class RunIngestionView(APIView):
     throttle_classes = [AnonRateThrottle]
 
     def post(self, request, *args, **kwargs):
+        benchmark_reference_time, benchmark_reference_error = (
+            _benchmark_reference_time_from_request(request)
+        )
+        if benchmark_reference_error is not None:
+            _log_run_ingest_event(
+                logging.WARNING,
+                "run_ingest_invalid_benchmark_reference_time",
+                header_value=request.headers.get("X-Benchmark-Reference-Time"),
+            )
+            return benchmark_reference_error
+
         serializer = RunIngestionSerializer(data=request.data)
 
         if not serializer.is_valid():
+            _log_run_ingest_event(
+                logging.WARNING,
+                "run_ingest_validation_failed",
+                student_id=request.data.get("userID") or request.data.get("student_id"),
+                run_id=(request.data.get("run") or {}).get("runId")
+                if isinstance(request.data.get("run"), dict)
+                else request.data.get("run_id"),
+                errors=serializer.errors,
+            )
             return Response(
                 {"error": "Validation failed", "details": serializer.errors},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -674,7 +720,8 @@ class RunIngestionView(APIView):
         run_ended_unix_ms = data.get("run_ended_unix_ms")
         if run_ended_unix_ms is not None:
             recording_window = get_recording_window_status_for_run_finish(
-                unix_ms_to_datetime(run_ended_unix_ms)
+                unix_ms_to_datetime(run_ended_unix_ms),
+                reference_time=benchmark_reference_time,
             )
             if not recording_window["is_open"]:
                 _log_run_ingest_event(
