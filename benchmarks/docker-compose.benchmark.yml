@@ -20,7 +20,7 @@ services:
       - benchmark_postgres_data:/var/lib/postgresql/data
 
   benchmark-backend:
-    image: digitmile-backend:latest
+    image: gashmurble/digitmile-backend:prod-latest
     env_file:
       - ../.env
     environment:
