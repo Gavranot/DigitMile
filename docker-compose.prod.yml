@@ -38,6 +38,21 @@ services:
     restart: always
     # Remove port exposure in production (only backend needs access)
     ports: !override []
+    # Tuned for a ~4 GiB server.
+    # synchronous_commit=off is the biggest write-throughput win: transactions are
+    # acknowledged before WAL flush, eliminating per-commit fsync latency.
+    # Risk: up to ~600ms of committed transactions can be lost on a hard crash.
+    # This is acceptable for game telemetry (no financial data).
+    command: >
+      postgres
+      -c shared_buffers=768MB
+      -c effective_cache_size=2GB
+      -c work_mem=8MB
+      -c maintenance_work_mem=64MB
+      -c wal_buffers=16MB
+      -c synchronous_commit=off
+      -c checkpoint_completion_target=0.9
+      -c random_page_cost=1.1
 
   backend:
     restart: always
