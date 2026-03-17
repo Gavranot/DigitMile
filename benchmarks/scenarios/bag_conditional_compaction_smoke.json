@@ -1,0 +1,31 @@
+{
+  "name": "bag_conditional_compaction_smoke",
+  "dataset": {
+    "teachers": 1,
+    "classrooms_per_teacher": 1,
+    "students_per_classroom": 8,
+    "weeks": 4,
+    "runs_per_student_per_week": 3,
+    "avg_turns_per_run": 5,
+    "card_mix_profile": "bag_heavy",
+    "bag_level_ratio": 0.8,
+    "compact_weeks": "1-2",
+    "hot_weeks": 2,
+    "anchor_week_start": "2026-03-09"
+  },
+  "traffic": {
+    "base_url": "http://benchmark-backend:8000",
+    "request_host_header": "localhost",
+    "duration": "10s",
+    "vus_players": 2,
+    "vus_teachers": 1,
+    "hot_replay_ratio": 0.5,
+    "grade_filter_ratio": 0.4,
+    "classroom_filter_ratio": 0.4,
+    "scripts": ["teacher_dashboard.js"]
+  },
+  "verification": {
+    "benchmark_iterations": 2
+  },
+  "report_output": "benchmarks/reports/bag_conditional_compaction_smoke.json"
+}

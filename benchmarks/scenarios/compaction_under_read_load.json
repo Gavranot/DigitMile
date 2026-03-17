@@ -10,22 +10,45 @@
     "card_mix_profile": "balanced",
     "bag_level_ratio": 0.35,
     "compact_weeks": "1-4",
-    "hot_weeks": 2
+    "hot_weeks": 2,
+    "anchor_week_start": "2026-03-09"
   },
   "traffic": {
-    "base_url": "http://digitmile-backend:8000",
+    "base_url": "http://benchmark-backend:8000",
     "request_host_header": "localhost",
-    "duration": "40s",
-    "vus_players": 4,
-    "vus_teachers": 6,
-    "hot_replay_ratio": 0.3,
+    "duration": "2m",
+    "hot_replay_ratio": 0.5,
     "grade_filter_ratio": 0.5,
     "classroom_filter_ratio": 0.5,
-    "scripts": ["teacher_dashboard.js", "replay.js"]
+    "ingest_rate_per_sec": 1,
+    "dashboard_rate_per_sec": 1,
+    "analytics_rate_per_sec": 1,
+    "turn_insights_rate_per_sec": 1,
+    "replay_rate_per_sec": 1,
+    "ingest_pre_allocated_vus": 2,
+    "ingest_max_vus": 6,
+    "dashboard_pre_allocated_vus": 3,
+    "dashboard_max_vus": 8,
+    "analytics_pre_allocated_vus": 3,
+    "analytics_max_vus": 8,
+    "turn_insights_pre_allocated_vus": 4,
+    "turn_insights_max_vus": 12,
+    "replay_pre_allocated_vus": 2,
+    "replay_max_vus": 6,
+    "resource_sample_interval_seconds": 10,
+    "ingest_expected_mode": "accepted",
+    "scripts": ["mixed_weekly_cycle.js"]
   },
+  "_traffic_notes": [
+    "Runs mixed traffic at realistic rates (same as realistic_school_day) for 2 minutes.",
+    "After traffic finishes, compact_after_traffic_week_index triggers compaction of week 5 (the oldest hot week).",
+    "The verification step then confirms rollups and archives are correct.",
+    "This answers: does Friday-night compaction produce correct rollup data after a school-day's worth of reads and writes?",
+    "Compare pre/post benchmark analytics latency to see if compaction improves or breaks query performance."
+  ],
   "verification": {
     "benchmark_iterations": 4,
-    "compact_after_traffic_week_index": 4
+    "compact_after_traffic_week_index": 5
   },
   "report_output": "benchmarks/reports/compaction_under_read_load.json"
 }

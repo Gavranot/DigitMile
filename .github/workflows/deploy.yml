@@ -32,6 +32,7 @@ jobs:
           cp docker-compose.yml deploy/
           cp docker-compose.prod.yml deploy/
           cp -r nginx-proxy deploy/
+          cp -r benchmarks deploy/
 
       - name: Upload files to server
         uses: appleboy/scp-action@v0.1.7
@@ -191,6 +192,9 @@ jobs:
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/digitmile-game:${{ inputs.TARGET_ENV }}-latest
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/digitmile-backend:${{ inputs.TARGET_ENV }}-latest
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/digitmile-nginx-proxy:${{ inputs.TARGET_ENV }}-latest
+
+            # Re-tag backend image so benchmark tooling can find it by the expected local name
+            docker tag ${{ secrets.DOCKERHUB_USERNAME }}/digitmile-backend:${{ inputs.TARGET_ENV }}-latest digitmile-backend:latest
 
             # Verify .env file creation
             if [ ! -f .env ]; then

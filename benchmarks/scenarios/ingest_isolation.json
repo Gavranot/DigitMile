@@ -1,0 +1,51 @@
+{
+  "name": "ingest_isolation",
+  "dataset": {
+    "teachers": 1,
+    "classrooms_per_teacher": 2,
+    "students_per_classroom": 30,
+    "weeks": 4,
+    "runs_per_student_per_week": 3,
+    "avg_turns_per_run": 6,
+    "card_mix_profile": "balanced",
+    "bag_level_ratio": 0.35,
+    "compact_weeks": "1-2",
+    "hot_weeks": 2,
+    "anchor_week_start": "2026-03-09"
+  },
+  "_dataset_notes": [
+    "1 teacher, 2 classrooms, 30 students = 60 students total.",
+    "Minimal dataset — purpose is to stress the ingest endpoint, not analytics.",
+    "2 hot weeks provide enough ingest target variety without heavy analytics query cost.",
+    "2 cold compacted weeks are present so the pre/post benchmark baseline is comparable to other scenarios."
+  ],
+  "traffic": {
+    "base_url": "http://benchmark-backend:8000",
+    "request_host_header": "localhost",
+    "duration": "4m",
+    "ramp_mode": true,
+    "ingest_rate_per_sec": 60,
+    "dashboard_rate_per_sec": 0,
+    "analytics_rate_per_sec": 0,
+    "turn_insights_rate_per_sec": 0,
+    "replay_rate_per_sec": 0,
+    "ingest_pre_allocated_vus": 50,
+    "ingest_max_vus": 200,
+    "resource_sample_interval_seconds": 5,
+    "ingest_expected_mode": "accepted",
+    "scripts": ["mixed_weekly_cycle.js"]
+  },
+  "_traffic_notes": [
+    "Only the ingest scenario runs — all other traffic classes are set to rate 0 and are excluded.",
+    "ramp_mode: true ramps ingest from 0 to 60 req/sec linearly over 4 minutes.",
+    "The ramp reveals the ingest break-point: watch for where dropped_iterations first appear and where CPU pegs.",
+    "The break-point RPS is the server's sustainable ingest ceiling on this hardware.",
+    "VUs are sized generously (pre=50, max=200) so that drops come from server slowness, not VU starvation.",
+    "Run this BEFORE national_medium or national_high — it tells you whether 35–52 ingest RPS is even reachable.",
+    "If the ceiling is below 35 RPS, the server needs optimization or more workers before national scenarios are meaningful."
+  ],
+  "verification": {
+    "benchmark_iterations": 3
+  },
+  "report_output": "benchmarks/reports/ingest_isolation.json"
+}

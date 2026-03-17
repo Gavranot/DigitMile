@@ -12,7 +12,7 @@ export function envFloat(name, fallbackValue) {
 
 
 export function baseUrl() {
-  return (__ENV.BASE_URL || "http://host.docker.internal").replace(/\/$/, "");
+  return (__ENV.BASE_URL || "http://digitmile-backend:8000").replace(/\/$/, "");
 }
 
 
@@ -37,6 +37,20 @@ export function randomChoice(values) {
 }
 
 
+function randomInt(minValue, maxValue) {
+  return Math.floor(Math.random() * (maxValue - minValue + 1)) + minValue;
+}
+
+
+function parseIsoToMs(value) {
+  const parsed = Date.parse(value);
+  if (Number.isNaN(parsed)) {
+    throw new Error(`Unable to parse ISO datetime: ${value}`);
+  }
+  return parsed;
+}
+
+
 export function requestHeaders(extraHeaders) {
   const headers = {};
   if (__ENV.REQUEST_HOST_HEADER) {
@@ -45,6 +59,16 @@ export function requestHeaders(extraHeaders) {
   Object.keys(extraHeaders || {}).forEach((key) => {
     headers[key] = extraHeaders[key];
   });
+  return headers;
+}
+
+
+export function benchmarkHeaders(datasetReport, extraHeaders) {
+  const headers = requestHeaders(extraHeaders || {});
+  const referenceTime = __ENV.BENCHMARK_REFERENCE_TIME || datasetReport.synthetic_now;
+  if (referenceTime) {
+    headers["X-Benchmark-Reference-Time"] = referenceTime;
+  }
   return headers;
 }
 
@@ -113,22 +137,63 @@ export function fetchApiCsrf() {
 }
 
 
-export function buildUnityPayload(target) {
-  const startedAt = Date.now();
-  const finishedAt = startedAt + 25000;
+export function syntheticClock(datasetReport) {
+  if (!datasetReport.hot_week_start || !datasetReport.synthetic_now) {
+    throw new Error("DATASET_REPORT is missing synthetic hot-week metadata");
+  }
+
+  const hotWeekStartMs = parseIsoToMs(`${datasetReport.hot_week_start}T08:00:00Z`);
+  const syntheticNowMs = parseIsoToMs(__ENV.BENCHMARK_REFERENCE_TIME || datasetReport.synthetic_now);
+  const upperBoundMs = Math.max(hotWeekStartMs + 60000, syntheticNowMs - 60000);
+
+  return {
+    hotWeekStartMs,
+    syntheticNowMs,
+    upperBoundMs,
+  };
+}
+
+
+export function pickSyntheticRunWindow(datasetReport) {
+  const clock = syntheticClock(datasetReport);
+  const startedAt = randomInt(clock.hotWeekStartMs, clock.upperBoundMs);
+  const durationMs = randomInt(18000, 42000);
+  const finishedAt = Math.min(startedAt + durationMs, clock.syntheticNowMs - 1000);
+  return {
+    startedAt,
+    finishedAt: Math.max(startedAt + 1000, finishedAt),
+  };
+}
+
+
+function benchmarkRunId(startedAt) {
+  const parts = [startedAt, __VU, __ITER, randomInt(0, 0xffffffff)];
+  const hex = parts
+    .map((value) => Math.abs(Number(value)).toString(16))
+    .join("")
+    .replace(/[^0-9a-f]/gi, "")
+    .slice(0, 32)
+    .padEnd(32, "0");
+  return `run_${hex}`;
+}
+
+
+export function buildUnityPayload(target, datasetReport) {
+  const window = pickSyntheticRunWindow(datasetReport);
+  const runId = benchmarkRunId(window.startedAt);
   return {
     classroomKey: target.classroom_key,
     user: target.student_name,
     userID: target.student_id,
     run: {
-      runId: "",
+      runId,
       level: 5,
       score: 140,
       place: 1,
       correct_moves: 2,
       wrong_moves: 1,
-      runStartedUnixMs: startedAt,
-      runEndedUnixMs: finishedAt,
+      runStartedUnixMs: window.startedAt,
+      runEndedUnixMs: window.finishedAt,
       gameMap: {
         mapTiles: [
           { tileMapIndex: 0, tileIndex: 0, tileType: 0, special: "normal", special_delta: 0 },
@@ -139,9 +204,9 @@ export function buildUnityPayload(target) {
       },
       turns: [
         {
-          runId: "",
+          runId,
           turnIndex: 0,
-          timestampPlayedUnixMs: startedAt + 1000,
+          timestampPlayedUnixMs: window.startedAt + 1000,
           chosenCard: { type: "MoveX", data: "[CardData: tileType=, ifSign=, ifValue=, thenValue=1, elseValue=]" },
           wasCorrect: true,
           offeredCards: [
@@ -160,9 +225,9 @@ export function buildUnityPayload(target) {
           specialTileTriggers: [],
         },
         {
-          runId: "",
+          runId,
           turnIndex: 1,
-          timestampPlayedUnixMs: startedAt + 2500,
+          timestampPlayedUnixMs: window.startedAt + 2500,
           chosenCard: { type: "Back", data: "[CardData: tileType=, ifSign=, ifValue=, thenValue=2, elseValue=]" },
           wasCorrect: false,
           offeredCards: [
@@ -194,11 +259,11 @@ export function buildUnityPayload(target) {
 }
 
 
-export function pickDashboardParams(datasetReport, scenarioConfig) {
-  const classrooms = datasetReport.classrooms || [];
+export function pickDashboardParams(datasetReport, trafficConfig) {
+  const classrooms = datasetReport.dashboard_filter_targets || datasetReport.classrooms || [];
   const selectedClassroom = classrooms.length > 0 ? randomChoice(classrooms) : null;
-  const gradeFilterRatio = envFloat("GRADE_FILTER_RATIO", scenarioConfig.grade_filter_ratio || 0.3);
-  const classroomFilterRatio = envFloat("CLASSROOM_FILTER_RATIO", scenarioConfig.classroom_filter_ratio || 0.3);
+  const gradeFilterRatio = envFloat("GRADE_FILTER_RATIO", trafficConfig.grade_filter_ratio || 0.3);
+  const classroomFilterRatio = envFloat("CLASSROOM_FILTER_RATIO", trafficConfig.classroom_filter_ratio || 0.3);
   const params = [];
   if (selectedClassroom && Math.random() < gradeFilterRatio) {
     params.push(`grade=${selectedClassroom.grade}`);
@@ -207,4 +272,21 @@ export function pickDashboardParams(datasetReport, scenarioConfig) {
     params.push(`classroom=${selectedClassroom.classroom_id}`);
   }
   return params.length > 0 ? `?${params.join("&")}` : "";
+}
+
+
+export function pickReplayRunId(datasetReport, hotReplayRatio) {
+  const hotTargets = datasetReport.replay_targets_hot || [];
+  const coldTargets = datasetReport.replay_targets_cold || [];
+  if (hotTargets.length > 0 && (coldTargets.length === 0 || Math.random() < hotReplayRatio)) {
+    return randomChoice(hotTargets).run_id;
+  }
+  if (coldTargets.length > 0) {
+    return randomChoice(coldTargets).run_id;
+  }
+  const replayRunIds = datasetReport.replay_run_ids || [];
+  if (replayRunIds.length === 0) {
+    throw new Error("No replay run ids found in DATASET_REPORT");
+  }
+  return randomChoice(replayRunIds);
 }

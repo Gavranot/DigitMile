@@ -1,0 +1,62 @@
+{
+  "name": "stress_ramp",
+  "dataset": {
+    "teachers": 2,
+    "classrooms_per_teacher": 4,
+    "students_per_classroom": 25,
+    "weeks": 10,
+    "runs_per_student_per_week": 4,
+    "avg_turns_per_run": 6,
+    "card_mix_profile": "bag_heavy",
+    "bag_level_ratio": 0.40,
+    "compact_weeks": "1-8",
+    "hot_weeks": 2,
+    "anchor_week_start": "2026-03-09"
+  },
+  "_dataset_notes": [
+    "2 teachers, 4 classrooms each, 25 students = 200 students total.",
+    "Benchmark tests teacher 1 only (100 students across 4 classrooms).",
+    "Hot data: 100 students x 2 hot weeks x 4 runs x 6 turns = ~4800 hot turns.",
+    "Cold rollup tables hold 8 weeks of compacted history.",
+    "This data volume is intentionally heavier than realistic_school_day to stress analytics queries."
+  ],
+  "traffic": {
+    "base_url": "http://benchmark-backend:8000",
+    "request_host_header": "localhost",
+    "duration": "5m",
+    "ramp_mode": true,
+    "hot_replay_ratio": 0.6,
+    "grade_filter_ratio": 0.5,
+    "classroom_filter_ratio": 0.5,
+    "ingest_rate_per_sec": 8,
+    "dashboard_rate_per_sec": 4,
+    "analytics_rate_per_sec": 3,
+    "turn_insights_rate_per_sec": 2,
+    "replay_rate_per_sec": 2,
+    "ingest_pre_allocated_vus": 10,
+    "ingest_max_vus": 30,
+    "dashboard_pre_allocated_vus": 15,
+    "dashboard_max_vus": 50,
+    "analytics_pre_allocated_vus": 12,
+    "analytics_max_vus": 40,
+    "turn_insights_pre_allocated_vus": 15,
+    "turn_insights_max_vus": 50,
+    "replay_pre_allocated_vus": 6,
+    "replay_max_vus": 20,
+    "resource_sample_interval_seconds": 5,
+    "ingest_expected_mode": "accepted",
+    "scripts": ["mixed_weekly_cycle.js"]
+  },
+  "_traffic_notes": [
+    "ramp_mode: true makes all scenarios use ramping-arrival-rate from 0 to the target rate over the full duration.",
+    "Target rates are the PEAK at end of ramp: 8 ingest + 4 dashboard + 3 analytics + 2 turn_insights + 2 replay = 19 req/sec.",
+    "The ramp reveals WHERE latency starts climbing and WHERE drops first appear.",
+    "Expect dropped_iterations toward the end of the ramp - that is the point of this scenario.",
+    "Compare the ramp report's latency-over-time against realistic_school_day to understand the server's headroom.",
+    "VUs are sized to handle the peak rates plus expected response time under load (Little's Law with 3x headroom)."
+  ],
+  "verification": {
+    "benchmark_iterations": 5
+  },
+  "report_output": "benchmarks/reports/stress_ramp.json"
+}

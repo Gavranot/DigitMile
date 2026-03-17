@@ -16,6 +16,8 @@ This documentation set is a fresh backend-focused map of the Django implementati
 - [`docs/weekly-rollup-replay-schema-spec.md`](weekly-rollup-replay-schema-spec.md) - concrete schema proposal and metric-to-rollup mapping for the refactor.
 - [`docs/next-phase-implementation-checklist.md`](next-phase-implementation-checklist.md) - explicit implementation checklist for the next analytics, ingest, and benchmark phase.
 - [`docs/weekly-rollup-operator-runbook.md`](weekly-rollup-operator-runbook.md) - operator commands, benchmark workflow, archive troubleshooting, and manual phase validation map.
+- [`docs/hot-week-load-testing-implementation-plan.md`](hot-week-load-testing-implementation-plan.md) - detailed implementation plan for true hot-week concurrent read/write load testing.
+- [`docs/hot-week-load-testing-execution-checklist.md`](hot-week-load-testing-execution-checklist.md) - implementation ticket checklist for the hot-week load-testing plan.
 - [`docs/glossary.md`](glossary.md) - backend and gameplay terms used across the docs.
 
 ## Quick orientation

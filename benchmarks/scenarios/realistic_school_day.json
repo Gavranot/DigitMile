@@ -1,0 +1,60 @@
+{
+  "name": "realistic_school_day",
+  "dataset": {
+    "teachers": 1,
+    "classrooms_per_teacher": 3,
+    "students_per_classroom": 20,
+    "weeks": 8,
+    "runs_per_student_per_week": 3,
+    "avg_turns_per_run": 6,
+    "card_mix_profile": "balanced",
+    "bag_level_ratio": 0.35,
+    "compact_weeks": "1-6",
+    "hot_weeks": 2,
+    "anchor_week_start": "2026-03-09"
+  },
+  "_dataset_notes": [
+    "1 teacher, 3 classrooms, 20 students = 60 students total.",
+    "8 weeks history: 6 cold (compacted to rollup tables), 2 hot (raw rows in Run/TurnEvent).",
+    "Hot data volume: 60 students x 2 weeks x 3 runs x 6 turns = ~2160 hot turns.",
+    "This is deliberately modest and representative of one teacher at a school with ~1000 runs/week total.",
+    "Cold rollup tables hold 6 weeks of compacted history per student."
+  ],
+  "traffic": {
+    "base_url": "http://benchmark-backend:8000",
+    "request_host_header": "localhost",
+    "duration": "3m",
+    "hot_replay_ratio": 0.6,
+    "grade_filter_ratio": 0.4,
+    "classroom_filter_ratio": 0.4,
+    "ingest_rate_per_sec": 1,
+    "dashboard_rate_per_sec": 1,
+    "analytics_rate_per_sec": 1,
+    "turn_insights_rate_per_sec": 1,
+    "replay_rate_per_sec": 1,
+    "ingest_pre_allocated_vus": 2,
+    "ingest_max_vus": 6,
+    "dashboard_pre_allocated_vus": 3,
+    "dashboard_max_vus": 8,
+    "analytics_pre_allocated_vus": 3,
+    "analytics_max_vus": 8,
+    "turn_insights_pre_allocated_vus": 4,
+    "turn_insights_max_vus": 12,
+    "replay_pre_allocated_vus": 2,
+    "replay_max_vus": 6,
+    "resource_sample_interval_seconds": 10,
+    "ingest_expected_mode": "accepted",
+    "scripts": ["mixed_weekly_cycle.js"]
+  },
+  "_traffic_notes": [
+    "1 req/sec per traffic class = 5 req/sec total.",
+    "VUs are sized by Little's Law: rate x expected_response_time x headroom.",
+    "turn_insights gets more VUs because it is the slowest endpoint (2-10s depending on server).",
+    "If dropped_iterations > 0 for any class, reduce that class rate before drawing conclusions.",
+    "A green load_health on this scenario means the server can handle realistic school-day traffic."
+  ],
+  "verification": {
+    "benchmark_iterations": 5
+  },
+  "report_output": "benchmarks/reports/realistic_school_day.json"
+}

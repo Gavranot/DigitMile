@@ -1,0 +1,51 @@
+{
+  "name": "hot_week_read_write_heavy_traffic_only",
+  "dataset": {
+    "teachers": 6,
+    "classrooms_per_teacher": 4,
+    "students_per_classroom": 24,
+    "weeks": 12,
+    "runs_per_student_per_week": 5,
+    "avg_turns_per_run": 6,
+    "card_mix_profile": "bag_heavy",
+    "bag_level_ratio": 0.45,
+    "compact_weeks": "none",
+    "hot_weeks": 2,
+    "anchor_week_start": "2026-03-09"
+  },
+  "traffic": {
+    "base_url": "http://benchmark-backend:8000",
+    "request_host_header": "localhost",
+    "duration": "45s",
+    "hot_replay_ratio": 0.65,
+    "grade_filter_ratio": 0.5,
+    "classroom_filter_ratio": 0.45,
+    "ingest_rate_per_sec": 18,
+    "dashboard_rate_per_sec": 8,
+    "analytics_rate_per_sec": 7,
+    "turn_insights_rate_per_sec": 7,
+    "replay_rate_per_sec": 4,
+    "ingest_expected_duration_seconds": 2,
+    "dashboard_expected_duration_seconds": 5,
+    "analytics_expected_duration_seconds": 6,
+    "turn_insights_expected_duration_seconds": 6,
+    "replay_expected_duration_seconds": 4,
+    "ingest_pre_allocated_vus": 54,
+    "ingest_max_vus": 108,
+    "dashboard_pre_allocated_vus": 60,
+    "dashboard_max_vus": 120,
+    "analytics_pre_allocated_vus": 64,
+    "analytics_max_vus": 128,
+    "turn_insights_pre_allocated_vus": 64,
+    "turn_insights_max_vus": 128,
+    "replay_pre_allocated_vus": 24,
+    "replay_max_vus": 48,
+    "resource_sample_interval_seconds": 3,
+    "ingest_expected_mode": "accepted",
+    "scripts": ["mixed_weekly_cycle.js"]
+  },
+  "verification": {
+    "benchmark_iterations": 5
+  },
+  "report_output": "benchmarks/reports/hot_week_read_write_heavy_traffic_only.json"
+}

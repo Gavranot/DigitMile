@@ -10,10 +10,11 @@
     "card_mix_profile": "balanced",
     "bag_level_ratio": 0.25,
     "compact_weeks": "",
-    "hot_weeks": 2
+    "hot_weeks": 2,
+    "anchor_week_start": "2026-03-09"
   },
   "traffic": {
-    "base_url": "http://digitmile-backend:8000",
+    "base_url": "http://benchmark-backend:8000",
     "request_host_header": "localhost",
     "duration": "20s",
     "vus_players": 4,
