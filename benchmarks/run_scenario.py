@@ -543,18 +543,14 @@ def compose_project_name(scenario_name):
 
 def ensure_backend_image():
     result = run_command(
-        ["docker", "image", "inspect", "digitmile-backend:latest"],
+        ["docker", "image", "inspect", "gashmurble/digitmile-backend:prod-latest"],
         check=False,
     )
     if result.returncode == 0:
-        return
+        return True
 
-    log_step("benchmark backend image missing; building digitmile-backend image")
-    stream_command(
-        ["docker", "compose", "build", "backend"],
-        heartbeat_label="docker compose build backend",
-    )
-
+    log_step("benchmark backend image missing;")
+    return False
 
 def should_keep_stack_on_failure():
     return os.getenv("BENCHMARK_KEEP_STACK", "0") == "1"
@@ -590,7 +586,8 @@ def main():
     keep_stack = False
 
     try:
-        ensure_backend_image()
+        if not ensure_backend_image():
+            return
         compose_up(project_name)
         backend_container_id = wait_for_backend_ready(project_name)
         db_container_id = compose_service_container_id(
