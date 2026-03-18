@@ -31,12 +31,34 @@ services:
     volumes:
       - benchmark_postgres_data:/var/lib/postgresql/data
 
+  # PgBouncer for the benchmark stack — mirrors production topology.
+  # benchmark-backend connects here, not directly to benchmark-db.
+  benchmark-pgbouncer:
+    image: edoburu/pgbouncer:latest
+    environment:
+      DB_HOST: benchmark-db
+      DB_PORT: 5432
+      DB_NAME: ${BENCHMARK_DB_NAME:-digitmile_benchmark}
+      DB_USER: ${BENCHMARK_DB_USER:-digitmile}
+      DB_PASSWORD: ${BENCHMARK_DB_PASS:-benchmark-pass}
+      POOL_MODE: transaction
+      DEFAULT_POOL_SIZE: 10
+      MIN_POOL_SIZE: 3
+      MAX_CLIENT_CONN: 100
+      AUTH_TYPE: scram-sha-256
+      IGNORE_STARTUP_PARAMETERS: extra_float_digits
+    depends_on:
+      benchmark-db:
+        condition: service_healthy
+    networks:
+      - benchmark-network
+
   benchmark-backend:
     image: gashmurble/digitmile-backend:prod-latest
     env_file:
       - ../.env
     environment:
-      DB_HOST: benchmark-db
+      DB_HOST: benchmark-pgbouncer
       DB_NAME: ${BENCHMARK_DB_NAME:-digitmile_benchmark}
       DB_USER: ${BENCHMARK_DB_USER:-digitmile}
       DB_PASS: ${BENCHMARK_DB_PASS:-benchmark-pass}
@@ -51,11 +73,13 @@ services:
     depends_on:
       benchmark-db:
         condition: service_healthy
+      benchmark-pgbouncer:
+        condition: service_started
     command: >
-      sh -c "python manage.py migrate &&
+      sh -c "DB_HOST=benchmark-db python manage.py migrate &&
              python manage.py collectstatic --noinput &&
              python manage.py create_superuser &&
-             gunicorn digitmile.wsgi:application --bind 0.0.0.0:8000 --workers 3"
+             gunicorn digitmile.wsgi:application --bind 0.0.0.0:8000 --workers 5"
     healthcheck:
       test:
         [
