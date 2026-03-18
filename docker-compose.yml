@@ -28,21 +28,21 @@ services:
   # Transaction pooling mode: Django connections are released back to the pool
   # after each COMMIT, so 5 Gunicorn workers share only ~5-10 real PG connections.
   pgbouncer:
-    image: bitnami/pgbouncer:latest
+    image: edoburu/pgbouncer:latest
     container_name: digitmile-pgbouncer
     restart: always
     environment:
-      POSTGRESQL_HOST: db
-      POSTGRESQL_PORT: 5432
-      POSTGRESQL_DATABASE: ${DB_NAME:-digitmile}
-      POSTGRESQL_USERNAME: ${DB_USER:-digitmile}
-      POSTGRESQL_PASSWORD: ${DB_PASS:-changeme}
-      PGBOUNCER_POOL_MODE: transaction
-      PGBOUNCER_DEFAULT_POOL_SIZE: 10
-      PGBOUNCER_MIN_POOL_SIZE: 3
-      PGBOUNCER_MAX_CLIENT_CONN: 100
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-digitmile}
+      DB_USER: ${DB_USER:-digitmile}
+      DB_PASSWORD: ${DB_PASS:-changeme}
+      POOL_MODE: transaction
+      DEFAULT_POOL_SIZE: 10
+      MIN_POOL_SIZE: 3
+      MAX_CLIENT_CONN: 100
       # Ignore SET commands that Django sends (timezone, etc.) — safe in transaction mode
-      PGBOUNCER_IGNORE_STARTUP_PARAMETERS: extra_float_digits
+      IGNORE_STARTUP_PARAMETERS: extra_float_digits
     depends_on:
       db:
         condition: service_healthy

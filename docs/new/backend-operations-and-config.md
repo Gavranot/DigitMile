@@ -209,7 +209,7 @@ PgBouncer maintains a warm pool of already-open connections to PostgreSQL. Djang
 
 ### Transaction pooling mode
 
-PgBouncer is configured in **transaction pooling mode** (`PGBOUNCER_POOL_MODE=transaction`). In this mode, a real PostgreSQL connection is held only for the duration of a single transaction — it is released back to the pool the moment Django calls `COMMIT` or `ROLLBACK`. This means 5 Gunicorn workers can share as few as 5–10 real PostgreSQL connections instead of holding 5 open permanently.
+PgBouncer is configured in **transaction pooling mode** (`POOL_MODE=transaction`). In this mode, a real PostgreSQL connection is held only for the duration of a single transaction — it is released back to the pool the moment Django calls `COMMIT` or `ROLLBACK`. This means 5 Gunicorn workers can share as few as 5–10 real PostgreSQL connections instead of holding 5 open permanently.
 
 Two Django settings are required for this to work correctly:
 
