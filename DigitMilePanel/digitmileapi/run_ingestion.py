@@ -90,16 +90,25 @@ def normalize_unity_run_ingestion_payload(validated_data):
             }
         )
 
+    place = run_data["place"]
+    run_started_unix_ms = run_data["runStartedUnixMs"]
+    run_ended_unix_ms = run_data["runEndedUnixMs"]
+
     return {
         "run_id": derive_run_id_from_unity_payload(student_id, run_data),
         "student_id": student_id,
         "level": run_data["level"],
-        "place": run_data["place"],
+        "place": place,
+        # Derived fields — computed here so the canonical serializer pass can be
+        # skipped entirely for Unity payloads (the Unity serializer already validated
+        # correct_moves/wrong_moves/place consistency in its own validate()).
+        "player_won": place == 1,
+        "elapsed_ms": clamp_elapsed_ms(run_started_unix_ms, run_ended_unix_ms),
         "score": run_data["score"],
         "correct_moves": run_data["correct_moves"],
         "wrong_moves": run_data["wrong_moves"],
-        "run_started_unix_ms": run_data["runStartedUnixMs"],
-        "run_ended_unix_ms": run_data["runEndedUnixMs"],
+        "run_started_unix_ms": run_started_unix_ms,
+        "run_ended_unix_ms": run_ended_unix_ms,
         "game_map": run_data["gameMap"]["mapTiles"],
         "map_version": "1",
         "bot_version": "1",

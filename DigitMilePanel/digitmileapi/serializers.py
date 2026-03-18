@@ -644,16 +644,17 @@ class RunIngestionSerializer(serializers.Serializer):
     """
 
     def to_internal_value(self, data):
-        normalized_data = data
         if _looks_like_unity_run_payload(data):
+            # Unity path: validate once with the Unity serializer, then normalize.
+            # The Unity serializer already checks student existence and validates
+            # correct_moves/wrong_moves/place consistency. The normalized payload
+            # includes all derived fields (player_won, elapsed_ms) so the canonical
+            # serializer pass is redundant and skipped here.
             unity_serializer = UnityRunUploadPayloadSerializer(data=data)
             unity_serializer.is_valid(raise_exception=True)
-            normalized_data = normalize_unity_run_ingestion_payload(
-                unity_serializer.validated_data
-            )
+            return normalize_unity_run_ingestion_payload(unity_serializer.validated_data)
 
-        canonical_serializer = CanonicalRunIngestionPayloadSerializer(
-            data=normalized_data
-        )
+        # Non-Unity (canonical snake_case) path: validate with canonical serializer only.
+        canonical_serializer = CanonicalRunIngestionPayloadSerializer(data=data)
         canonical_serializer.is_valid(raise_exception=True)
         return canonical_serializer.validated_data
