@@ -1,6 +1,6 @@
 # Backend Operations and Configuration
 
-Last updated: 2026-03-09
+Last updated: 2026-03-18
 
 ## Why this subsystem exists
 
@@ -10,16 +10,18 @@ This document covers how the Django backend is configured, started, observed, an
 
 From `docker-compose.yml` and `docker-compose.localhost.yml`:
 
-- `db` - PostgreSQL 16
-- `backend` - Django + gunicorn
-- `frontend` - Unity/nginx frontend
-- optional `nginx-proxy` - local HTTPS reverse proxy
+- `db` — PostgreSQL 16
+- `pgbouncer` — PgBouncer connection pooler (sits between Django and PostgreSQL)
+- `backend` — Django + Gunicorn (5 workers)
+- `frontend` — Unity/nginx frontend
+- optional `nginx-proxy` — local HTTPS reverse proxy
 
 Traffic model:
 
 - users reach nginx/frontend
 - backend is mounted under `/panel/`
 - Django admin and API are both behind that mount point
+- Django connects to `pgbouncer`, not directly to `db`; PgBouncer forwards to `db`
 
 ## Application bootstrap
 
@@ -41,10 +43,10 @@ Configured in `DigitMilePanel/digitmile/settings.py`.
 
 The backend container command runs, in order:
 
-1. migrations
+1. migrations — run with `DB_HOST=db` (bypasses PgBouncer; see [PgBouncer and Django migrations](#pgbouncer-and-django-migrations))
 2. static collection
 3. custom superuser creation command
-4. gunicorn with 3 workers
+4. gunicorn with 5 workers
 
 ### Docker images
 
@@ -65,7 +67,7 @@ The backend container command runs, in order:
 | `DB_NAME` | yes | PostgreSQL database name |
 | `DB_USER` | yes | PostgreSQL username |
 | `DB_PASS` | yes | PostgreSQL password |
-| `DB_HOST` | yes | PostgreSQL host |
+| `DB_HOST` | yes | Database host. Must be `pgbouncer` in all environments (dev and prod). Set to `db` only when running migrations directly — see [PgBouncer and Django migrations](#pgbouncer-and-django-migrations). |
 | `DB_PORT` | yes | PostgreSQL port; parsed carefully, defaults to 5432 when unset |
 | `SERVER_IP` | yes | appended to `ALLOWED_HOSTS` when present |
 | `ALLOWED_HOSTS` | yes | comma-separated host allowlist |
@@ -172,7 +174,7 @@ From `AGENTS.md`:
 - start stack: `docker-compose up -d`
 - start with localhost HTTPS: `docker-compose -f docker-compose.yml -f docker-compose.localhost.yml up -d`
 - backend logs: `docker-compose logs -f backend`
-- run migrations: `docker-compose exec backend python manage.py migrate`
+- run migrations: see [PgBouncer and Django migrations](#pgbouncer-and-django-migrations) — do not use the plain `migrate` command
 - Django shell: `docker-compose exec backend python manage.py shell`
 - create/update teachers group: `python manage.py setup_teachers_group`
 - clear school/game data: `python manage.py clear_school_data --yes`
@@ -196,6 +198,75 @@ From `AGENTS.md`:
 
 - creates demo schools, teachers, classrooms, students, runs, triggers, and optional legacy stats
 - useful for dashboard and analytics testing
+
+## PgBouncer and Django migrations
+
+### What PgBouncer does
+
+PgBouncer is a connection pooler that sits between Django and PostgreSQL. Without it, every HTTP request that Django handles opens a new TCP connection to PostgreSQL, authenticates, runs its queries, and closes the connection. At load this is wasteful: opening a connection costs ~2–5 ms and forces PostgreSQL to spawn a new backend process (~5 MB RAM each) for every request.
+
+PgBouncer maintains a warm pool of already-open connections to PostgreSQL. Django "connects" to PgBouncer (which is instantaneous — same Docker network, no auth round-trip), borrows a real connection from the pool, runs its queries, and returns the connection when the transaction commits. PostgreSQL never sees the per-request connect/disconnect churn.
+
+### Transaction pooling mode
+
+PgBouncer is configured in **transaction pooling mode** (`PGBOUNCER_POOL_MODE=transaction`). In this mode, a real PostgreSQL connection is held only for the duration of a single transaction — it is released back to the pool the moment Django calls `COMMIT` or `ROLLBACK`. This means 5 Gunicorn workers can share as few as 5–10 real PostgreSQL connections instead of holding 5 open permanently.
+
+Two Django settings are required for this to work correctly:
+
+```python
+# settings.py — DATABASES["default"]
+"CONN_MAX_AGE": 0,
+"DISABLE_SERVER_SIDE_CURSORS": True,
+```
+
+- `CONN_MAX_AGE=0` — Django must not hold a persistent connection across requests. If it did, PgBouncer could not reclaim the connection between transactions, defeating the pool. PgBouncer owns the pool; Django treats each request as stateless.
+- `DISABLE_SERVER_SIDE_CURSORS=True` — PostgreSQL prepared statements and server-side cursors are tied to a specific backend connection by session ID. In transaction mode, the same Django "connection" is routed to different real PostgreSQL connections on each transaction. Prepared statements therefore break silently. This setting tells Django's ORM to avoid them entirely.
+
+### Why migrations cannot run through PgBouncer
+
+Django's migration system acquires a **PostgreSQL advisory lock** at the start of every `migrate` run:
+
+```sql
+SELECT pg_try_advisory_lock(hash_of_app_label_and_migration_name);
+```
+
+Advisory locks in PostgreSQL are **session-scoped** — they are held for the lifetime of a database session, not a transaction. In transaction pooling mode, a session does not correspond to a single real PostgreSQL connection. When the migration's first transaction commits, PgBouncer releases the underlying connection back to the pool and may route the next transaction to a completely different PostgreSQL backend. The advisory lock, held by the original session, is lost. Django then fails to detect that its own lock has disappeared and either errors out or, worse, allows two concurrent `migrate` processes to run simultaneously.
+
+### What to do instead
+
+**Always run migrations with `DB_HOST=db`**, which bypasses PgBouncer and connects Django directly to PostgreSQL for that process only.
+
+**In development (docker-compose):**
+
+The compose startup command already does this:
+
+```yaml
+command: >
+  sh -c "DB_HOST=db python manage.py migrate && ..."
+```
+
+`DB_HOST=db` is set only for the `migrate` subprocess. Django reads `os.getenv("DB_HOST")` at startup, so this override is scoped to that single process. Gunicorn, started later in the same `sh -c` chain without the override, picks up `DB_HOST=pgbouncer` from the container's `.env` and connects through the pool.
+
+**In production (manual or CI migrations):**
+
+```bash
+# via docker exec on the running backend container
+docker exec -e DB_HOST=db digitmile-backend python manage.py migrate
+
+# or via docker-compose exec
+DB_HOST=db docker-compose exec backend python manage.py migrate
+```
+
+Do not run `docker-compose exec backend python manage.py migrate` without the `DB_HOST=db` override. The container's `.env` sets `DB_HOST=pgbouncer`, so a plain `migrate` command will route through PgBouncer and fail on the advisory lock.
+
+### Summary
+
+| Operation | Connect through | Why |
+| --- | --- | --- |
+| Normal request handling (Gunicorn) | `pgbouncer` | Pool reduces per-request connection overhead |
+| `python manage.py migrate` | `db` (direct) | Advisory locks require a stable session |
+| `python manage.py shell` | `pgbouncer` | Fine — no advisory locks in an interactive shell |
+| `python manage.py` any other command | `pgbouncer` | Fine for all other management commands |
 
 ## Performance characteristics and hotspots
 

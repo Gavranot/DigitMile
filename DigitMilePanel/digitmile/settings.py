@@ -141,6 +141,13 @@ DATABASES = {
         "PASSWORD": os.getenv("DB_PASS"),
         "HOST": os.getenv("DB_HOST"),
         "PORT": processed_db_port,  # Use the explicitly processed port
+        # PgBouncer transaction pooling requires these two settings:
+        # - CONN_MAX_AGE=0: Django must not hold persistent connections;
+        #   PgBouncer owns the pool, not Django.
+        # - DISABLE_SERVER_SIDE_CURSORS=True: PgBouncer can't forward prepared
+        #   statements across transaction boundaries.
+        "CONN_MAX_AGE": 0,
+        "DISABLE_SERVER_SIDE_CURSORS": True,
     }
 }
 # END OF BLOCK TO PASTE
