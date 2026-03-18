@@ -41,6 +41,9 @@ services:
       DEFAULT_POOL_SIZE: 10
       MIN_POOL_SIZE: 3
       MAX_CLIENT_CONN: 100
+      # Must match PostgreSQL 16's default auth method (scram-sha-256).
+      # Without this, PgBouncer defaults to md5 and PostgreSQL rejects it.
+      AUTH_TYPE: scram-sha-256
       # Ignore SET commands that Django sends (timezone, etc.) — safe in transaction mode
       IGNORE_STARTUP_PARAMETERS: extra_float_digits
     depends_on:
