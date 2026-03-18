@@ -9,8 +9,8 @@ services:
     # production PostgreSQL behaviour.
     command: >
       postgres
-      -c shared_buffers=768MB
-      -c effective_cache_size=2GB
+      -c shared_buffers=128MB
+      -c effective_cache_size=512MB
       -c work_mem=8MB
       -c maintenance_work_mem=64MB
       -c wal_buffers=16MB
