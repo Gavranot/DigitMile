@@ -333,7 +333,7 @@ def ensure_k6_container(network_name):
             "--add-host",
             "host.docker.internal:host-gateway",
             "--user",
-            "digitmile",
+            "root",
             "-v",
             f"{REPO_ROOT / 'benchmarks'}:/benchmarks",
             "-w",
