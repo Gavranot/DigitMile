@@ -1,12 +1,8 @@
 from collections import defaultdict
 
-from django.db.models import Count, Max, Min, Q, Sum
+from django.db.models import Max, Min, Sum
 
-from .analytics import BAG_COMPARATOR_BY_TYPE, parse_card
 from .models import (
-    Run,
-    SpecialTileTrigger,
-    TurnEvent,
     StudentWeekBackCardUsageStats,
     StudentWeekCardFamilyStats,
     StudentWeekCardTypeStats,
@@ -18,11 +14,7 @@ from .models import (
     StudentWeekNumberChoiceStats,
     StudentWeekSpecialTileStats,
 )
-from .weekly_rollups import (
-    clip_decision_time_ms,
-    sample_stddev_from_stats,
-    week_start_for,
-)
+from .weekly_rollups import sample_stddev_from_stats
 
 
 def _apply_student_scope(queryset, student_ids, field_name):
@@ -31,23 +23,6 @@ def _apply_student_scope(queryset, student_ids, field_name):
             return queryset.none()
         return queryset.filter(**{f"{field_name}__in": student_ids})
     return queryset
-
-
-def _raw_runs(student_ids=None):
-    queryset = Run.objects.filter(raw_data_compacted_at__isnull=True)
-    return _apply_student_scope(queryset, student_ids, "student_id")
-
-
-def _raw_turns(student_ids=None):
-    queryset = TurnEvent.objects.filter(run__raw_data_compacted_at__isnull=True)
-    return _apply_student_scope(queryset, student_ids, "run__student_id")
-
-
-def _raw_triggers(student_ids=None):
-    queryset = SpecialTileTrigger.objects.filter(
-        turn__run__raw_data_compacted_at__isnull=True
-    )
-    return _apply_student_scope(queryset, student_ids, "turn__run__student_id")
 
 
 def _rollup_scope(queryset, student_ids):
@@ -119,14 +94,6 @@ def win_rate_by_level(student_ids=None):
         combined[row["level"]]["total_runs"] += row["total_runs"] or 0
         combined[row["level"]]["wins"] += row["wins"] or 0
 
-    for row in (
-        _raw_runs(student_ids)
-        .values("level")
-        .annotate(total_runs=Count("id"), wins=Count("id", filter=Q(player_won=True)))
-    ):
-        combined[row["level"]]["total_runs"] += row["total_runs"] or 0
-        combined[row["level"]]["wins"] += row["wins"] or 0
-
     return [
         {
             "level": level,
@@ -145,14 +112,6 @@ def wrong_moves_rate_by_level(student_ids=None):
 
     for row in (
         _rollup_scope(StudentWeekLevelStats.objects.all(), student_ids)
-        .values("level")
-        .annotate(total_correct=Sum("correct_moves"), total_wrong=Sum("wrong_moves"))
-    ):
-        combined[row["level"]]["total_correct"] += row["total_correct"] or 0
-        combined[row["level"]]["total_wrong"] += row["total_wrong"] or 0
-
-    for row in (
-        _raw_runs(student_ids)
         .values("level")
         .annotate(total_correct=Sum("correct_moves"), total_wrong=Sum("wrong_moves"))
     ):
@@ -217,21 +176,6 @@ def time_distribution_by_level(student_ids=None):
                 else max(current_max, row["max_time_ms"])
             )
 
-    for row in _raw_runs(student_ids).values("level", "elapsed_ms"):
-        level = row["level"]
-        elapsed_ms = row["elapsed_ms"] or 0
-        combined[level]["elapsed_sum"] += elapsed_ms
-        combined[level]["elapsed_count"] += 1
-        combined[level]["elapsed_sum_sq"] += elapsed_ms * elapsed_ms
-        current_min = combined[level]["min_time_ms"]
-        current_max = combined[level]["max_time_ms"]
-        combined[level]["min_time_ms"] = (
-            elapsed_ms if current_min is None else min(current_min, elapsed_ms)
-        )
-        combined[level]["max_time_ms"] = (
-            elapsed_ms if current_max is None else max(current_max, elapsed_ms)
-        )
-
     results = []
     for level, values in sorted(combined.items()):
         count = values["elapsed_count"]
@@ -260,16 +204,6 @@ def mistake_hotspots_by_level(student_ids=None):
     ):
         results[row["level"]][row["tile_before_index"]] += row["mistake_count"] or 0
 
-    for row in (
-        _raw_turns(student_ids)
-        .filter(was_correct=False)
-        .values("run__level", "tile_before_index")
-        .annotate(mistake_count=Count("id"))
-    ):
-        results[row["run__level"]][row["tile_before_index"]] += (
-            row["mistake_count"] or 0
-        )
-
     return {level: dict(values) for level, values in results.items()}
 
 
@@ -282,15 +216,6 @@ def special_tile_breakdown(student_ids=None):
         .annotate(trigger_count=Sum("trigger_count"))
     ):
         combined[(row["level"], row["special_tile_type"])] += row["trigger_count"] or 0
-
-    for row in (
-        _raw_triggers(student_ids)
-        .values("turn__run__level", "special_tile_type")
-        .annotate(trigger_count=Count("id"))
-    ):
-        combined[(row["turn__run__level"], row["special_tile_type"])] += (
-            row["trigger_count"] or 0
-        )
 
     return [
         {
@@ -319,21 +244,6 @@ def offer_choice_share_by_family(student_ids=None):
         combined[key]["chosen"] += chosen
         offered_totals[row["level"]] += offered
         chosen_totals[row["level"]] += chosen
-
-    for turn in _raw_turns(student_ids).values(
-        "run__level", "chosen_card_family", "chosen_card", "offered_cards"
-    ):
-        level = turn["run__level"]
-        chosen_family = turn["chosen_card_family"] or parse_card(
-            turn["chosen_card"]
-        ).get("family", "unknown")
-        combined[(level, chosen_family)]["chosen"] += 1
-        chosen_totals[level] += 1
-
-        for card in turn.get("offered_cards") or []:
-            offered_family = parse_card(card).get("family", "unknown")
-            combined[(level, offered_family)]["offered"] += 1
-            offered_totals[level] += 1
 
     results = []
     for (level, family), values in sorted(combined.items()):
@@ -374,17 +284,6 @@ def card_accuracy_by_family_by_level(student_ids=None):
         key = (row["level"], row["card_family"])
         combined[key]["total"] += total
         combined[key]["correct"] += row["correct"] or 0
-
-    for turn in _raw_turns(student_ids).values(
-        "run__level", "chosen_card_family", "chosen_card", "was_correct"
-    ):
-        family = turn["chosen_card_family"] or parse_card(turn["chosen_card"]).get(
-            "family", "unknown"
-        )
-        key = (turn["run__level"], family)
-        combined[key]["total"] += 1
-        if turn["was_correct"]:
-            combined[key]["correct"] += 1
 
     results = []
     for (level, family), values in sorted(combined.items()):
@@ -437,28 +336,6 @@ def decision_time_by_family_by_level(student_ids=None):
                 if current_max is None
                 else max(current_max, row["max_time"])
             )
-
-    for turn in _raw_turns(student_ids).values(
-        "run__level", "chosen_card_family", "chosen_card", "card_decision_time_ms"
-    ):
-        family = turn["chosen_card_family"] or parse_card(turn["chosen_card"]).get(
-            "family", "unknown"
-        )
-        key = (turn["run__level"], family)
-        decision_time = turn["card_decision_time_ms"] or 0
-        combined[key]["sum"] += decision_time
-        combined[key]["count"] += 1
-        combined[key]["sum_sq"] += decision_time * decision_time
-        combined[key]["min"] = (
-            decision_time
-            if combined[key]["min"] is None
-            else min(combined[key]["min"], decision_time)
-        )
-        combined[key]["max"] = (
-            decision_time
-            if combined[key]["max"] is None
-            else max(combined[key]["max"], decision_time)
-        )
 
     results = []
     for (level, family), values in sorted(combined.items()):
@@ -517,33 +394,6 @@ def decision_time_by_card_type(student_ids=None):
         _merge_stat_bucket(summary[card_type], bucket_values)
         _merge_stat_bucket(week_bucket, bucket_values)
 
-    for turn in _raw_turns(student_ids).values(
-        "run__created_at",
-        "chosen_card_type",
-        "chosen_card",
-        "card_decision_time_ms",
-    ):
-        card_type = turn["chosen_card_type"] or parse_card(turn["chosen_card"]).get(
-            "type", "unknown"
-        )
-        if not card_type or card_type == "unknown":
-            card_type = parse_card(turn["chosen_card"]).get("type", "unknown")
-        decision_time = turn["card_decision_time_ms"] or 0
-        clipped_value, was_clipped = clip_decision_time_ms(decision_time)
-        week_start = str(week_start_for(turn["run__created_at"]))
-        bucket_values = {
-            "sum": decision_time,
-            "count": 1,
-            "sum_sq": decision_time * decision_time,
-            "min": decision_time,
-            "max": decision_time,
-            "clipped_sum": clipped_value,
-            "clipped_sum_sq": clipped_value * clipped_value,
-            "outlier_count": 1 if was_clipped else 0,
-        }
-        _merge_stat_bucket(summary[card_type], bucket_values)
-        _merge_stat_bucket(weekly[card_type][week_start], bucket_values)
-
     summary_by_card_type = {
         card_type: _serialize_decision_time_bucket(values)
         for card_type, values in sorted(summary.items())
@@ -590,32 +440,6 @@ def tile_conditional_accuracy_by_tile_type_by_level(student_ids=None):
         counts[(level, tile_type)]["else_count"] += else_count
         total_conditional_by_level[level] += total
         total_else_by_level[level] += else_count
-
-    for turn in (
-        _raw_turns(student_ids)
-        .filter(chosen_card_family="conditional_tile")
-        .values(
-            "run__level",
-            "chosen_card_tile_type",
-            "chosen_card",
-            "was_correct",
-            "tile_before_type",
-        )
-    ):
-        tile_type = turn["chosen_card_tile_type"]
-        if tile_type is None:
-            tile_type = parse_card(turn["chosen_card"]).get("tile_type")
-        if tile_type is None:
-            continue
-
-        level = turn["run__level"]
-        counts[(level, tile_type)]["total"] += 1
-        total_conditional_by_level[level] += 1
-        if turn["was_correct"]:
-            counts[(level, tile_type)]["correct"] += 1
-        if turn["tile_before_type"] != tile_type:
-            counts[(level, tile_type)]["else_count"] += 1
-            total_else_by_level[level] += 1
 
     by_tile_type = []
     for (level, tile_type), values in sorted(counts.items()):
@@ -679,68 +503,6 @@ def bag_conditional_accuracy_by_comparator_by_level(student_ids=None):
         total_conditional_by_level[level] += total
         total_else_by_level[level] += else_count
 
-    # Fetch bag-conditional turns AND any turn that updates chosen_number
-    # (bag state). Without the chosen_number turns, bag_number tracking
-    # across a run would use stale values and else_rate would be wrong.
-    raw_turns = (
-        _raw_turns(student_ids)
-        .filter(
-            Q(
-                chosen_card_family__in=[
-                    "conditional_bag_eq",
-                    "conditional_bag_lt",
-                    "conditional_bag_gt",
-                ]
-            )
-            | Q(chosen_number__isnull=False)
-        )
-        .values(
-            "run_id",
-            "run__level",
-            "turn_index",
-            "chosen_card_type",
-            "chosen_card",
-            "was_correct",
-            "chosen_number",
-        )
-        .order_by("run_id", "turn_index")
-    )
-
-    current_run_id = None
-    bag_number = 1
-    for turn in raw_turns:
-        if turn["run_id"] != current_run_id:
-            current_run_id = turn["run_id"]
-            bag_number = 1
-
-        card_data = parse_card(turn["chosen_card"])
-        comparator = BAG_COMPARATOR_BY_TYPE.get(turn["chosen_card_type"])
-        threshold = card_data.get("if_value")
-        if comparator is None or threshold is None:
-            if turn["chosen_number"] is not None:
-                bag_number = turn["chosen_number"]
-            continue
-
-        level = turn["run__level"]
-        counts[(level, comparator)]["total"] += 1
-        total_conditional_by_level[level] += 1
-        if turn["was_correct"]:
-            counts[(level, comparator)]["correct"] += 1
-
-        if comparator == "eq":
-            condition_met = bag_number == threshold
-        elif comparator == "lt":
-            condition_met = bag_number < threshold
-        else:
-            condition_met = bag_number > threshold
-
-        if not condition_met:
-            counts[(level, comparator)]["else_count"] += 1
-            total_else_by_level[level] += 1
-
-        if turn["chosen_number"] is not None:
-            bag_number = turn["chosen_number"]
-
     by_comparator = []
     for (level, comparator), values in sorted(counts.items()):
         total = values["total"]
@@ -784,14 +546,6 @@ def back_card_usage_by_place_by_level(student_ids=None):
     ):
         combined[(row["level"], row["place_before"])] += row["total"] or 0
 
-    for row in (
-        _raw_turns(student_ids)
-        .filter(chosen_card_family="back")
-        .values("run__level", "place_before")
-        .annotate(total=Count("id"))
-    ):
-        combined[(row["run__level"], row["place_before"])] += row["total"] or 0
-
     return [
         {"level": level, "place_before": place_before, "count": count}
         for (level, place_before), count in sorted(combined.items())
@@ -814,45 +568,6 @@ def foreach_tile_context_usage_by_level(student_ids=None):
     ):
         combined[row["level"]]["with_opponent"] += row["with_opponent"] or 0
         combined[row["level"]]["without_opponent"] += row["without_opponent"] or 0
-
-    for turn in (
-        _raw_turns(student_ids)
-        .filter(chosen_card_family="foreach_tile")
-        .values(
-            "run__level",
-            "chosen_card_tile_type",
-            "chosen_card",
-            "bot_positions_before",
-            "run__game_map",
-        )
-    ):
-        tile_type = turn["chosen_card_tile_type"]
-        if tile_type is None:
-            tile_type = parse_card(turn["chosen_card"]).get("tile_type")
-        if tile_type is None:
-            continue
-
-        map_lookup = {}
-        for tile in turn.get("run__game_map") or []:
-            if isinstance(tile, dict) and tile.get("tileMapIndex") is not None:
-                map_lookup[tile["tileMapIndex"]] = tile.get(
-                    "tileType", tile.get("tileIndex")
-                )
-
-        opponent_on_tile = False
-        for bot in turn.get("bot_positions_before") or []:
-            if (
-                isinstance(bot, dict)
-                and map_lookup.get(bot.get("tileMapIndex")) == tile_type
-            ):
-                opponent_on_tile = True
-                break
-
-        level = turn["run__level"]
-        if opponent_on_tile:
-            combined[level]["with_opponent"] += 1
-        else:
-            combined[level]["without_opponent"] += 1
 
     return [
         {
@@ -878,13 +593,6 @@ def special_tile_chain_length_distribution_by_level(student_ids=None):
     ):
         combined[(row["level"], row["chain_length"])] += row["total"] or 0
 
-    for row in (
-        _raw_turns(student_ids)
-        .values("run__level", "id")
-        .annotate(chain_length=Count("special_tile_triggers"))
-    ):
-        combined[(row["run__level"], row["chain_length"])] += 1
-
     return [
         {"level": level, "chain_length": chain_length, "turn_count": count}
         for (level, chain_length), count in sorted(combined.items())
@@ -903,14 +611,6 @@ def number_choice_distribution_by_level(student_ids=None):
         .annotate(total=Sum("choice_count"))
     ):
         combined[(row["level"], row["chosen_number"])] += row["total"] or 0
-
-    for row in (
-        _raw_turns(student_ids)
-        .filter(chosen_number__isnull=False)
-        .values("run__level", "chosen_number")
-        .annotate(total=Count("id"))
-    ):
-        combined[(row["run__level"], row["chosen_number"])] += row["total"] or 0
 
     return [
         {"level": level, "chosen_number": chosen_number, "count": count}
@@ -955,27 +655,6 @@ def number_decision_time_by_choice_by_level(student_ids=None):
                 if current_max is None
                 else max(current_max, row["max_time"])
             )
-
-    for row in (
-        _raw_turns(student_ids)
-        .filter(chosen_number__isnull=False)
-        .values("run__level", "chosen_number", "number_decision_time_ms")
-    ):
-        key = (row["run__level"], row["chosen_number"])
-        decision_time = row["number_decision_time_ms"] or 0
-        combined[key]["sum"] += decision_time
-        combined[key]["count"] += 1
-        combined[key]["sum_sq"] += decision_time * decision_time
-        combined[key]["min"] = (
-            decision_time
-            if combined[key]["min"] is None
-            else min(combined[key]["min"], decision_time)
-        )
-        combined[key]["max"] = (
-            decision_time
-            if combined[key]["max"] is None
-            else max(combined[key]["max"], decision_time)
-        )
 
     return [
         {
