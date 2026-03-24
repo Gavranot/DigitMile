@@ -24,6 +24,18 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    container_name: digitmile-redis
+    restart: always
+    networks:
+      - digitmile-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # PgBouncer connection pooler — sits between Django and PostgreSQL.
   # Transaction pooling mode: Django connections are released back to the pool
   # after each COMMIT, so 5 Gunicorn workers share only ~5-10 real PG connections.
@@ -62,6 +74,7 @@ services:
       - .env
     environment:
       REPLAY_ARCHIVE_ROOT: /var/lib/digitmile/replay-archives
+      REDIS_URL: redis://redis:6379/1
     volumes:
       # Mount code for development (changes reflect immediately without rebuild)
       - ./DigitMilePanel:/app
@@ -73,6 +86,8 @@ services:
         condition: service_healthy
       pgbouncer:
         condition: service_started
+      redis:
+        condition: service_healthy
     networks:
       - digitmile-network
     command: >
