@@ -31,6 +31,16 @@ services:
     volumes:
       - benchmark_postgres_data:/var/lib/postgresql/data
 
+  benchmark-redis:
+    image: redis:7-alpine
+    networks:
+      - benchmark-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   # PgBouncer for the benchmark stack — mirrors production topology.
   # benchmark-backend connects here, not directly to benchmark-db.
   benchmark-pgbouncer:
@@ -66,6 +76,7 @@ services:
       SERVER_IP: benchmark-backend
       ALLOWED_HOSTS: benchmark-backend,localhost,127.0.0.1
       REPLAY_ARCHIVE_ROOT: /var/lib/digitmile/replay-archives
+      REDIS_URL: redis://benchmark-redis:6379/1
       BENCHMARK_TIME_OVERRIDE_ENABLED: "True"
       DJANGO_SUPERUSER_USERNAME: benchmarkadmin
       DJANGO_SUPERUSER_EMAIL: benchmark-admin@example.com
@@ -75,6 +86,8 @@ services:
         condition: service_healthy
       benchmark-pgbouncer:
         condition: service_started
+      benchmark-redis:
+        condition: service_healthy
     command: >
       sh -c "DB_HOST=benchmark-db python manage.py migrate &&
              python manage.py collectstatic --noinput &&

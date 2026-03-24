@@ -6,3 +6,4 @@ python-dotenv
 psycopg2-binary
 whitenoise
 gunicorn
+django-redis
