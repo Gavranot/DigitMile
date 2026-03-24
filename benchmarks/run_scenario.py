@@ -14,6 +14,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 BENCHMARK_COMPOSE_FILE = REPO_ROOT / "benchmarks" / "docker-compose.benchmark.yml"
 BENCHMARK_BACKEND_SERVICE = "benchmark-backend"
 BENCHMARK_DB_SERVICE = "benchmark-db"
+BENCHMARK_REDIS_SERVICE = "benchmark-redis"
 K6_IMAGE = "grafana/k6:0.49.0"
 K6_CONTAINER_NAME = "digitmile-k6-runner"
 BYTE_UNITS = {
@@ -253,6 +254,48 @@ def parse_pids(value):
         return int(str(value).strip())
     except (TypeError, ValueError):
         return None
+
+
+def redis_stats(project_name):
+    """Query Redis INFO stats + keyspace and return a parsed dict."""
+    try:
+        stats_result = compose_exec(
+            project_name, BENCHMARK_REDIS_SERVICE, "redis-cli", "info", "stats"
+        )
+        stats = {}
+        for line in stats_result.stdout.splitlines():
+            if ":" in line and not line.startswith("#"):
+                key, _, val = line.strip().partition(":")
+                try:
+                    stats[key] = int(val)
+                except ValueError:
+                    try:
+                        stats[key] = float(val)
+                    except ValueError:
+                        stats[key] = val.strip()
+
+        keyspace_result = compose_exec(
+            project_name, BENCHMARK_REDIS_SERVICE, "redis-cli", "info", "keyspace"
+        )
+        keyspace = {}
+        for line in keyspace_result.stdout.splitlines():
+            if line.startswith("db"):
+                db_name, _, db_info = line.strip().partition(":")
+                for part in db_info.split(","):
+                    k, _, v = part.partition("=")
+                    try:
+                        keyspace[f"{db_name}_{k.strip()}"] = int(v.strip())
+                    except ValueError:
+                        keyspace[f"{db_name}_{k.strip()}"] = v.strip()
+
+        return {
+            "keyspace_hits": stats.get("keyspace_hits", 0),
+            "keyspace_misses": stats.get("keyspace_misses", 0),
+            "total_commands_processed": stats.get("total_commands_processed", 0),
+            "keyspace": keyspace,
+        }
+    except Exception as exc:
+        return {"error": str(exc)}
 
 
 def collect_runtime_sample(container_ids, started_at):
@@ -585,6 +628,7 @@ def main():
 
     backend_container_id = None
     db_container_id = None
+    redis_container_id = None
     keep_stack = False
 
     try:
@@ -594,6 +638,9 @@ def main():
         backend_container_id = wait_for_backend_ready(project_name)
         db_container_id = compose_service_container_id(
             project_name, BENCHMARK_DB_SERVICE
+        )
+        redis_container_id = compose_service_container_id(
+            project_name, BENCHMARK_REDIS_SERVICE
         )
         network_name = docker_network_for_container(backend_container_id)
         ensure_k6_container(network_name)
@@ -721,10 +768,12 @@ def main():
         sample_interval_seconds = float(
             traffic.get("resource_sample_interval_seconds", 3)
         )
-        runtime_container_ids = [backend_container_id, db_container_id]
+        runtime_container_ids = [backend_container_id, db_container_id, redis_container_id]
 
         log_step("capturing baseline container stats")
         docker_stats_before = docker_stats(runtime_container_ids)
+        log_step("capturing baseline Redis cache stats")
+        redis_stats_before = redis_stats(project_name)
         k6_summaries = []
         all_runtime_samples = []
         for script_name in traffic.get("scripts", []):
@@ -771,6 +820,24 @@ def main():
 
         log_step("capturing post-traffic container stats")
         docker_stats_after = docker_stats(runtime_container_ids)
+        log_step("capturing post-traffic Redis cache stats")
+        redis_stats_after = redis_stats(project_name)
+        hits = redis_stats_after.get("keyspace_hits", 0) - redis_stats_before.get("keyspace_hits", 0)
+        misses = redis_stats_after.get("keyspace_misses", 0) - redis_stats_before.get("keyspace_misses", 0)
+        total = hits + misses
+        hit_rate = round(hits / total * 100, 1) if total > 0 else 0
+        redis_cache_summary = {
+            "hits": hits,
+            "misses": misses,
+            "total_lookups": total,
+            "hit_rate_pct": hit_rate,
+            "keys_stored": redis_stats_after.get("keyspace", {}).get("db1_keys", 0),
+        }
+        log_step(
+            f"Redis cache: {hits} hits / {misses} misses / {total} total lookups"
+            f" — hit rate {hit_rate}%"
+            f" — {redis_cache_summary['keys_stored']} keys stored"
+        )
 
         overall_load_health = "green"
         for _k6s in k6_summaries:
@@ -868,6 +935,9 @@ def main():
             "runtime_docker_stats": all_runtime_samples,
             "resource_summary": summarize_runtime_samples(all_runtime_samples),
             "docker_stats_after": docker_stats_after,
+            "redis_stats_before": redis_stats_before,
+            "redis_stats_after": redis_stats_after,
+            "redis_cache_summary": redis_cache_summary,
             "compaction_result": compaction_result,
             "verification_result": verify_result,
             "post_benchmark": post_benchmark,
