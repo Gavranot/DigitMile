@@ -679,14 +679,20 @@ def bag_conditional_accuracy_by_comparator_by_level(student_ids=None):
         total_conditional_by_level[level] += total
         total_else_by_level[level] += else_count
 
+    # Fetch bag-conditional turns AND any turn that updates chosen_number
+    # (bag state). Without the chosen_number turns, bag_number tracking
+    # across a run would use stale values and else_rate would be wrong.
     raw_turns = (
         _raw_turns(student_ids)
         .filter(
-            chosen_card_family__in=[
-                "conditional_bag_eq",
-                "conditional_bag_lt",
-                "conditional_bag_gt",
-            ]
+            Q(
+                chosen_card_family__in=[
+                    "conditional_bag_eq",
+                    "conditional_bag_lt",
+                    "conditional_bag_gt",
+                ]
+            )
+            | Q(chosen_number__isnull=False)
         )
         .values(
             "run_id",
