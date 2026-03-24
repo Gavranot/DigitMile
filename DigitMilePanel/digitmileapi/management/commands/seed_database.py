@@ -7,6 +7,12 @@ Usage:
     python manage.py seed_database --preset medium    # Medium amount (default)
     python manage.py seed_database --preset high      # Production-like amount
     python manage.py seed_database --clear            # Clear existing data first
+    python manage.py seed_database --weeks 8 --hot-weeks 1 --runs-per-student-per-week 3
+
+Generates N weeks of gameplay data. Historical weeks (all but the most recent
+--hot-weeks) are aggregated into weekly rollup tables and then compacted — their
+TurnEvent and SpecialTileTrigger rows are deleted, mirroring production state.
+Hot weeks retain full raw data for live analytics queries.
 """
 
 import json
@@ -14,11 +20,13 @@ import random
 import re
 import string
 import uuid
-from datetime import date, datetime, timezone as dt_timezone
+from datetime import date, datetime, timedelta, timezone as dt_timezone
 from pathlib import Path
 
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import Group, User
+from django.db import connection, transaction
+from django.utils import timezone as dj_timezone
 from digitmileapi.models import (
     ClassroomWeekStats,
     ReplayArchive,
@@ -38,7 +46,6 @@ from digitmileapi.models import (
     WeeklyCompactionRun,
     Classroom,
     Student,
-    RunStatistics,
     Run,
     TurnEvent,
     SpecialTileTrigger,
@@ -51,22 +58,25 @@ PRESETS = {
         "schools": 5,
         "teachers": 5,
         "min_students": 100,
-        "min_runs": 1000,
-        "min_legacy_statistics": 500,
+        "weeks": 4,
+        "hot_weeks": 1,
+        "runs_per_student_per_week": 3,
     },
     "medium": {
         "schools": 25,
         "teachers": 15,
         "min_students": 1500,
-        "min_runs": 10000,
-        "min_legacy_statistics": 5000,
+        "weeks": 6,
+        "hot_weeks": 1,
+        "runs_per_student_per_week": 3,
     },
     "high": {
         "schools": 50,
         "teachers": 100,
         "min_students": 15000,
-        "min_runs": 100000,
-        "min_legacy_statistics": 20000,
+        "weeks": 8,
+        "hot_weeks": 1,
+        "runs_per_student_per_week": 3,
     },
 }
 
@@ -312,22 +322,25 @@ class Command(BaseCommand):
             help="Override minimum number of students to create",
         )
         parser.add_argument(
-            "--min-runs",
+            "--weeks",
             type=int,
-            help="Override minimum number of runs (new model) to create",
+            help="Total weeks of gameplay data to generate (default: from preset)",
         )
         parser.add_argument(
-            "--min-statistics",
+            "--hot-weeks",
             type=int,
-            help="Override minimum number of legacy run statistics to create",
+            help="Number of most recent weeks to keep as hot data (default: 1)",
         )
         parser.add_argument(
-            "--skip-legacy",
-            action="store_true",
-            help="Skip creating legacy RunStatistics (only create new Run model data)",
+            "--runs-per-student-per-week",
+            type=int,
+            help="Runs per student per week (default: from preset)",
         )
 
     def handle(self, *args, **options):
+        from digitmileapi.weekly_aggregation import aggregate_weekly_rollups
+        from digitmileapi.weekly_rollups import week_end_for, week_start_for
+
         if options["clear"]:
             self.clear_data()
 
@@ -336,8 +349,13 @@ class Command(BaseCommand):
         num_schools = options["schools"] or preset["schools"]
         num_teachers = options["teachers"] or preset["teachers"]
         min_students = options["min_students"] or preset["min_students"]
-        min_runs = options["min_runs"] or preset["min_runs"]
-        min_statistics = options["min_statistics"] or preset["min_legacy_statistics"]
+        total_weeks = options["weeks"] or preset["weeks"]
+        hot_weeks = options["hot_weeks"] or preset["hot_weeks"]
+        runs_per_student_per_week = (
+            options["runs_per_student_per_week"]
+            or preset["runs_per_student_per_week"]
+        )
+        compact_weeks = max(0, total_weeks - hot_weeks)
 
         self.stdout.write(
             self.style.NOTICE(
@@ -346,7 +364,11 @@ class Command(BaseCommand):
         )
         self.stdout.write(
             f"  Target: {num_schools} schools, {num_teachers} teachers, "
-            f"{min_students}+ students, {min_runs}+ runs"
+            f"{min_students}+ students"
+        )
+        self.stdout.write(
+            f"  Weeks: {total_weeks} total ({compact_weeks} compacted, "
+            f"{hot_weeks} hot), {runs_per_student_per_week} runs/student/week"
         )
         self.level_decks = self.load_level_decks()
 
@@ -355,16 +377,48 @@ class Command(BaseCommand):
         classrooms = self.create_classrooms(teachers)
         students = self.create_students(classrooms, min_students)
 
-        # Create new Run model data (with TurnEvents and SpecialTileTriggers)
-        runs_created, turns_created, triggers_created = self.create_runs(
-            students, min_runs
-        )
+        # Determine week boundaries: most recent hot week ends this week,
+        # historical weeks go backwards from there.
+        anchor = week_start_for(date.today())
+        week_schedule = []
+        for i in range(total_weeks):
+            offset = total_weeks - 1 - i
+            ws = anchor - timedelta(weeks=offset)
+            ws = week_start_for(ws)
+            we = week_end_for(ws)
+            should_compact = i < compact_weeks
+            week_schedule.append((ws, we, should_compact))
 
-        # Optionally create legacy RunStatistics
-        legacy_count = 0
-        if not options["skip_legacy"]:
-            legacy_stats = self.create_run_statistics(students, min_statistics)
-            legacy_count = len(legacy_stats)
+        total_runs = 0
+        total_turns = 0
+        total_triggers = 0
+        compacted_week_count = 0
+
+        for week_idx, (ws, we, should_compact) in enumerate(week_schedule):
+            label = "compact" if should_compact else "HOT"
+            self.stdout.write(
+                self.style.NOTICE(
+                    f"  Week {week_idx + 1}/{total_weeks} [{label}]: "
+                    f"{ws} to {we}"
+                )
+            )
+
+            runs, turns, triggers = self.create_runs_for_week(
+                students, runs_per_student_per_week, ws, we
+            )
+            total_runs += runs
+            total_turns += turns
+            total_triggers += triggers
+
+            if should_compact:
+                self.stdout.write(f"    Compacting week {ws}...")
+                rollup_result = aggregate_weekly_rollups(ws)
+                self._compact_week_data(ws, we)
+                compacted_week_count += 1
+                self.stdout.write(
+                    f"    Rollup: {rollup_result['run_count']} runs → "
+                    f"{rollup_result['student_week_rows']} student-week rows"
+                )
 
         self.stdout.write(
             self.style.SUCCESS(f"""
@@ -374,10 +428,10 @@ Schools created:              {len(schools)}
 Teachers created:             {len(teachers)}
 Classrooms created:           {len(classrooms)}
 Students created:             {len(students)}
-Runs created (new model):     {runs_created}
-Turn events created:          {turns_created}
-Special tile triggers:        {triggers_created}
-Legacy statistics created:    {legacy_count}
+Total weeks:                  {total_weeks} ({compacted_week_count} compacted, {hot_weeks} hot)
+Runs created:                 {total_runs}
+Turn events created:          {total_turns} ({total_turns - TurnEvent.objects.count()} compacted)
+Special tile triggers:        {total_triggers}
         """)
         )
 
@@ -390,7 +444,6 @@ Legacy statistics created:    {legacy_count}
         SpecialTileTrigger.objects.all().delete()
         TurnEvent.objects.all().delete()
         Run.objects.all().delete()
-        RunStatistics.objects.all().delete()
         StudentWeekBackCardUsageStats.objects.all().delete()
         StudentWeekCardFamilyStats.objects.all().delete()
         StudentWeekChainLengthStats.objects.all().delete()
@@ -661,20 +714,15 @@ Legacy statistics created:    {legacy_count}
         )
         return students
 
-    def create_runs(self, students, min_count):
-        """Create Run records with TurnEvents and SpecialTileTriggers"""
-        self.stdout.write(f"Creating at least {min_count} runs (new model)...")
-
+    def create_runs_for_week(self, students, runs_per_student, week_start, week_end):
+        """Create Run records with TurnEvents and SpecialTileTriggers for one week."""
         if not students:
-            self.stdout.write(self.style.ERROR("No students available!"))
             return 0, 0, 0
 
-        runs_per_student = max(1, min_count // len(students))
         total_runs = 0
         total_turns = 0
         total_triggers = 0
 
-        # Process in batches to show progress
         batch_size = 100
         student_batches = [
             students[i : i + batch_size] for i in range(0, len(students), batch_size)
@@ -686,38 +734,63 @@ Legacy statistics created:    {legacy_count}
             triggers_to_create = []
 
             for student in student_batch:
-                # Each student gets runs_per_student to runs_per_student+5 runs
-                num_runs = random.randint(runs_per_student, runs_per_student + 5)
-
+                num_runs = random.randint(
+                    runs_per_student, runs_per_student + 2
+                )
                 for _ in range(num_runs):
-                    run_data = self._generate_run_data(student)
+                    run_data = self._generate_run_data(
+                        student, week_start=week_start, week_end=week_end
+                    )
                     runs_to_create.append(run_data["run"])
                     turns_to_create.extend(run_data["turns"])
                     triggers_to_create.extend(run_data["triggers"])
 
-            # Bulk create runs
             Run.objects.bulk_create(runs_to_create)
+            # auto_now_add=True stamps everything with now(); backdate to the target week
+            ws_dt = datetime(week_start.year, week_start.month, week_start.day, tzinfo=dt_timezone.utc)
+            we_dt = datetime(week_end.year, week_end.month, week_end.day, 23, 59, 59, tzinfo=dt_timezone.utc)
+            span_s = int((we_dt - ws_dt).total_seconds())
+            for run_obj in runs_to_create:
+                run_obj._backdated_ts = ws_dt + timedelta(seconds=random.randint(0, span_s))
+            with connection.cursor() as cur:
+                cur.executemany(
+                    "UPDATE digitmileapi_run SET created_at = %s WHERE id = %s",
+                    [(r._backdated_ts, str(r.id)) for r in runs_to_create],
+                )
             total_runs += len(runs_to_create)
 
-            # Bulk create turn events
             TurnEvent.objects.bulk_create(turns_to_create)
             total_turns += len(turns_to_create)
 
-            # Bulk create triggers
             if triggers_to_create:
                 SpecialTileTrigger.objects.bulk_create(triggers_to_create)
                 total_triggers += len(triggers_to_create)
 
-            # Progress update
-            progress = ((batch_idx + 1) / len(student_batches)) * 100
-            self.stdout.write(
-                f"  - Progress: {progress:.0f}% ({total_runs} runs, {total_turns} turns)"
-            )
-
         self.stdout.write(
-            f"  - Created {total_runs} runs, {total_turns} turn events, {total_triggers} triggers"
+            f"    Created {total_runs} runs, {total_turns} turns, "
+            f"{total_triggers} triggers"
         )
         return total_runs, total_turns, total_triggers
+
+    def _compact_week_data(self, week_start, week_end):
+        """Simulate compaction: delete turn-level data, mark runs compacted."""
+        runs = Run.objects.filter(
+            created_at__date__gte=week_start, created_at__date__lte=week_end
+        )
+        run_ids = list(runs.values_list("id", flat=True))
+
+        with transaction.atomic():
+            SpecialTileTrigger.objects.filter(turn__run_id__in=run_ids).delete()
+            TurnEvent.objects.filter(run_id__in=run_ids).delete()
+            runs.update(raw_data_compacted_at=dj_timezone.now())
+
+        WeeklyCompactionRun.objects.create(
+            week_start=week_start,
+            week_end=week_end,
+            status=WeeklyCompactionRun.Status.COMPACTED,
+            run_count=len(run_ids),
+            completed_at=dj_timezone.now(),
+        )
 
     def load_level_decks(self):
         """
@@ -1078,9 +1151,10 @@ Legacy statistics created:    {legacy_count}
 
         return triggers, current_position
 
-    def _generate_run_data(self, student):
+    def _generate_run_data(self, student, week_start=None, week_end=None):
         """
         Generate one run with realistic deck-based cards and 60-tile map payload.
+        If week_start/week_end are given, timestamps are placed within that week.
         """
         run_id = f"run_{uuid.uuid4().hex}"
         level = random.choice(list(self.LEVEL_RANGE))
@@ -1099,9 +1173,21 @@ Legacy statistics created:    {legacy_count}
         max_turn_budget = random.randint(min_turns, max_turns)
         target_accuracy = max(0.45, 0.85 - (level * 0.06))
 
-        base_timestamp = datetime.now(dt_timezone.utc).timestamp() - random.randint(
-            0, 30 * 24 * 3600
-        )
+        if week_start is not None and week_end is not None:
+            ws_dt = datetime(
+                week_start.year, week_start.month, week_start.day,
+                tzinfo=dt_timezone.utc,
+            )
+            we_dt = datetime(
+                week_end.year, week_end.month, week_end.day,
+                23, 59, 59, tzinfo=dt_timezone.utc,
+            )
+            span = we_dt.timestamp() - ws_dt.timestamp() - 3600
+            base_timestamp = ws_dt.timestamp() + random.random() * max(span, 60)
+        else:
+            base_timestamp = datetime.now(dt_timezone.utc).timestamp() - random.randint(
+                0, 30 * 24 * 3600
+            )
         timestamp_offset_ms = 0
 
         game_map, tile_type_by_index = self._build_game_map()
@@ -1283,59 +1369,3 @@ Legacy statistics created:    {legacy_count}
             "triggers": triggers,
         }
 
-    def create_run_statistics(self, students, min_count):
-        """Create legacy game run statistics for students"""
-        self.stdout.write(f"Creating at least {min_count} legacy run statistics...")
-        statistics = []
-
-        if not students:
-            self.stdout.write(self.style.ERROR("No students available!"))
-            return statistics
-
-        # Ensure we create at least min_count statistics
-        stats_per_student = max(5, min_count // len(students))
-
-        for student in students:
-            # Each student has some runs
-            total_runs = random.randint(stats_per_student, stats_per_student + 5)
-
-            for _ in range(total_runs):
-                level = random.randint(1, 10)
-                player_won = random.random() > 0.4  # 60% win rate
-
-                # Score correlates with winning and level
-                if player_won:
-                    base_score = level * 100
-                    score = base_score + random.randint(50, 200)
-                else:
-                    score = random.randint(10, level * 50)
-
-                # Moves correlate with level difficulty
-                correct_moves = random.randint(level * 2, level * 5)
-                wrong_moves = (
-                    random.randint(0, level * 2)
-                    if player_won
-                    else random.randint(level, level * 4)
-                )
-
-                # Time correlates with level (higher levels take longer)
-                base_time = level * 30
-                time_elapsed = base_time + random.uniform(-10, 60)
-
-                stat = RunStatistics.objects.create(
-                    student=student,
-                    player_won=player_won,
-                    level=level,
-                    score=score,
-                    place=random.randint(1, 5) if player_won else random.randint(3, 10),
-                    correct_moves=correct_moves,
-                    wrong_moves=wrong_moves,
-                    time_elapsed=round(time_elapsed, 2),
-                )
-                statistics.append(stat)
-
-        win_count = len([s for s in statistics if s.player_won])
-        self.stdout.write(
-            f"  - Created {len(statistics)} legacy run statistics ({win_count} wins)"
-        )
-        return statistics
