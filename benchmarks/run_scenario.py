@@ -139,6 +139,7 @@ def compose_up(project_name):
             "--build",
             BENCHMARK_DB_SERVICE,
             BENCHMARK_BACKEND_SERVICE,
+            BENCHMARK_FLUSHER_SERVICE,
         ),
         heartbeat_label=f"docker compose up for {project_name}",
     )
