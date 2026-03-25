@@ -249,6 +249,11 @@ BENCHMARK_TIME_OVERRIDE_ENABLED = (
     os.getenv("BENCHMARK_TIME_OVERRIDE_ENABLED", "False") == "True"
 )
 
+# Write buffer settings
+INGEST_BUFFER_REDIS_KEY = "ingest_buffer"
+INGEST_BUFFER_BATCH_SIZE = int(os.getenv("INGEST_BUFFER_BATCH_SIZE", "50"))
+INGEST_BUFFER_SLEEP_MS = int(os.getenv("INGEST_BUFFER_SLEEP_MS", "100"))
+
 # Logging configuration
 LOGGING = {
     "version": 1,

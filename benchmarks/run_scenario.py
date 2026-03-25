@@ -15,6 +15,7 @@ BENCHMARK_COMPOSE_FILE = REPO_ROOT / "benchmarks" / "docker-compose.benchmark.ym
 BENCHMARK_BACKEND_SERVICE = "benchmark-backend"
 BENCHMARK_DB_SERVICE = "benchmark-db"
 BENCHMARK_REDIS_SERVICE = "benchmark-redis"
+BENCHMARK_FLUSHER_SERVICE = "benchmark-flusher"
 K6_IMAGE = "grafana/k6:0.49.0"
 K6_CONTAINER_NAME = "digitmile-k6-runner"
 BYTE_UNITS = {
@@ -642,6 +643,9 @@ def main():
         redis_container_id = compose_service_container_id(
             project_name, BENCHMARK_REDIS_SERVICE
         )
+        flusher_container_id = compose_service_container_id(
+            project_name, BENCHMARK_FLUSHER_SERVICE
+        )
         network_name = docker_network_for_container(backend_container_id)
         ensure_k6_container(network_name)
 
@@ -769,6 +773,8 @@ def main():
             traffic.get("resource_sample_interval_seconds", 3)
         )
         runtime_container_ids = [backend_container_id, db_container_id, redis_container_id]
+        if flusher_container_id:
+            runtime_container_ids.append(flusher_container_id)
 
         log_step("capturing baseline container stats")
         docker_stats_before = docker_stats(runtime_container_ids)
@@ -817,6 +823,20 @@ def main():
                     "runtime_docker_stats": k6_result["runtime_samples"],
                 }
             )
+
+        # Wait for the Redis ingest buffer to drain before collecting final metrics
+        log_step("waiting for ingest buffer to drain")
+        queue_len = -1
+        for _ in range(60):  # up to 6 seconds
+            result = compose_exec(
+                project_name, BENCHMARK_REDIS_SERVICE,
+                "redis-cli", "llen", "ingest_buffer",
+            )
+            queue_len = int(result.stdout.strip())
+            if queue_len == 0:
+                break
+            time.sleep(0.1)
+        log_step(f"ingest buffer drained (queue length: {queue_len})")
 
         log_step("capturing post-traffic container stats")
         docker_stats_after = docker_stats(runtime_container_ids)
