@@ -68,6 +68,10 @@ services:
     # Remove port exposure - use reverse proxy in production
     ports: !override []
 
+  flusher:
+    # Use the same pre-built backend image
+    image: ${DOCKERHUB_USERNAME:-your-username}/digitmile-backend:${TARGET_ENV:-prod}-latest
+
   frontend:
     restart: always
     # Use pre-built image from Docker Hub/Registry
