@@ -68,6 +68,6 @@ export default function () {
   }
 
   check(response, {
-    "open-week ingest accepted": (value) => [200, 201].includes(value.status),
+    "open-week ingest accepted": (value) => [200, 201, 202].includes(value.status),
   });
 }

@@ -200,7 +200,7 @@ export function ingestWriters(setupData) {
     return;
   }
 
-  check(response, { "mixed open-week ingest accepted": (value) => [200, 201].includes(value.status) });
+  check(response, { "mixed open-week ingest accepted": (value) => [200, 201, 202].includes(value.status) });
 }
 
 

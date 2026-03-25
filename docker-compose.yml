@@ -28,6 +28,9 @@ services:
     image: redis:7-alpine
     container_name: digitmile-redis
     restart: always
+    command: redis-server --appendonly yes --appendfsync everysec
+    volumes:
+      - redis_data:/data
     networks:
       - digitmile-network
     healthcheck:
@@ -96,6 +99,30 @@ services:
              python manage.py create_superuser &&
              gunicorn digitmile.wsgi:application --bind 0.0.0.0:8000 --workers 5"
 
+  # Flusher — reads from Redis ingest buffer and bulk-writes to PostgreSQL.
+  # Uses the same backend image, just a different entrypoint.
+  flusher:
+    build:
+      context: ./DigitMilePanel
+      dockerfile: Dockerfile.compose
+    container_name: digitmile-flusher
+    env_file:
+      - .env
+    environment:
+      REPLAY_ARCHIVE_ROOT: /var/lib/digitmile/replay-archives
+      REDIS_URL: redis://redis:6379/1
+    depends_on:
+      db:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    networks:
+      - digitmile-network
+    command: python manage.py flush_ingest_buffer
+    restart: always
+
   # Nginx Frontend (DigitMile Game)
   frontend:
     build:
@@ -115,4 +142,5 @@ networks:
 
 volumes:
   postgres_data:
+  redis_data:
   replay_archives_data:

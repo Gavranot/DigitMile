@@ -109,6 +109,29 @@ services:
     volumes:
       - benchmark_replay_archives:/var/lib/digitmile/replay-archives
 
+  benchmark-flusher:
+    image: gashmurble/digitmile-backend:prod-latest
+    env_file:
+      - ../.env
+    environment:
+      DB_HOST: benchmark-pgbouncer
+      DB_NAME: ${BENCHMARK_DB_NAME:-digitmile_benchmark}
+      DB_USER: ${BENCHMARK_DB_USER:-digitmile}
+      DB_PASS: ${BENCHMARK_DB_PASS:-benchmark-pass}
+      DB_PORT: 5432
+      REDIS_URL: redis://benchmark-redis:6379/1
+    depends_on:
+      benchmark-db:
+        condition: service_healthy
+      benchmark-pgbouncer:
+        condition: service_started
+      benchmark-redis:
+        condition: service_healthy
+    command: python manage.py flush_ingest_buffer --batch-size 50 --sleep-ms 100
+    networks:
+      - benchmark-network
+    restart: always
+
 networks:
   benchmark-network:
     driver: bridge
