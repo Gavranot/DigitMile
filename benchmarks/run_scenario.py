@@ -612,7 +612,7 @@ def _backend_image_name():
 
 def _is_local_build():
     """True when we're using a locally-built image (no BENCHMARK_BACKEND_IMAGE set)."""
-    return "BENCHMARK_BACKEND_IMAGE" not in os.environ
+    return "BENCHMARK_BACKEND_IMAGE" not in os.environ or os.getenv("BENCHMARK_BACKEND_IMAGE") is None
 
 
 def ensure_backend_image():
