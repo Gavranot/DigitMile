@@ -11,6 +11,23 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+# Load .env from repo root so the Python process sees variables like
+# BENCHMARK_BACKEND_IMAGE that the deploy workflow writes there.
+# os.environ takes precedence — .env only fills in missing values.
+_dotenv_path = REPO_ROOT / ".env"
+if _dotenv_path.is_file():
+    with open(_dotenv_path) as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if not _line or _line.startswith("#") or "=" not in _line:
+                continue
+            _key, _, _value = _line.partition("=")
+            _key = _key.strip()
+            _value = _value.strip().strip("\"'")
+            if _key and _key not in os.environ:
+                os.environ[_key] = _value
+
 BENCHMARK_COMPOSE_FILE = REPO_ROOT / "benchmarks" / "docker-compose.benchmark.yml"
 BENCHMARK_BACKEND_SERVICE = "benchmark-backend"
 BENCHMARK_DB_SERVICE = "benchmark-db"
