@@ -149,6 +149,7 @@ jobs:
           DOCKER_VARS: |
             DOCKERHUB_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}
             DOCKERHUB_TOKEN=${{ secrets.DOCKERHUB_TOKEN }}
+            BENCHMARK_BACKEND_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/digitmile-backend:${{ inputs.TARGET_ENV }}-latest
           DB_VARS: |
             DB_USER=${{ secrets.DB_USER }}
             DB_PASS=${{ secrets.DB_PASS }}
@@ -195,10 +196,6 @@ jobs:
 
             # Re-tag backend image so benchmark tooling can find it by the expected local name
             docker tag ${{ secrets.DOCKERHUB_USERNAME }}/digitmile-backend:${{ inputs.TARGET_ENV }}-latest digitmile-backend:latest
-
-            # Set the benchmark backend image so benchmarks use the pre-built image
-            # instead of trying to build from source (source is not on the server)
-            echo "BENCHMARK_BACKEND_IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/digitmile-backend:${{ inputs.TARGET_ENV }}-latest" >> .env
 
             # Verify .env file creation
             if [ ! -f .env ]; then
