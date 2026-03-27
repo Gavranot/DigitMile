@@ -63,8 +63,14 @@ services:
     networks:
       - benchmark-network
 
+  # BENCHMARK_BACKEND_IMAGE controls where the backend code comes from:
+  #   - Server (after deploy): set to the Docker Hub image tag (e.g. gashmurble/digitmile-backend:prod-latest)
+  #   - Local dev: leave unset — docker compose will build from ../DigitMilePanel
   benchmark-backend:
-    image: gashmurble/digitmile-backend:prod-latest
+    image: ${BENCHMARK_BACKEND_IMAGE:-digitmile-benchmark-backend:local}
+    build:
+      context: ../DigitMilePanel
+      dockerfile: Dockerfile.compose
     env_file:
       - ../.env
     environment:
@@ -110,7 +116,7 @@ services:
       - benchmark_replay_archives:/var/lib/digitmile/replay-archives
 
   benchmark-flusher:
-    image: gashmurble/digitmile-backend:prod-latest
+    image: ${BENCHMARK_BACKEND_IMAGE:-digitmile-benchmark-backend:local}
     env_file:
       - ../.env
     environment:

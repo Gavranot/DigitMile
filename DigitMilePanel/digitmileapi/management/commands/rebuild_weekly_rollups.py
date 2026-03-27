@@ -1,6 +1,7 @@
 from datetime import date
 import logging
 
+from django.core.cache import cache
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
@@ -65,6 +66,8 @@ class Command(BaseCommand):
             compaction.completed_at = timezone.now()
             compaction.notes = "Rollups rebuilt manually"
             compaction.save()
+
+        cache.delete_pattern("teacher_stats_viz:*")
 
         logger.info(
             "weekly_rollup_rebuild_complete %s",

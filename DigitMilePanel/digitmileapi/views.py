@@ -1862,21 +1862,7 @@ def _student_weekly_history(student):
             "first_run_created_at",
         )
     )
-    hot_runs = list(
-        Run.objects.filter(student=student, raw_data_compacted_at__isnull=True)
-        .order_by("created_at")
-        .values(
-            "id",
-            "player_won",
-            "level",
-            "score",
-            "correct_moves",
-            "wrong_moves",
-            "elapsed_ms",
-            "created_at",
-        )
-    )
-    return weekly_rows, hot_runs
+    return weekly_rows
 
 
 def _student_weekly_level_history(student):
@@ -1900,16 +1886,14 @@ def _student_weekly_level_history(student):
 
 
 def _build_student_dashboard_info(student):
-    weekly_rows, hot_runs = _student_weekly_history(student)
-    if not weekly_rows and not hot_runs:
+    weekly_rows = _student_weekly_history(student)
+    if not weekly_rows:
         return None
 
     bucket_data = get_student_run_bucket_points(student)
     bucket_points = bucket_data["points"]
-    total_runs = sum(row["runs"] or 0 for row in weekly_rows) + len(hot_runs)
-    wins = sum(row["wins"] or 0 for row in weekly_rows) + sum(
-        1 for run in hot_runs if run["player_won"]
-    )
+    total_runs = sum(row["runs"] or 0 for row in weekly_rows)
+    wins = sum(row["wins"] or 0 for row in weekly_rows)
 
     total_correct = sum(row["correct_moves"] or 0 for row in weekly_rows)
     total_wrong = sum(row["wrong_moves"] or 0 for row in weekly_rows)
@@ -1928,18 +1912,6 @@ def _build_student_dashboard_info(student):
     latest_run_id = None
     latest_run_level = None
     latest_run_created_at = None
-
-    for run in hot_runs:
-        correct = run["correct_moves"] or 0
-        wrong = run["wrong_moves"] or 0
-        total_correct += correct
-        total_wrong += wrong
-        total_elapsed_ms += run["elapsed_ms"] or 0
-
-        if latest_run_created_at is None or run["created_at"] > latest_run_created_at:
-            latest_run_id = run["id"]
-            latest_run_level = run["level"]
-            latest_run_created_at = run["created_at"]
 
     for row in weekly_rows:
         if row["latest_run_created_at"] and (
@@ -2105,15 +2077,8 @@ def _build_classroom_dashboard_stats(classroom, grade_filter=None):
             "elapsed_sum_ms",
         )
     )
-    hot_runs = Run.objects.filter(
-        student__classroom=classroom,
-        raw_data_compacted_at__isnull=True,
-    )
 
-    if grade_filter:
-        hot_runs = hot_runs.filter(student__grade=grade_filter)
-
-    if not weekly_rows and not hot_runs.exists():
+    if not weekly_rows:
         return None
 
     total_correct = sum(row["correct_moves"] or 0 for row in weekly_rows)
@@ -2123,23 +2088,6 @@ def _build_classroom_dashboard_stats(classroom, grade_filter=None):
     wins = sum(row["wins"] or 0 for row in weekly_rows)
     score_sum = sum(row["score_sum"] or 0 for row in weekly_rows)
     score_count = sum(row["score_count"] or 0 for row in weekly_rows)
-
-    hot_agg = hot_runs.aggregate(
-        total_correct=Sum("correct_moves"),
-        total_wrong=Sum("wrong_moves"),
-        total_elapsed_ms=Sum("elapsed_ms"),
-        score_sum=Sum("score"),
-        total_runs=Count("id"),
-        wins=Count("id", filter=Q(player_won=True)),
-    )
-
-    total_correct += hot_agg["total_correct"] or 0
-    total_wrong += hot_agg["total_wrong"] or 0
-    total_elapsed_ms += hot_agg["total_elapsed_ms"] or 0
-    total_runs += hot_agg["total_runs"] or 0
-    wins += hot_agg["wins"] or 0
-    score_sum += hot_agg["score_sum"] or 0
-    score_count += hot_agg["total_runs"] or 0
 
     student_count = (
         classroom.students.filter(grade=grade_filter).count()
@@ -2201,7 +2149,7 @@ def teacher_statistics_viz_data(request):
     )
     filtered_student_ids = list(students.values_list("id", flat=True))
     payload = _build_teacher_statistics_viz_payload(section, filtered_student_ids)
-    cache.set(cache_key, payload, timeout=300)
+    cache.set(cache_key, payload, timeout=604800)
     return JsonResponse({"section": section, "data": payload})
 
 
