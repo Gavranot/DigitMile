@@ -118,25 +118,37 @@ def stream_command(command, *, cwd=REPO_ROOT, heartbeat_label="command"):
 
 
 def compose_command(project_name, *args):
-    return [
+    cmd = [
         "docker",
         "compose",
         "-f",
         str(BENCHMARK_COMPOSE_FILE),
-        "-p",
-        project_name,
-        *args,
     ]
+    # Load .env from repo root so compose picks up BENCHMARK_BACKEND_IMAGE
+    # and other variables. Without this, compose only looks in the compose
+    # file's directory (benchmarks/), which has no .env.
+    env_file = REPO_ROOT / ".env"
+    if env_file.is_file():
+        cmd.extend(["--env-file", str(env_file)])
+    cmd.extend(["-p", project_name, *args])
+    return cmd
 
 
 def compose_up(project_name):
     log_step(f"starting isolated benchmark stack {project_name}")
+    if _is_local_build():
+        # Build the backend image once from source. The flusher reuses the
+        # same image so we only need to build the backend service.
+        log_step("building benchmark backend image from source")
+        stream_command(
+            compose_command(project_name, "build", BENCHMARK_BACKEND_SERVICE),
+            heartbeat_label="docker compose build benchmark-backend",
+        )
     stream_command(
         compose_command(
             project_name,
             "up",
             "-d",
-            "--build",
             BENCHMARK_DB_SERVICE,
             BENCHMARK_BACKEND_SERVICE,
             BENCHMARK_FLUSHER_SERVICE,
@@ -588,15 +600,37 @@ def compose_project_name(scenario_name):
     return f"digitmile-bench-{cleaned}"[:63]
 
 
+def _backend_image_name():
+    """Return the image name used by the benchmark backend/flusher services.
+
+    On the server, BENCHMARK_BACKEND_IMAGE is set to the Docker Hub tag
+    (e.g. gashmurble/digitmile-backend:prod-latest).
+    Locally, it defaults to the locally-built tag.
+    """
+    return os.getenv("BENCHMARK_BACKEND_IMAGE", "digitmile-benchmark-backend:local")
+
+
+def _is_local_build():
+    """True when we're using a locally-built image (no BENCHMARK_BACKEND_IMAGE set)."""
+    return "BENCHMARK_BACKEND_IMAGE" not in os.environ
+
+
 def ensure_backend_image():
+    image = _backend_image_name()
     result = run_command(
-        ["docker", "image", "inspect", "gashmurble/digitmile-backend:prod-latest"],
+        ["docker", "image", "inspect", image],
         check=False,
     )
     if result.returncode == 0:
+        if _is_local_build():
+            log_step(f"local image {image} found — will rebuild with --build")
         return True
 
-    log_step("benchmark backend image missing;")
+    if _is_local_build():
+        log_step(f"local image {image} not found — will be built by compose up --build")
+        return True
+
+    log_step(f"benchmark backend image {image} missing and BENCHMARK_BACKEND_IMAGE is set — cannot build locally")
     return False
 
 def should_keep_stack_on_failure():

@@ -1,6 +1,7 @@
 from datetime import date
 import logging
 
+from django.core.cache import cache
 from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
@@ -219,6 +220,8 @@ class Command(BaseCommand):
         compaction.completed_at = timezone.now()
         compaction.notes = f"Compaction complete for {week_start} through {week_end}"
         compaction.save()
+
+        cache.delete_pattern("teacher_stats_viz:*")
 
         self.stdout.write(
             self.style.SUCCESS(
