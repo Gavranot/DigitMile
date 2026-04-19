@@ -326,7 +326,9 @@ Request path:
 Caching:
 
 - cache key format: `teacher_stats_viz:<teacher_id>:<section>:<grade|all>:<classroom|all>`
-- timeout: 300 seconds
+- timeout: 604 800 seconds (7 days) — set in `views.py` at the `cache.set(cache_key, payload, timeout=604800)` call
+- backend: Django default cache (django-redis), which is shared with the ingest write buffer (same Redis instance, DB 1)
+- invalidation: `cache.delete_pattern("teacher_stats_viz:*")` is called inside the `compact_weekly_runs` and `rebuild_weekly_rollups` management commands, so the cache drops whenever weekly rollups are (re)built. The cache is **not** invalidated on every run ingest — dashboard results reflect the latest completed rollup, not in-flight hot-week data. That matches the hot/cold separation described in the weekly-rollup PRD.
 
 ### Level-specific UI gating
 

@@ -1,5 +1,7 @@
 # Ingest Performance Optimizations
 
+> **Status: NOT YET APPLIED.** The five optimizations below are a plan, not an implemented change. Verified against `models.py` on 2026-04-19: `offered_cards`, `bot_positions_before`, `bot_positions_after`, `chosen_card`, and `game_map` all still exist on their respective models. The Redis write-buffering described in `write-buffering-adr.md` is a separate, already-shipped optimization; it is not one of the five below.
+
 Last updated: 2026-03-18
 
 ## Context

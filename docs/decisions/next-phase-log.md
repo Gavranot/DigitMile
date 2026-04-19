@@ -30,8 +30,8 @@ Any agent implementing this phase must follow these rules.
 ### Before starting any checklist item
 
 - read this file fully,
-- read `docs/new/weekly-rollup-replay-refactor-prd.md`,
-- read `docs/new/weekly-rollup-replay-schema-spec.md`,
+- read `docs/decisions/weekly-rollup-prd.md`,
+- read `docs/reference/rollup-schema.md`,
 - inspect the current implementation status in the touched files,
 - do not assume earlier checklist items are fully complete without verifying them.
 
@@ -48,8 +48,8 @@ Any agent implementing this phase must follow these rules.
 ### After completing a checklist item
 
 - update the progress log section in this file,
-- update the implementation progress section in `docs/new/weekly-rollup-replay-refactor-prd.md`,
-- update the implementation progress section in `docs/new/weekly-rollup-replay-schema-spec.md` if schema or read-path coverage changed,
+- update the implementation progress section in `docs/decisions/weekly-rollup-prd.md`,
+- update the implementation progress section in `docs/reference/rollup-schema.md` if schema or read-path coverage changed,
 - run the relevant verification commands and tests,
 - note any caveats left behind.
 
@@ -193,8 +193,8 @@ Acceptance criteria:
 
 Target files:
 
-- `docs/new/backend-ingestion-and-api.md`
-- `docs/new/weekly-rollup-replay-refactor-prd.md`
+- `docs/reference/ingestion-api.md`
+- `docs/decisions/weekly-rollup-prd.md`
 
 Required changes:
 
@@ -738,7 +738,7 @@ Ensure the system is operable by future agents and humans.
 
 ### Required implementation tasks
 
-- update `docs/new/backend-ingestion-and-api.md` to reflect canonical Unity ingest path,
+- update `docs/reference/ingestion-api.md` to reflect canonical Unity ingest path,
 - update the PRD progress section,
 - update the schema spec progress section,
 - add a runbook under `docs/new/` describing:
@@ -797,8 +797,8 @@ Use this quick checklist when executing.
   - `DigitMilePanel/digitmileapi/management/commands/rebuild_weekly_rollups.py`
   - `DigitMilePanel/digitmileapi/management/commands/verify_weekly_rollups.py`
   - `DigitMilePanel/digitmileapi/management/commands/benchmark_teacher_analytics.py`
-  - `docs/new/weekly-rollup-replay-refactor-prd.md`
-  - `docs/new/weekly-rollup-replay-schema-spec.md`
+  - `docs/decisions/weekly-rollup-prd.md`
+  - `docs/reference/rollup-schema.md`
 - tests run:
   - `docker exec "digitmile-backend" python manage.py test digitmileapi.tests`
   - `docker exec "digitmile-backend" python manage.py makemigrations --check`
@@ -821,8 +821,8 @@ Use this quick checklist when executing.
   - `DigitMilePanel/digitmileapi/views.py`
   - `DigitMilePanel/digitmileapi/run_ingestion.py`
   - `DigitMilePanel/digitmileapi/tests.py`
-  - `docs/new/backend-ingestion-and-api.md`
-  - `docs/new/weekly-rollup-replay-refactor-prd.md`
+  - `docs/reference/ingestion-api.md`
+  - `docs/decisions/weekly-rollup-prd.md`
 - tests run:
   - `docker exec "digitmile-backend" python manage.py test digitmileapi.tests.RunIngestionTests digitmileapi.tests.RecordingWindowPolicyTests`
   - `docker exec "digitmile-backend" python manage.py test digitmileapi.tests`
@@ -845,8 +845,8 @@ Use this quick checklist when executing.
   - `DigitMilePanel/digitmileapi/views.py`
   - `DigitMilePanel/digitmileapi/run_ingestion.py`
   - `DigitMilePanel/digitmileapi/tests.py`
-  - `docs/new/weekly-rollup-replay-refactor-prd.md`
-  - `docs/new/weekly-rollup-replay-schema-spec.md`
+  - `docs/decisions/weekly-rollup-prd.md`
+  - `docs/reference/rollup-schema.md`
 - tests run:
   - `docker exec "digitmile-backend" python manage.py test digitmileapi.tests.RunIngestionTests digitmileapi.tests.RecordingWindowPolicyTests`
   - `docker exec "digitmile-backend" python manage.py test digitmileapi.tests`
@@ -873,8 +873,8 @@ Use this quick checklist when executing.
   - `DigitMilePanel/digitmileapi/views.py`
   - `DigitMilePanel/digitmileapi/templates/digitmileapi/teacher_statistics.html`
   - `DigitMilePanel/digitmileapi/tests.py`
-  - `docs/new/weekly-rollup-replay-refactor-prd.md`
-  - `docs/new/weekly-rollup-replay-schema-spec.md`
+  - `docs/decisions/weekly-rollup-prd.md`
+  - `docs/reference/rollup-schema.md`
 - tests run:
   - `docker exec "digitmile-backend" python manage.py test digitmileapi.tests.RunBucketTrendTests digitmileapi.tests.WeeklyAggregationTests digitmileapi.tests.RunIngestionTests digitmileapi.tests.RecordingWindowPolicyTests`
   - `docker exec "digitmile-backend" python manage.py test digitmileapi.tests`
@@ -900,8 +900,8 @@ Use this quick checklist when executing.
   - `DigitMilePanel/digitmileapi/views.py`
   - `DigitMilePanel/digitmileapi/templates/digitmileapi/teacher_statistics.html`
   - `DigitMilePanel/digitmileapi/tests.py`
-  - `docs/new/weekly-rollup-replay-refactor-prd.md`
-  - `docs/new/weekly-rollup-replay-schema-spec.md`
+  - `docs/decisions/weekly-rollup-prd.md`
+  - `docs/reference/rollup-schema.md`
 - tests run:
   - `docker exec "digitmile-backend" python manage.py test digitmileapi.tests.RunBucketTrendTests digitmileapi.tests.WeeklyAggregationTests digitmileapi.tests.RunIngestionTests digitmileapi.tests.RecordingWindowPolicyTests`
   - `docker exec "digitmile-backend" python manage.py test digitmileapi.tests`
@@ -927,8 +927,8 @@ Use this quick checklist when executing.
   - `DigitMilePanel/digitmileapi/management/commands/verify_weekly_rollups.py`
   - `DigitMilePanel/digitmileapi/run_bucket_trends.py`
   - `DigitMilePanel/digitmileapi/tests.py`
-  - `docs/new/weekly-rollup-replay-refactor-prd.md`
-  - `docs/new/weekly-rollup-replay-schema-spec.md`
+  - `docs/decisions/weekly-rollup-prd.md`
+  - `docs/reference/rollup-schema.md`
 - tests run:
   - `docker exec "digitmile-backend" python manage.py test digitmileapi.tests.RunBucketTrendTests digitmileapi.tests.WeeklyAggregationTests digitmileapi.tests.RunIngestionTests digitmileapi.tests.RecordingWindowPolicyTests`
   - `docker exec "digitmile-backend" python manage.py test digitmileapi.tests`
@@ -950,9 +950,9 @@ Use this quick checklist when executing.
 - files changed:
   - `DigitMilePanel/digitmileapi/management/commands/benchmark_teacher_analytics.py`
   - `benchmarks/README.md`
-  - `docs/new/weekly-rollup-replay-refactor-prd.md`
-  - `docs/new/weekly-rollup-replay-schema-spec.md`
-  - `docs/new/next-phase-implementation-checklist.md`
+  - `docs/decisions/weekly-rollup-prd.md`
+  - `docs/reference/rollup-schema.md`
+  - `docs/decisions/next-phase-log.md`
 - tests run:
   - `docker exec "digitmile-backend" python manage.py test digitmileapi.tests.BenchmarkToolingTests`
   - `docker exec "digitmile-backend" python manage.py test digitmileapi.tests`
@@ -1004,12 +1004,12 @@ Use this quick checklist when executing.
 - date: 2026-03-12
 - owner: OpenAI agent
 - files changed:
-  - `docs/new/weekly-rollup-operator-runbook.md`
-  - `docs/new/backend-ingestion-and-api.md`
-  - `docs/new/weekly-rollup-replay-refactor-prd.md`
-  - `docs/new/weekly-rollup-replay-schema-spec.md`
-  - `docs/new/README.md`
-  - `docs/new/next-phase-implementation-checklist.md`
+  - `docs/guides/rollup-runbook.md`
+  - `docs/reference/ingestion-api.md`
+  - `docs/decisions/weekly-rollup-prd.md`
+  - `docs/reference/rollup-schema.md`
+  - `docs/README.md`
+  - `docs/decisions/next-phase-log.md`
 - tests run:
   - `docker exec "digitmile-backend" python manage.py test digitmileapi.tests`
 - commands run:

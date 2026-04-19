@@ -126,7 +126,7 @@ Each phase below lists the changed files, what changed, and the expected manual 
   - `DigitMilePanel/digitmileapi/views.py`
   - `DigitMilePanel/digitmileapi/run_ingestion.py`
   - `DigitMilePanel/digitmileapi/tests.py`
-  - `docs/new/backend-ingestion-and-api.md`
+  - `docs/reference/ingestion-api.md`
 - changes made:
   - `/panel/api/runs/ingest/` now accepts Unity-style nested payloads and canonical snake_case payloads through one normalization path
   - deterministic `run_id` generation was added for Unity payloads that omit a stable `runId`
@@ -246,12 +246,12 @@ Each phase below lists the changed files, what changed, and the expected manual 
 ### Phase 8 - Documentation and operator guidance
 
 - files changed:
-  - `docs/new/backend-ingestion-and-api.md`
-  - `docs/new/weekly-rollup-replay-refactor-prd.md`
-  - `docs/new/weekly-rollup-replay-schema-spec.md`
-  - `docs/new/next-phase-implementation-checklist.md`
-  - `docs/new/weekly-rollup-operator-runbook.md`
-  - `docs/new/README.md`
+  - `docs/reference/ingestion-api.md`
+  - `docs/decisions/weekly-rollup-prd.md`
+  - `docs/reference/rollup-schema.md`
+  - `docs/decisions/next-phase-log.md`
+  - `docs/guides/rollup-runbook.md`
+  - `docs/README.md`
 - changes made:
   - canonical ingest, rollup progress, benchmark progress, and operator workflows are now documented in one place
   - this runbook adds changed-file maps and expected behavior for each phase to support manual testing
