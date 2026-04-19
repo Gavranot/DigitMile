@@ -11,7 +11,7 @@ DigitMile is a full-stack product with these major parts:
 - `DigitMile/`: built Unity WebGL frontend served as static files through nginx.
 - `nginx-proxy/`: optional reverse proxy for localhost HTTPS and production-style routing.
 - `benchmarks/`: k6-based benchmark and load-testing harness plus scenario runner.
-- `k8s/`: Kubernetes manifests, present but less authoritative than Docker Compose.
+- `k8s/`: Kubernetes manifests — outdated scaffolding, not a live deploy path; treat as placeholder.
 - `.github/workflows/`: CI/CD workflows for image build and deployment.
 
 This repo does not contain the editable Unity game source project. `DigitMile/game/` is already-built WebGL output. Treat it as generated/static unless the user explicitly asks to modify deployment-facing frontend assets.
@@ -21,27 +21,25 @@ This repo does not contain the editable Unity game source project. `DigitMile/ga
 When documentation conflicts, use this order of trust:
 
 1. current code,
-2. `docs/new/`,
+2. `docs/` (the single documentation folder — see `docs/README.md` for the index),
 3. this `AGENTS.md`,
-4. older docs in `docs/old/` and the root `README.md`.
+4. the root `README.md` (which is deliberately a short pointer into `docs/`).
 
 Important known drift:
 
-- `README.md` still describes some older paths and setup details.
-- `docs/old/` contains useful history but is not the current source of truth.
-- the hot-week load-testing docs in `docs/new/` describe the next benchmark phase; parts of that plan are not implemented yet.
+- parts of the hot-week load-testing plan in `docs/decisions/hot-week-load-testing-plan.md` describe work that has since shipped (Slice 1 as of 2026-04-19); the checklist is the accurate status view.
+- `docs/decisions/ingest-optimization-plan.md` and `docs/decisions/optimality-metrics-proposal.md` describe work that has **not** shipped; treat them as proposals.
 
 ## 3. Repo map
 
 ### Top level
 
-- `README.md`: high-level project readme, partially outdated.
+- `README.md`: trimmed project overview that links into `docs/`.
 - `docker-compose.yml`: primary local runtime.
 - `docker-compose.localhost.yml`: local HTTPS/proxy overlay.
 - `docker-compose.prod.yml`: production-style image-based overlay.
 - `.env`, `.env.example`, `.env.production`, `.env.docker`: environment inputs.
-- `docs/new/`: current backend and analytics documentation set.
-- `docs/old/`: superseded documentation.
+- `docs/`: single source of truth for project documentation. Entry point: `docs/README.md`. Structure: `reference/`, `guides/`, `decisions/`, `research/`.
 
 ### Backend
 
@@ -65,9 +63,7 @@ Important known drift:
 
 - `nginx-proxy/nginx.conf.localhost`
 - `nginx-proxy/nginx.conf.production`
-- `k8s/base/`
-- `k8s/overlays/dev/`
-- `k8s/overlays/prod/`
+- `k8s/` (outdated scaffolding — do not rely on these manifests)
 - `.github/workflows/build.yml`
 - `.github/workflows/deploy.yml`
 - `.github/workflows/deploy-to-environment.yml`
@@ -376,12 +372,13 @@ For modern analytics, the main source of truth is:
 
 - `/panel/teacher/statistics/` renders summary-heavy HTML and JSON blobs
 - `/panel/teacher/statistics/viz-data/` lazily loads chart datasets by section
-- viz payloads are cached for 5 minutes using Django's cache abstraction
-- no custom cache backend is configured in settings, so behavior depends on Django defaults unless overridden externally
+- viz payloads are cached for 7 days (`timeout=604800`) under keys `teacher_stats_viz:*`
+- cache backend: `django_redis.cache.RedisCache` pointed at `REDIS_URL` (shared with the ingest write buffer)
+- invalidation: `cache.delete_pattern("teacher_stats_viz:*")` in `compact_weekly_runs` and `rebuild_weekly_rollups` — not on every ingest. Dashboard reads reflect the latest completed rollup.
 
 ### Learning curves and historical analytics
 
-The refactor described in `docs/new/` is not just planned; major pieces already exist:
+The refactor described in `docs/decisions/weekly-rollup-prd.md` is not just planned; major pieces already exist:
 
 - weekly rollup tables are real
 - replay archives are real
@@ -703,29 +700,27 @@ Review together:
 
 ### Docs updates
 
-If behavior changes materially, update the relevant files in `docs/new/` and this `AGENTS.md` when appropriate.
+If behavior changes materially, update the relevant files under `docs/` (the `reference/` and `guides/` subfolders are the most common targets) and this `AGENTS.md` when appropriate.
 
 ## 22. Known sharp edges and contradictions
 
-- root `README.md` says admin is at `/admin/`; actual route is `/panel/admin/`
-- root `README.md` points to docs that now live under `docs/old/`
 - root `.env.example` names `SECRET_KEY`; Django reads `DJANGO_SECRET_KEY`
-- old docs that say tests are missing are outdated
-- some docs discuss planned hot-week benchmark capabilities that are not in code yet
-- K8s manifests do not perfectly match current Compose and workflow assumptions
+- `docs/decisions/ingest-optimization-plan.md` and `docs/decisions/optimality-metrics-proposal.md` describe work that is not yet in code
+- `.github/workflows/django.yml` installs backend deps but does **not** run the test suite; `build-and-push` in that file is dead code (wrong branch guard)
+- `k8s/` manifests are outdated scaffolding and do not match the current Compose / workflow reality
 
 ## 23. Recommended reading paths for agents
 
 ### For backend feature work
 
 1. this `AGENTS.md`
-2. `docs/new/backend-architecture-overview.md`
-3. `docs/new/backend-data-model.md`
+2. `docs/architecture.md`
+3. `docs/reference/data-model.md`
 4. the relevant backend modules in `DigitMilePanel/digitmileapi/`
 
 ### For ingestion/debugging work
 
-1. `docs/new/backend-ingestion-and-api.md`
+1. `docs/reference/ingestion-api.md`
 2. `DigitMilePanel/digitmileapi/run_ingestion.py`
 3. `DigitMilePanel/digitmileapi/serializers.py`
 4. `DigitMilePanel/digitmileapi/views.py`
@@ -733,7 +728,7 @@ If behavior changes materially, update the relevant files in `docs/new/` and thi
 
 ### For analytics/dashboard work
 
-1. `docs/new/backend-analytics-and-dashboard.md`
+1. `docs/reference/analytics-and-dashboard.md`
 2. `DigitMilePanel/digitmileapi/analytics.py`
 3. `DigitMilePanel/digitmileapi/rollup_analytics.py`
 4. `DigitMilePanel/digitmileapi/views.py`
@@ -741,7 +736,7 @@ If behavior changes materially, update the relevant files in `docs/new/` and thi
 
 ### For registration/admin/auth work
 
-1. `docs/new/backend-registration-and-admin-workflows.md`
+1. `docs/reference/registration-and-admin.md`
 2. `DigitMilePanel/digitmileapi/forms.py`
 3. `DigitMilePanel/digitmileapi/admin.py`
 4. `DigitMilePanel/digitmileapi/views.py`
@@ -749,10 +744,10 @@ If behavior changes materially, update the relevant files in `docs/new/` and thi
 
 ### For ops/benchmark/archive work
 
-1. `docs/new/backend-operations-and-config.md`
-2. `docs/new/weekly-rollup-operator-runbook.md`
-3. `benchmarks/README.md`
-4. relevant management commands and benchmark scripts
+1. `docs/guides/operations.md`
+2. `docs/guides/rollup-runbook.md`
+3. `benchmarks/README.md` (linked from `docs/guides/load-testing.md`)
+4. relevant management commands (`docs/reference/management-commands.md`) and benchmark scripts
 
 ## 24. Bottom line for future agents
 
