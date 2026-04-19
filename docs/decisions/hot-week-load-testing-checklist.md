@@ -1,8 +1,10 @@
 # Hot-Week Load Testing Execution Checklist
 
-Last updated: 2026-03-15
+Last updated: 2026-04-19 (status refresh); original: 2026-03-15.
 
-This checklist turns `docs/new/hot-week-load-testing-implementation-plan.md` into an implementation-ready worklist.
+This checklist turns `docs/decisions/hot-week-load-testing-plan.md` into an implementation-ready worklist.
+
+> **Status as of 2026-04-19:** Slice 1 (A1–A3, B1–B2, C1–C2, D1–D2, E1, F1) is marked `[x]` below, verified against the codebase. Docker-based end-to-end verification was deferred at the time Slice 1 shipped; re-run it before starting Slice 2. Slices 2 and 3 remain open.
 
 ## Context for fresh agents
 
@@ -10,11 +12,11 @@ This file assumes you do not have conversation context from earlier work. Read t
 
 ### Required reading order
 
-1. `docs/new/hot-week-load-testing-implementation-plan.md`
+1. `docs/decisions/hot-week-load-testing-plan.md`
    - the target design, missing capabilities, and intended implementation order.
-2. `docs/new/weekly-rollup-operator-runbook.md`
+2. `docs/guides/rollup-runbook.md`
    - the current operator-facing benchmark path and the per-phase changed-file map.
-3. `docs/new/next-phase-implementation-checklist.md`
+3. `docs/decisions/next-phase-log.md`
    - confirms which weekly-rollup and benchmark foundation pieces are already implemented.
 4. `benchmarks/README.md`
    - documents the current Docker-native benchmark path and current scenario/report conventions.
@@ -321,8 +323,8 @@ This file assumes you do not have conversation context from earlier work. Read t
 - status: `[ ]`
 - files:
   - `benchmarks/README.md`
-  - `docs/new/weekly-rollup-operator-runbook.md`
-  - `docs/new/hot-week-load-testing-implementation-plan.md`
+  - `docs/guides/rollup-runbook.md`
+  - `docs/decisions/hot-week-load-testing-plan.md`
 - tasks:
   - document synthetic benchmark time
   - document open-week vs closed-week load scenarios
@@ -333,7 +335,7 @@ This file assumes you do not have conversation context from earlier work. Read t
 ### H2 - Add changed-files and manual test guidance to the runbook
 - status: `[ ]`
 - files:
-  - `docs/new/weekly-rollup-operator-runbook.md`
+  - `docs/guides/rollup-runbook.md`
 - tasks:
   - extend the benchmark section with the new hot-week load-testing path
   - list which files changed for the new load-testing phase

@@ -1,6 +1,8 @@
 # Hot-Week Load Testing Implementation Plan
 
-Last updated: 2026-03-15
+Last updated: 2026-04-19 (status note added); original plan: 2026-03-15.
+
+> **Status as of 2026-04-19:** Slice 1 (Milestones A1–A3, B1–B2, C1–C2, D1–D2, E1, F1) has **landed**. The synthetic benchmark clock, `BENCHMARK_TIME_OVERRIDE_ENABLED` gate, `X-Benchmark-Reference-Time` header, `prepare_benchmark_dataset --anchor-week-start`, constant-arrival-rate k6 executors, Docker-stats sampling in `run_scenario.py`, and the `hot_week_read_write_heavy.json` scenario all exist. See `docs/decisions/hot-week-load-testing-checklist.md` for the ticked checkboxes. The "Current limitations" section below describes the **pre-Slice-1** state and is retained as historical context; Slice 2 (diagnostics/interpretation) and Slice 3 (extended scenarios) are still open.
 
 ## Purpose
 
@@ -14,9 +16,9 @@ If you were not part of the earlier implementation work, read these files before
 
 ### Read first
 
-- `docs/new/next-phase-implementation-checklist.md`
+- `docs/decisions/next-phase-log.md`
   - establishes what phases are already done versus what remains.
-- `docs/new/weekly-rollup-operator-runbook.md`
+- `docs/guides/rollup-runbook.md`
   - shows the currently implemented operator workflow, benchmark path, and per-phase changed-file map.
 - `benchmarks/README.md`
   - explains how benchmark traffic currently runs, especially the Docker-network path used by k6.
@@ -375,7 +377,7 @@ Make reports easier to interpret so operators know what they are looking at.
 
 - `benchmarks/run_scenario.py`
 - `benchmarks/README.md`
-- `docs/new/weekly-rollup-operator-runbook.md`
+- `docs/guides/rollup-runbook.md`
 
 ### Required changes
 
