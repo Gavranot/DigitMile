@@ -1,0 +1,61 @@
+{
+  "name": "endurance_steady",
+  "dataset": {
+    "teachers": 10,
+    "classrooms_per_teacher": 4,
+    "students_per_classroom": 25,
+    "weeks": 8,
+    "runs_per_student_per_week": 3,
+    "avg_turns_per_run": 20,
+    "card_mix_profile": "balanced",
+    "bag_level_ratio": 0.35,
+    "compact_weeks": "1-6",
+    "hot_weeks": 2,
+    "anchor_week_start": "2026-03-09"
+  },
+  "_dataset_notes": [
+    "national_medium scale — 1,000 students, 8 weeks (6 cold + 2 hot).",
+    "The dataset itself is not the point of this scenario; the point is that",
+    "the steady-state ingest rate from docs/research/ingest-capacity-model.md §7",
+    "(medium adoption: ~11 ingest RPS) can be sustained over a long window",
+    "without backend memory creep, buffer growth, or tail-latency drift."
+  ],
+  "_nfr": "Closes NFR-1 from docs/decisions/thesis-benchmark-plan.md §3.",
+  "traffic": {
+    "base_url": "http://benchmark-backend:8000",
+    "request_host_header": "localhost",
+    "duration": "15m",
+    "ingest_rate_per_sec": 11,
+    "dashboard_rate_per_sec": 0,
+    "analytics_rate_per_sec": 0,
+    "turn_insights_rate_per_sec": 0,
+    "replay_rate_per_sec": 0,
+    "ingest_pre_allocated_vus": 60,
+    "ingest_max_vus": 200,
+    "resource_sample_interval_seconds": 10,
+    "ingest_expected_mode": "accepted",
+    "scripts": ["mixed_weekly_cycle.js"]
+  },
+  "_traffic_notes": [
+    "Pure-ingest endurance run at the NFR-1 target rate (11 RPS for 15 min).",
+    "constant-arrival-rate executor (ramp_mode is unset) so the rate is flat",
+    "for the full window — this is an endurance test, not a ramp.",
+    "Pass criteria (NFR-1):",
+    "  - zero dropped iterations across the full window,",
+    "  - p95 < 1000 ms across the full window,",
+    "  - backend CPU avg < 90%.",
+    "Watch in the report:",
+    "  - resource_summary.backend.cpu_percent.avg trend (no slow climb),",
+    "  - resource_summary.flusher.memory_bytes peak (no growth),",
+    "  - http_req_duration p95 trend (no walk-up over 15 min),",
+    "  - dropped_iterations omitted == zero (per §10.4 of the plan).",
+    "resource_sample_interval_seconds=10 keeps the docker-stats trace at a",
+    "manageable size over a 15-minute window while still resolving any drift.",
+    "Reader classes are all 0 — interactions with read load are covered by",
+    "mixed_steady.json (NFR-3/NFR-4)."
+  ],
+  "verification": {
+    "benchmark_iterations": 4
+  },
+  "report_output": "benchmarks/reports/endurance_steady.json"
+}

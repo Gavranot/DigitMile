@@ -1,0 +1,89 @@
+{
+  "name": "before_all_optimizations",
+  "benchmark_image_ref": "baseline/pre-write-buffer",
+  "benchmark_image": "gashmurble/digitmile-baseline:pre-write-buffer",
+  "compose_overlays": [
+    "no-pgbouncer.yml",
+    "pg-defaults.yml",
+    "dummy-cache.yml",
+    "no-flusher.yml"
+  ],
+  "_comparison_notes": [
+    "The cumulative headline comparison for the thesis (per",
+    "docs/decisions/thesis-benchmark-plan.md §8.1). Paired with",
+    "benchmarks/scenarios/national_medium.json — identical dataset and traffic",
+    "shape, but every shipped optimization (A, B, D, F) is reverted.",
+    "",
+    "Reversal layout:",
+    "  A (PgBouncer + Django pool) -> no-pgbouncer.yml",
+    "  B (PG synchronous_commit=off + tuning) -> pg-defaults.yml",
+    "  D (django-redis query cache) -> dummy-cache.yml",
+    "  F (Redis write buffer + flusher) -> baseline/pre-write-buffer image +",
+    "                                      no-flusher.yml",
+    "",
+    "Because the F baseline image predates C (rollup-only analytics) and E",
+    "(django-ninja ingest) as well, this comparison technically also strips",
+    "those two. That is acceptable for the headline chart: the thesis only",
+    "claims A+B+D+F as the bundled wins; C and E are documented separately.",
+    "Verify scenario_summary.stack_state after the run to confirm every flip",
+    "actually landed (PG defaults, dummy cache, no PgBouncer, no flusher,",
+    "expected image SHA).",
+    "",
+    "Expected: large multi-axis regression vs national_medium — much higher",
+    "p95, many more drops, lower sustained RPS, higher backend CPU."
+  ],
+  "dataset": {
+    "teachers": 10,
+    "classrooms_per_teacher": 4,
+    "students_per_classroom": 25,
+    "weeks": 8,
+    "runs_per_student_per_week": 3,
+    "avg_turns_per_run": 20,
+    "card_mix_profile": "balanced",
+    "bag_level_ratio": 0.35,
+    "compact_weeks": "1-6",
+    "hot_weeks": 2,
+    "anchor_week_start": "2026-03-09"
+  },
+  "_dataset_notes": [
+    "Copied verbatim from national_medium.json so the pair is dataset-identical.",
+    "Cross-check via dataset_report.weeks in the generated reports."
+  ],
+  "traffic": {
+    "base_url": "http://benchmark-backend:8000",
+    "request_host_header": "localhost",
+    "duration": "5m",
+    "hot_replay_ratio": 0.6,
+    "grade_filter_ratio": 0.4,
+    "classroom_filter_ratio": 0.4,
+    "ingest_rate_per_sec": 11,
+    "dashboard_rate_per_sec": 2,
+    "analytics_rate_per_sec": 1,
+    "turn_insights_rate_per_sec": 1,
+    "replay_rate_per_sec": 1,
+    "ingest_pre_allocated_vus": 80,
+    "ingest_max_vus": 250,
+    "dashboard_pre_allocated_vus": 10,
+    "dashboard_max_vus": 25,
+    "analytics_pre_allocated_vus": 8,
+    "analytics_max_vus": 20,
+    "turn_insights_pre_allocated_vus": 15,
+    "turn_insights_max_vus": 40,
+    "replay_pre_allocated_vus": 5,
+    "replay_max_vus": 12,
+    "resource_sample_interval_seconds": 5,
+    "ingest_expected_mode": "accepted",
+    "scripts": ["mixed_weekly_cycle.js"]
+  },
+  "_traffic_notes": [
+    "Traffic block copied verbatim from national_medium.json. The target rates",
+    "are likely UNREACHABLE on the reverted stack; that is the point. Drops and",
+    "tail latency are the headline numbers, not throughput parity.",
+    "VUs are sized as in national_medium so any drops come from server",
+    "saturation rather than VU starvation."
+  ],
+  "verification": {
+    "benchmark_iterations": 4
+  },
+  "report_output": "benchmarks/reports/before_all_optimizations.json"
+}

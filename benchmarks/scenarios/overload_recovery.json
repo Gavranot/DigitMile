@@ -1,0 +1,73 @@
+{
+  "name": "overload_recovery",
+  "dataset": {
+    "teachers": 10,
+    "classrooms_per_teacher": 4,
+    "students_per_classroom": 25,
+    "weeks": 8,
+    "runs_per_student_per_week": 3,
+    "avg_turns_per_run": 20,
+    "card_mix_profile": "balanced",
+    "bag_level_ratio": 0.35,
+    "compact_weeks": "1-6",
+    "hot_weeks": 2,
+    "anchor_week_start": "2026-03-09"
+  },
+  "_dataset_notes": [
+    "national_medium scale — matches endurance_steady so the NFR-1 baseline",
+    "recovery target (p95 < 1000 ms) is comparable across the two reports."
+  ],
+  "_nfr": "Closes NFR-5 from docs/decisions/thesis-benchmark-plan.md §3.",
+  "traffic": {
+    "base_url": "http://benchmark-backend:8000",
+    "request_host_header": "localhost",
+    "duration": "12m",
+    "ingest_rate_per_sec": 22,
+    "overload_recovery_rate": 11,
+    "overload_ramp_seconds": 120,
+    "overload_hold_seconds": 300,
+    "overload_drop_seconds": 1,
+    "overload_recovery_seconds": 300,
+    "dashboard_rate_per_sec": 0,
+    "analytics_rate_per_sec": 0,
+    "turn_insights_rate_per_sec": 0,
+    "replay_rate_per_sec": 0,
+    "ingest_pre_allocated_vus": 80,
+    "ingest_max_vus": 250,
+    "resource_sample_interval_seconds": 5,
+    "ingest_expected_mode": "accepted",
+    "scripts": ["overload_recovery.js"]
+  },
+  "_traffic_notes": [
+    "Four-stage profile (handled by benchmarks/k6/overload_recovery.js):",
+    "  1.  2 min ramp 0 -> 22 RPS  (warmup, also stresses the buffer fill rate)",
+    "  2.  5 min hold at 22 RPS    (2x the NFR-1 steady-state target — overload)",
+    "  3.  1 s   snap drop -> 11 RPS",
+    "  4.  5 min hold at 11 RPS    (recovery to NFR-1 baseline rate)",
+    "duration=12m is informational; the k6 stages above are authoritative.",
+    "",
+    "Pass criteria (NFR-5):",
+    "  - During phase 4, p95 returns below 1000 ms within 2 min of the drop,",
+    "  - Redis ingest_buffer drains to 0 within the 5-min recovery window,",
+    "  - System is stable (no creeping memory, no growing backend RSS).",
+    "",
+    "Drops and 5xx ARE expected during phase 2. That is the overload signal.",
+    "What the thesis claims is recovery, not steady-state survival at 2x.",
+    "",
+    "Post-processing tips:",
+    "  - The phase-4 start timestamp is (ramp + hold + drop) seconds after the",
+    "    k6 setup completes; the report records this implicitly via the stage",
+    "    durations above.",
+    "  - Walk http_req_duration metric points after the phase-4 boundary; the",
+    "    first sample window where p95 < 1000 ms is the recovery-time number.",
+    "  - resource_summary in the report exposes runtime_docker_stats; the",
+    "    backend CPU dip and the flusher drain visibly trail the load drop.",
+    "",
+    "VU sizing follows the lesson_bell convention: pre-allocated VUs scale to",
+    "the PEAK rate so VU contention does not muddy phase-2 readings."
+  ],
+  "verification": {
+    "benchmark_iterations": 4
+  },
+  "report_output": "benchmarks/reports/overload_recovery.json"
+}
