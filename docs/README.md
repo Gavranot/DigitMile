@@ -41,6 +41,7 @@ DigitMile is a Unity WebGL math game served alongside a Django/PostgreSQL backen
 - `hardware-sizing.md`
 - `capacity-math-correction.md` — **outdated**, kept for historical context. Initial derivation that motivated the corrected ingest model; superseded by `docs/research/ingest-capacity-model.md` after gameplay testing revised `T` from 27 to 20.
 - `ingest-optimization-plan.md` (pending)
+- `thesis-benchmark-plan.md` — NFRs, coverage matrix, scenarios remaining for the thesis evaluation chapter; resume point if work is interrupted.
 - `hot-week-load-testing-plan.md` + `hot-week-load-testing-checklist.md`
 - `optimality-metrics-proposal.md` (proposed)
 - `dashboard-tasks.md` + `dashboard-visualization-rework.md`

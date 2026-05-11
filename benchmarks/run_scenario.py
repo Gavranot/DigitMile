@@ -738,16 +738,47 @@ def _build_baseline_image(ref):
 
 
 def _apply_baseline_image_ref(scenario):
-    """Honour scenario.benchmark_image_ref by overriding BENCHMARK_BACKEND_IMAGE.
+    """Honour scenario.benchmark_image / benchmark_image_ref.
 
-    Sets the env var that compose reads, which also flips run_scenario.py out
-    of "local build" mode so docker compose pulls/uses the prebuilt image
-    instead of trying to build from the live working tree.
+    Two ways to point the benchmark at a non-tree-HEAD image:
+
+    - scenario["benchmark_image"]: explicit Docker image tag. No git work.
+      Compose will pull on first use if the image is not already local.
+      Use this on hosts that are not git checkouts (e.g. the thesis
+      production server) where we cannot resolve refs locally.
+
+    - scenario["benchmark_image_ref"]: a git ref (tag/branch/SHA). Built
+      via `_build_baseline_image` from a worktree. Requires git.
+
+    If both are set, the explicit image wins — set it on hosts without git
+    while leaving the ref in the JSON for documentation.
     """
+    explicit_image = scenario.get("benchmark_image")
     ref = scenario.get("benchmark_image_ref")
+
+    if explicit_image:
+        os.environ["BENCHMARK_BACKEND_IMAGE"] = explicit_image
+        log_step(f"benchmark_image={explicit_image} (explicit override; git not consulted)")
+        if ref:
+            log_step(f"  (scenario also declares benchmark_image_ref={ref}; ignored because explicit image wins)")
+        return explicit_image
+
     if not ref:
         return None
-    image_tag = _build_baseline_image(ref)
+
+    try:
+        image_tag = _build_baseline_image(ref)
+    except subprocess.CalledProcessError as exc:
+        # Most commonly: `git rev-parse` failed because the host isn't a
+        # git checkout. Give a clear remediation hint instead of dumping
+        # the raw subprocess traceback.
+        raise RuntimeError(
+            f"failed to build baseline image for ref {ref!r}: {exc}. "
+            "If this host is not a git checkout (e.g. a deployment server), "
+            "set scenario.benchmark_image to a prebuilt registry image instead "
+            "of relying on benchmark_image_ref. See "
+            "docs/decisions/thesis-benchmark-plan.md §5.1."
+        ) from exc
     os.environ["BENCHMARK_BACKEND_IMAGE"] = image_tag
     log_step(f"benchmark_image_ref={ref} → using image {image_tag}")
     return image_tag
@@ -777,15 +808,21 @@ def verify_backend_image(project_name, scenario):
     image_name, _, image_digest = inspect.stdout.strip().partition("|")
 
     requested_ref = scenario.get("benchmark_image_ref")
+    explicit_image = scenario.get("benchmark_image")
     expected_image = os.environ.get("BENCHMARK_BACKEND_IMAGE")
     sha = _extract_sha_from_image_tag(image_name)
+
+    # Scenario intent (not just tag shape) determines whether this is a
+    # baseline run. Registry-pushed images may not carry the SHA suffix.
+    is_baseline = bool(explicit_image or requested_ref)
 
     info = {
         "image": image_name,
         "image_digest": image_digest,
         "container_id": container_id,
-        "mode": "baseline" if sha else "tree-HEAD",
+        "mode": "baseline" if is_baseline else "tree-HEAD",
         "requested_benchmark_image_ref": requested_ref,
+        "explicit_benchmark_image": explicit_image,
         "resolved_sha": sha,
     }
 
@@ -797,25 +834,21 @@ def verify_backend_image(project_name, scenario):
         except Exception:
             pass
 
-    if requested_ref and expected_image and image_name != expected_image:
+    if is_baseline and expected_image and image_name != expected_image:
         raise RuntimeError(
-            f"backend image mismatch — scenario asked for {requested_ref!r} "
-            f"(image {expected_image}) but the running container is using "
-            f"{image_name}. Aborting before any traffic runs."
-        )
-    if requested_ref and not sha:
-        raise RuntimeError(
-            f"backend image mismatch — scenario asked for benchmark_image_ref "
-            f"{requested_ref!r} but the running container's image {image_name} "
-            f"is not a baseline build. Aborting."
+            f"backend image mismatch — scenario asked for image {expected_image} "
+            f"but the running container is using {image_name}. "
+            "Aborting before any traffic runs."
         )
 
     banner = "=" * 64
     log_step(banner)
     log_step(f"benchmark backend image: {image_name}")
     log_step(f"  mode: {info['mode']}")
+    if explicit_image:
+        log_step(f"  explicit benchmark_image: {explicit_image}")
     if requested_ref:
-        log_step(f"  requested ref: {requested_ref}")
+        log_step(f"  benchmark_image_ref: {requested_ref}")
     if sha:
         log_step(f"  resolved SHA: {sha}")
     if info.get("commit_subject"):

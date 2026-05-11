@@ -418,3 +418,44 @@ Baseline images for `benchmark_image_ref` may not always boot cleanly — older
 commits can carry incompatible management-command signatures or schema
 expectations relative to the harness. Validate each baseline once before
 relying on it for thesis numbers.
+
+### Running baseline scenarios on hosts without git
+
+The deployment server is not a git checkout — `git rev-parse` fails, and
+`benchmark_image_ref` therefore cannot resolve to a SHA. Use the
+`benchmark_image` field instead, which names a Docker image directly:
+
+```json
+{
+  "benchmark_image_ref": "baseline/pre-write-buffer",
+  "benchmark_image":     "gashmurble/digitmile-baseline:pre-write-buffer",
+  "compose_overlays":    ["no-flusher.yml"],
+  ...
+}
+```
+
+When both fields are present, `benchmark_image` wins and no git work runs.
+The ref stays in the JSON for documentation.
+
+To produce the registry image:
+
+```bash
+# On a local dev box where git is available — one-time per baseline
+python benchmarks/run_scenario.py benchmarks/scenarios/baseline_smoke_pre_write_buffer.json
+# This builds digitmile-benchmark-backend:baseline-baseline-pre-write-buffer-<sha12>
+
+docker tag \
+    digitmile-benchmark-backend:baseline-baseline-pre-write-buffer-6d7783658a6f \
+    gashmurble/digitmile-baseline:pre-write-buffer
+docker push gashmurble/digitmile-baseline:pre-write-buffer
+```
+
+On the server, compose will pull automatically on first `up`:
+
+```bash
+python3 benchmarks/run_scenario.py benchmarks/scenarios/before_write_buffer_ingest_isolation.json
+```
+
+The image-verification banner will still print `mode: baseline` and the
+SHA captured in the image tag, so the report continues to prove which
+commit produced the numbers.
