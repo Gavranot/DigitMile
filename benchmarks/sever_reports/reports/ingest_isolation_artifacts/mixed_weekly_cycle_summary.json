@@ -1,0 +1,148 @@
+{
+    "metrics": {
+        "http_req_duration{expected_response:true}": {
+            "med": 38.132294,
+            "max": 2548.078864,
+            "p(90)": 1512.981223,
+            "p(95)": 1829.5633579999999,
+            "avg": 412.8790069021926,
+            "min": 15.441433
+        },
+        "http_req_tls_handshaking": {
+            "min": 0,
+            "med": 0,
+            "max": 0,
+            "p(90)": 0,
+            "p(95)": 0,
+            "avg": 0
+        },
+        "checks": {
+            "passes": 7113,
+            "fails": 0,
+            "value": 1
+        },
+        "http_reqs": {
+            "rate": 29.144113024766938,
+            "count": 7116
+        },
+        "http_req_blocked": {
+            "max": 31.582469,
+            "p(90)": 2.7411814999999997,
+            "p(95)": 3.87115775,
+            "avg": 1.217367797077013,
+            "min": 0.191271,
+            "med": 0.5384625000000001
+        },
+        "http_req_receiving": {
+            "med": 0.1783415,
+            "max": 21.119703,
+            "p(90)": 1.645885,
+            "p(95)": 3.052709,
+            "avg": 0.6329449184935374,
+            "min": 0.059066
+        },
+        "iteration_duration": {
+            "avg": 417.67709205524295,
+            "min": 17.20886,
+            "med": 43.3418015,
+            "max": 2553.76922,
+            "p(90)": 1521.2274906999996,
+            "p(95)": 1837.4877433999993
+        },
+        "http_req_connecting": {
+            "avg": 0.8111508981169211,
+            "min": 0.137785,
+            "med": 0.3786525,
+            "max": 30.504318,
+            "p(90)": 2.0454055,
+            "p(95)": 2.87404325
+        },
+        "http_req_sending": {
+            "p(90)": 1.1911645,
+            "p(95)": 1.66796625,
+            "avg": 0.47951675014052897,
+            "min": 0.086073,
+            "med": 0.238123,
+            "max": 19.768239
+        },
+        "data_sent": {
+            "count": 134915325,
+            "rate": 552555.857303705
+        },
+        "http_req_failed": {
+            "passes": 0,
+            "fails": 7116,
+            "value": 0
+        },
+        "data_received": {
+            "rate": 11911.947664366278,
+            "count": 2908492
+        },
+        "http_req_duration": {
+            "med": 38.132294,
+            "max": 2548.078864,
+            "p(90)": 1512.981223,
+            "p(95)": 1829.5633579999999,
+            "avg": 412.8790069021926,
+            "min": 15.441433
+        },
+        "iterations": {
+            "count": 7113,
+            "rate": 29.131826299208438
+        },
+        "http_req_waiting": {
+            "avg": 411.766545233558,
+            "min": 13.98748,
+            "med": 37.060942499999996,
+            "max": 2547.535346,
+            "p(90)": 1509.178557,
+            "p(95)": 1829.23905775
+        },
+        "vus_max": {
+            "max": 130,
+            "value": 130,
+            "min": 50
+        },
+        "vus": {
+            "value": 20,
+            "min": 0,
+            "max": 127
+        },
+        "dropped_iterations": {
+            "count": 86,
+            "rate": 0.352219466010393
+        }
+    },
+    "setup_data": {
+        "auth": {
+            "cookieHeader": "csrftoken=6x0gobbfZWAPjrU6GtexD0zVe5FEhsEf; csrftoken=1Uy0fzGyO4YY4iIhEsxw91GnofBspoSH; sessionid=y72uh57b0kz1fcwtgocxqwnbiydjf39b"
+        },
+        "csrf": {
+            "cookieHeader": "csrftoken=1Uy0fzGyO4YY4iIhEsxw91GnofBspoSH",
+            "csrfToken": "dMlrQQgnbfUh0uP5ndrq0s7Rhl4qEnVl4wJhVfMLP9I5UCncRvOMZjD4vqvITBDS"
+        }
+    },
+    "root_group": {
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {
+            "setup": {
+                "groups": {},
+                "checks": {},
+                "name": "setup",
+                "path": "::setup",
+                "id": "5c0f8025f7e0b6654089e5b00e950f1a"
+            }
+        },
+        "checks": {
+            "mixed open-week ingest accepted": {
+                "name": "mixed open-week ingest accepted",
+                "path": "::mixed open-week ingest accepted",
+                "id": "8cb89e322d1775f551fc502abd7d806f",
+                "passes": 7113,
+                "fails": 0
+            }
+        },
+        "name": ""
+    }
+}

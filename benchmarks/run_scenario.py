@@ -672,23 +672,54 @@ def ensure_backend_image():
     return False
 
 
+def _env_truthy(name: str) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return False
+    return raw.strip().lower() not in ("0", "false", "no", "off", "")
+
+
 def _resolve_overlay_paths(scenario):
     """Validate and resolve compose_overlays entries from the scenario JSON.
 
     Each entry may be a bare filename (resolved against benchmarks/overlays/)
     or an explicit path. Missing files abort the run before any docker work.
+
+    The BENCHMARK_DISABLE_PGBOUNCER env var, when truthy, force-appends
+    no-pgbouncer.yml to every scenario's overlay set so a single export can
+    sweep all comparison scenarios without touching their JSON. Duplicates
+    are de-duped by filename. Reports for these runs land under a
+    no_pgbouncer/ subdirectory so they don't collide with the standard set.
     """
     overlays = scenario.get("compose_overlays") or []
     if not isinstance(overlays, list):
         raise ValueError("scenario.compose_overlays must be a list of overlay filenames")
     resolved: list[Path] = []
+    seen_names: set[str] = set()
     for entry in overlays:
         candidate = Path(entry)
         if not candidate.is_absolute():
             candidate = BENCHMARK_OVERLAYS_DIR / candidate
         if not candidate.is_file():
             raise FileNotFoundError(f"compose overlay not found: {candidate}")
+        if candidate.name in seen_names:
+            continue
+        seen_names.add(candidate.name)
         resolved.append(candidate)
+
+    if _env_truthy("BENCHMARK_DISABLE_PGBOUNCER"):
+        forced = BENCHMARK_OVERLAYS_DIR / "no-pgbouncer.yml"
+        if not forced.is_file():
+            raise FileNotFoundError(
+                f"BENCHMARK_DISABLE_PGBOUNCER set but {forced} missing"
+            )
+        if forced.name not in seen_names:
+            resolved.append(forced)
+            log_step(
+                "BENCHMARK_DISABLE_PGBOUNCER=1 → force-appending no-pgbouncer.yml "
+                "to this scenario's overlays"
+            )
+
     return resolved
 
 
@@ -1006,6 +1037,14 @@ def main():
     report_output_path = Path(report_output)
     if not report_output_path.is_absolute():
         report_output_path = REPO_ROOT / report_output_path
+    # When the user sweeps a comparison set with BENCHMARK_DISABLE_PGBOUNCER,
+    # route every report into a no_pgbouncer/ subdirectory so the two sets
+    # of numbers stay separate without per-scenario JSON edits.
+    if _env_truthy("BENCHMARK_DISABLE_PGBOUNCER"):
+        report_output_path = (
+            report_output_path.parent / "no_pgbouncer" / report_output_path.name
+        )
+        log_step(f"report routed under no_pgbouncer/ → {report_output_path}")
     report_output_path.parent.mkdir(parents=True, exist_ok=True)
 
     scenario_name = scenario.get("name", scenario_path.stem)
