@@ -366,3 +366,55 @@ Each scenario report includes:
 Redis caching is intentionally not enabled by this benchmark pipeline. Baseline reports
 must exist first, and Redis should only be added after those reports prove a meaningful
 read-latency improvement is needed.
+
+## Optimization toggles (thesis before/after measurements)
+
+Two scenario JSON fields let any scenario run against a pre-optimization
+state of the system without modifying production code paths:
+
+- **`compose_overlays`** — list of overlay filenames under `benchmarks/overlays/`.
+  Each overlay reverts one in-tree architectural optimization (PgBouncer, PG
+  tuning, query cache). See `benchmarks/overlays/README.md` for the table.
+- **`benchmark_image_ref`** — any git ref (tag, branch, or SHA). The backend
+  image used by the benchmark stack is built from that commit via a worktree
+  under `.baseline-worktrees/` (gitignored, reused across runs).
+
+The three baseline tags below mark the predecessor commits of the
+architectural optimizations whose pre-optimization code was deleted in-tree
+and therefore cannot be reverted via overlay:
+
+| Tag | Maps to | Reverts |
+|---|---|---|
+| `baseline/pre-rollup-analytics` | `22c9bfc^` | C — hot-data analytics removal |
+| `baseline/pre-ninja` | `6d77836^` | E — django-ninja + Pydantic ingest |
+| `baseline/pre-write-buffer` | `e27b758^` | F — Redis-buffered ingest + flusher |
+
+Example "before optimization F" scenario fragment:
+
+```json
+{
+  "benchmark_image_ref": "baseline/pre-write-buffer",
+  "compose_overlays": []
+}
+```
+
+Example "before A + B + D" (the three in-tree overlay-reversible ones):
+
+```json
+{
+  "compose_overlays": ["no-pgbouncer.yml", "pg-defaults.yml", "dummy-cache.yml"]
+}
+```
+
+Both fields are optional. Scenarios that set neither run against the current
+tree, which is the existing behaviour. None of this machinery affects
+production: overlays live only under `benchmarks/`, baseline images are
+tagged `digitmile-benchmark-backend:baseline-…`, and the settings.py knobs
+they rely on (`DJANGO_CACHE_BACKEND`, `DB_CONN_MAX_AGE`,
+`DB_DISABLE_SERVER_SIDE_CURSORS`) default to current production values when
+unset.
+
+Baseline images for `benchmark_image_ref` may not always boot cleanly — older
+commits can carry incompatible management-command signatures or schema
+expectations relative to the harness. Validate each baseline once before
+relying on it for thesis numbers.

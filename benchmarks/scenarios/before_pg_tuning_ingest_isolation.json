@@ -1,0 +1,44 @@
+{
+  "name": "before_pg_tuning_ingest_isolation",
+  "compose_overlays": ["pg-defaults.yml"],
+  "_comparison_notes": [
+    "Paired with benchmarks/scenarios/ingest_isolation.json — same dataset and",
+    "traffic shape; only difference is the pg-defaults overlay, which strips",
+    "the -c synchronous_commit=off and other tuning flags from the postgres",
+    "command, leaving PG 16 at its out-of-the-box defaults.",
+    "Run both and diff via benchmarks/compare_reports.py."
+  ],
+  "dataset": {
+    "teachers": 1,
+    "classrooms_per_teacher": 2,
+    "students_per_classroom": 30,
+    "weeks": 4,
+    "runs_per_student_per_week": 3,
+    "avg_turns_per_run": 20,
+    "card_mix_profile": "balanced",
+    "bag_level_ratio": 0.35,
+    "compact_weeks": "1-2",
+    "hot_weeks": 2,
+    "anchor_week_start": "2026-03-09"
+  },
+  "traffic": {
+    "base_url": "http://benchmark-backend:8000",
+    "request_host_header": "localhost",
+    "duration": "4m",
+    "ramp_mode": true,
+    "ingest_rate_per_sec": 60,
+    "dashboard_rate_per_sec": 0,
+    "analytics_rate_per_sec": 0,
+    "turn_insights_rate_per_sec": 0,
+    "replay_rate_per_sec": 0,
+    "ingest_pre_allocated_vus": 50,
+    "ingest_max_vus": 200,
+    "resource_sample_interval_seconds": 5,
+    "ingest_expected_mode": "accepted",
+    "scripts": ["mixed_weekly_cycle.js"]
+  },
+  "verification": {
+    "benchmark_iterations": 3
+  },
+  "report_output": "benchmarks/reports/before_pg_tuning_ingest_isolation.json"
+}

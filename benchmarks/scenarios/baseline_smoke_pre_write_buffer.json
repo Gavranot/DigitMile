@@ -1,0 +1,66 @@
+{
+  "name": "baseline_smoke_pre_write_buffer",
+  "benchmark_image_ref": "baseline/pre-write-buffer",
+  "compose_overlays": ["no-flusher.yml"],
+  "dataset": {
+    "teachers": 1,
+    "classrooms_per_teacher": 1,
+    "students_per_classroom": 5,
+    "weeks": 2,
+    "runs_per_student_per_week": 2,
+    "avg_turns_per_run": 20,
+    "card_mix_profile": "balanced",
+    "bag_level_ratio": 0.35,
+    "hot_weeks": 1,
+    "anchor_week_start": "2026-03-09"
+  },
+  "_dataset_notes": [
+    "Smoke scenario — NOT a measurement. Validates that the pre-write-buffer",
+    "baseline image (commit 6d77836) builds, migrates, seeds, and accepts",
+    "ingest payloads against today's harness + k6 scripts.",
+    "Dataset is intentionally tiny so the whole loop completes in under ~2 min."
+  ],
+  "traffic": {
+    "base_url": "http://benchmark-backend:8000",
+    "request_host_header": "localhost",
+    "duration": "30s",
+    "use_arrival_rate": true,
+    "ingest_rate_per_sec": 4,
+    "dashboard_rate_per_sec": 0,
+    "analytics_rate_per_sec": 0,
+    "turn_insights_rate_per_sec": 0,
+    "replay_rate_per_sec": 0,
+    "ingest_pre_allocated_vus": 8,
+    "ingest_max_vus": 20,
+    "resource_sample_interval_seconds": 5,
+    "ingest_expected_mode": "accepted",
+    "scripts": ["ingest.js"]
+  },
+  "_traffic_notes": [
+    "4 RPS × 30s ≈ 120 ingest requests. Low rate is deliberate: at this baseline",
+    "the ingest write is synchronous to PG (no Redis buffer), so per-request",
+    "latency floor is higher than current. Keeping RPS low avoids drops that",
+    "would muddy the smoke signal.",
+    "",
+    "Pass criteria (read in this order from the report):",
+    "  1. Image built and pushed to local tag — log line 'building baseline image'",
+    "     followed by 'using image digitmile-benchmark-backend:baseline-...'",
+    "  2. Stack came up — load_health is green or yellow (not red).",
+    "  3. Dataset prepared — dataset_report has teachers[0] populated.",
+    "  4. Pre-benchmark analytics ran — pre_benchmark.measurements_ms present.",
+    "  5. k6 checks pass — checks.fails == 0 for 'open-week ingest accepted'.",
+    "",
+    "If any step fails, the harness aborts before later steps run, so the",
+    "first failure in the log is the actionable signal. Most likely failure",
+    "modes at this baseline:",
+    "  - prepare_benchmark_dataset CLI flags differ → patch dataset_args.",
+    "  - benchmark_teacher_analytics command missing → patch verification step.",
+    "  - ingest payload schema mismatch (current k6 sends a field the old",
+    "    Pydantic schema rejects with 422) → patch buildUnityPayload in",
+    "    benchmarks/k6/common.js, or build a baseline-specific k6 script."
+  ],
+  "verification": {
+    "benchmark_iterations": 1
+  },
+  "report_output": "benchmarks/reports/baseline_smoke_pre_write_buffer.json"
+}

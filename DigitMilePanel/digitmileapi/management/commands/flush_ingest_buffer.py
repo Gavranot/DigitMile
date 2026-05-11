@@ -44,7 +44,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         batch_size = options["batch_size"]
         sleep_s = options["sleep_ms"] / 1000.0
-        r = redis_client.from_url(settings.CACHES["default"]["LOCATION"])
+        r = redis_client.from_url(settings.REDIS_URL)
         logger.info(
             "Flusher started: batch_size=%d, sleep_ms=%d",
             batch_size,

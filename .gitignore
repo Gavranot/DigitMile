@@ -5,3 +5,4 @@ workflows_examples/*
 nginx-proxy/ssl/*
 benchmarks/reports/*
 !benchmarks/reports/.gitignore
+.baseline-worktrees/

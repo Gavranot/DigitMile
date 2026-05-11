@@ -1,0 +1,59 @@
+{
+  "name": "before_query_cache_realistic_school_day",
+  "compose_overlays": ["dummy-cache.yml"],
+  "_comparison_notes": [
+    "Paired with benchmarks/scenarios/realistic_school_day.json — same dataset",
+    "and traffic shape; only difference is the dummy-cache overlay, which",
+    "switches Django CACHES to DummyCache so dashboard query caching is",
+    "disabled. Every dashboard query hits the DB.",
+    "",
+    "This is a READ-heavy comparison — look at pre_benchmark/post_benchmark",
+    "analytics latency and the dashboard/analytics/turn_insights k6 check",
+    "latencies; the ingest path is unaffected by this overlay.",
+    "",
+    "Run both and diff via benchmarks/compare_reports.py."
+  ],
+  "dataset": {
+    "teachers": 1,
+    "classrooms_per_teacher": 3,
+    "students_per_classroom": 20,
+    "weeks": 8,
+    "runs_per_student_per_week": 3,
+    "avg_turns_per_run": 20,
+    "card_mix_profile": "balanced",
+    "bag_level_ratio": 0.35,
+    "compact_weeks": "1-6",
+    "hot_weeks": 2,
+    "anchor_week_start": "2026-03-09"
+  },
+  "traffic": {
+    "base_url": "http://benchmark-backend:8000",
+    "request_host_header": "localhost",
+    "duration": "3m",
+    "hot_replay_ratio": 0.6,
+    "grade_filter_ratio": 0.4,
+    "classroom_filter_ratio": 0.4,
+    "ingest_rate_per_sec": 1,
+    "dashboard_rate_per_sec": 1,
+    "analytics_rate_per_sec": 1,
+    "turn_insights_rate_per_sec": 1,
+    "replay_rate_per_sec": 1,
+    "ingest_pre_allocated_vus": 2,
+    "ingest_max_vus": 6,
+    "dashboard_pre_allocated_vus": 3,
+    "dashboard_max_vus": 8,
+    "analytics_pre_allocated_vus": 3,
+    "analytics_max_vus": 8,
+    "turn_insights_pre_allocated_vus": 4,
+    "turn_insights_max_vus": 12,
+    "replay_pre_allocated_vus": 2,
+    "replay_max_vus": 6,
+    "resource_sample_interval_seconds": 10,
+    "ingest_expected_mode": "accepted",
+    "scripts": ["mixed_weekly_cycle.js"]
+  },
+  "verification": {
+    "benchmark_iterations": 5
+  },
+  "report_output": "benchmarks/reports/before_query_cache_realistic_school_day.json"
+}
