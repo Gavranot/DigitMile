@@ -1,7 +1,7 @@
 {
   "name": "before_write_buffer_ingest_isolation",
   "benchmark_image_ref": "baseline/pre-write-buffer",
-  "benchmarK_image": "gashmurble/digitmile-baseline:pre-write-buffer",
+  "benchmark_image": "gashmurble/digitmile-baseline:pre-write-buffer",
   "compose_overlays": ["no-flusher.yml"],
   "_comparison_notes": [
     "Paired with benchmarks/scenarios/ingest_isolation.json — same dataset and",
