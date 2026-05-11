@@ -6,7 +6,7 @@
     "students_per_classroom": 25,
     "weeks": 10,
     "runs_per_student_per_week": 4,
-    "avg_turns_per_run": 6,
+    "avg_turns_per_run": 20,
     "card_mix_profile": "bag_heavy",
     "bag_level_ratio": 0.40,
     "compact_weeks": "1-8",
@@ -16,7 +16,7 @@
   "_dataset_notes": [
     "2 teachers, 4 classrooms each, 25 students = 200 students total.",
     "Benchmark tests teacher 1 only (100 students across 4 classrooms).",
-    "Hot data: 100 students x 2 hot weeks x 4 runs x 6 turns = ~4800 hot turns.",
+    "Hot data: 100 students x 2 hot weeks x 4 runs x ~20 turns ≈ 16,000 hot turns (T=20 per docs/research/ingest-capacity-model.md).",
     "Cold rollup tables hold 8 weeks of compacted history.",
     "This data volume is intentionally heavier than realistic_school_day to stress analytics queries."
   ],

@@ -1,5 +1,6 @@
 import json
 import logging
+from typing import Union
 
 import redis as redis_client
 from django.conf import settings
@@ -7,7 +8,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from ninja import Router
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from .ingest_schemas import CanonicalIngestPayload, UnityIngestPayload
 from .models import Run, Student
@@ -25,13 +26,12 @@ logger = logging.getLogger(__name__)
 
 router = Router()
 
-
-def _looks_like_unity_payload(data: object) -> bool:
-    return (
-        isinstance(data, dict)
-        and "run" in data
-        and ("userID" in data or "classroomKey" in data or "user" in data)
-    )
+# Single-pass Rust JSON parse + validation. Unity and canonical have disjoint
+# required fields (userID vs student_id), so smart-mode union routing is
+# unambiguous and the losing branch short-circuits before model_validators run.
+_IngestAdapter: TypeAdapter[Union[UnityIngestPayload, CanonicalIngestPayload]] = TypeAdapter(
+    Union[UnityIngestPayload, CanonicalIngestPayload]
+)
 
 
 def _parse_benchmark_reference_time(request):
@@ -64,54 +64,50 @@ def ingest_run(request):
         )
         return err
 
-    # Parse body
+    # Parse + validate in a single Rust pass (pydantic-core).
+    raw_body = request.body
     try:
-        body = json.loads(request.body)
-    except (json.JSONDecodeError, ValueError):
-        return JsonResponse({"error": "Invalid JSON"}, status=400)
-
-    # Validate and normalise to canonical dict
-    if _looks_like_unity_payload(body):
+        payload = _IngestAdapter.validate_json(raw_body)
+    except ValidationError as exc:
+        errs = exc.errors()
+        # pydantic-core surfaces malformed JSON as a json_invalid error; map it
+        # back to the prior {"error": "Invalid JSON"} 400 response shape so any
+        # client that checks that exact message keeps working.
+        if errs and errs[0].get("type") == "json_invalid":
+            return JsonResponse({"error": "Invalid JSON"}, status=400)
+        # Error path only: parse once for log enrichment. Happy path skips this.
         try:
-            unity_payload = UnityIngestPayload.model_validate(body)
-        except ValidationError as exc:
-            _log_run_ingest_event(
-                logging.WARNING,
-                "run_ingest_validation_failed",
-                student_id=body.get("userID"),
-                errors=exc.errors(),
-            )
-            return JsonResponse(
-                {"error": "Validation failed", "details": exc.errors()},
-                status=400,
-            )
-        if not Student.objects.filter(pk=unity_payload.userID).exists():
+            body_for_log = json.loads(raw_body)
+            if not isinstance(body_for_log, dict):
+                body_for_log = {}
+        except (json.JSONDecodeError, ValueError):
+            body_for_log = {}
+        _log_run_ingest_event(
+            logging.WARNING,
+            "run_ingest_validation_failed",
+            student_id=body_for_log.get("userID") or body_for_log.get("student_id"),
+            run_id=body_for_log.get("run_id"),
+            errors=errs,
+        )
+        return JsonResponse(
+            {"error": "Validation failed", "details": errs},
+            status=400,
+        )
+
+    if isinstance(payload, UnityIngestPayload):
+        if not Student.objects.filter(pk=payload.userID).exists():
             return JsonResponse(
                 {"error": "Validation failed", "details": {"userID": ["Student does not exist"]}},
                 status=400,
             )
-        data = normalize_unity_run_ingestion_payload(unity_payload.model_dump())
+        data = normalize_unity_run_ingestion_payload(payload.model_dump())
     else:
-        try:
-            canonical = CanonicalIngestPayload.model_validate(body)
-        except ValidationError as exc:
-            _log_run_ingest_event(
-                logging.WARNING,
-                "run_ingest_validation_failed",
-                student_id=body.get("student_id"),
-                run_id=body.get("run_id"),
-                errors=exc.errors(),
-            )
-            return JsonResponse(
-                {"error": "Validation failed", "details": exc.errors()},
-                status=400,
-            )
-        if not Student.objects.filter(pk=canonical.student_id).exists():
+        if not Student.objects.filter(pk=payload.student_id).exists():
             return JsonResponse(
                 {"error": "Validation failed", "details": {"student_id": ["Student does not exist"]}},
                 status=400,
             )
-        data = canonical.model_dump()
+        data = payload.model_dump()
 
     run_id = data["run_id"]
 

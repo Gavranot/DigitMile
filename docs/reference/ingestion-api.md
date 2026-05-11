@@ -23,8 +23,7 @@ Root routing is defined in `DigitMilePanel/digitmile/urls.py`.
 | `/panel/api/checkStudentCredentials/` | `POST` | Unity | anonymous throttle | validates student by name + DOB |
 | `/panel/api/checkClassroomKey/` | `POST` | Unity | anonymous throttle | resolves classroom, teacher name, and students |
 | `/panel/api/insertLevelStatistics/` | `POST` | Unity legacy | anonymous throttle | writes `RunStatistics` |
-| `/panel/api/insertRunData/` | `POST` | Unity current | anonymous throttle | writes `Run`, `TurnEvent`, `SpecialTileTrigger` |
-| `/panel/api/runs/ingest/` | `POST` | non-Unity/internal style client | anonymous throttle | idempotent run ingestion |
+| `/panel/api/runs/ingest/` | `POST` | Unity | anonymous throttle | idempotent run ingestion via Redis buffer |
 
 ### Teacher/admin JSON endpoints
 
@@ -134,45 +133,41 @@ Failure behavior:
 - student not found in that classroom -> `404`
 - unexpected error -> `500`
 
-## Current Unity ingestion: `insertRunData/`
+## Unity ingestion: `runs/ingest/`
 
 ### Why it exists
 
-This is the main full-fidelity Unity ingestion path. It persists a run, every turn in that run, and any chained special-tile triggers.
+The single full-fidelity ingestion path. Accepts a Unity-shaped payload, validates it with pydantic-core (`ingest_schemas.py`), pushes the normalized canonical form to a Redis buffer, and returns `202` synchronously. A separate flusher worker (`flush_ingest_buffer` management command) drains the buffer into Postgres in batched transactions, writing `Run` + `TurnEvent` + `SpecialTileTrigger` rows.
+
+The legacy DRF `insertRunData/` endpoint was removed on 2026-05-11 after the Unity client migrated to this endpoint.
 
 ### Input contract
 
-Validated by `UnityRunUploadPayloadSerializer`.
+Validated by `UnityIngestPayload` (in `ingest_schemas.py`). Same payload shape Unity has always sent — no client-side changes required beyond the URL.
 
 Top-level payload:
 
-- `classroomKey`
-- `user`
-- `userID`
-- `run`
+- `classroomKey`, `user`, `userID`, `run`
 
-Nested run payload includes:
+Nested run payload:
 
 - `level`, `score`, `place`, `correct_moves`, `wrong_moves`
 - `runStartedUnixMs`, `runEndedUnixMs`
-- `gameMap.mapTiles`
-- `turns[]`
+- `gameMap.mapTiles`, `turns[]`
 
-Nested turn payload includes:
+Nested turn payload:
 
 - `turnIndex`, `timestampPlayedUnixMs`
-- `chosenCard`, `offeredCards`
-- `wasCorrect`
+- `chosenCard`, `offeredCards`, `wasCorrect`
 - `playerPositionBefore`, `playerPositionAfter`
-- `botPositionsBefore`, `botPositionsAfter`
-- `tileBefore`
+- `botPositionsBefore`, `botPositionsAfter`, `tileBefore`
 - `cardDecisionTimeMs`
 - optional number-choice fields and `specialTileTriggers`
 
-Gameplay meaning clarified by you:
+Gameplay meaning:
 
 - `wasCorrect` means the player selected the correct destination tile for the movement implied by the chosen card
-- number choice appears in levels 5 and 6, and the chosen number becomes the next turn's bag number
+- number choice appears in levels 5 and 6; the chosen number becomes the next turn's bag number
 
 ### Validation rules
 
@@ -180,74 +175,62 @@ Gameplay meaning clarified by you:
 - turn indices must be sequential from `0`
 - chain indices within each turn must be sequential from `0`
 - `wrong_moves` must match count of `wasCorrect == false`
-- `correct_moves` must match turn-level correct count, except the serializer subtracts 1 when `place == 1` because Unity "counts the last turn"
+- `correct_moves` must match turn-level correct count, except the validator subtracts `1` when `place == 1` because Unity "counts the last turn"
+- `chosenNumber == -1` and `numberDecisionTimeMs == -1` are sentinel values normalized to `None`
 
-### Normalization rules before write
+### Normalization before write
 
-Implemented in helper functions near the top of `views.py`.
+`normalize_unity_run_ingestion_payload` (in `run_ingestion.py`) flattens the Unity shape into canonical snake_case before the payload hits Redis. Card normalization (`_normalize_cards_for_ingestion`, `_extract_card_metadata` in `views.py`) runs in the flusher worker at write time:
 
-- `Bug`, `Back`, and `AllBack*` card types are normalized to `Back`
-- if `MoveX` or `Back` card data omits `thenValue`, the backend injects `thenValue=1`
-- card metadata is extracted into `chosen_card_type`, `chosen_card_family`, and `chosen_card_tile_type`
+- `Bug`, `Back`, `AllBack*` card types normalize to `Back`
+- `MoveX`/`Back` cards with missing `thenValue` get `thenValue=1` injected
+- card metadata is extracted into `chosen_card_type`, `chosen_card_family`, `chosen_card_tile_type`
 
 ### Persistence flow
 
-Inside one transaction:
+Two-stage:
 
-1. create `Run`
-2. convert each Unity turn into an unsaved `TurnEvent`
-3. bulk create all `TurnEvent`s
-4. map created rows by `turn_index`
-5. convert special trigger payloads into unsaved `SpecialTileTrigger`s
-6. bulk create all triggers
+1. **Endpoint** (`ingest_router.py` `ingest_run`):
+   - parse + validate Unity payload (Rust JSON parse via `TypeAdapter.validate_json`)
+   - check `Run.id` idempotency against Postgres → return `200` if already exists
+   - check recording-window status against `runEndedUnixMs` → return `409` if closed
+   - `LPUSH` validated canonical payload to `settings.INGEST_BUFFER_REDIS_KEY`
+   - return `202`
+
+2. **Flusher worker** (`python manage.py flush_ingest_buffer`):
+   - pops up to `INGEST_BUFFER_BATCH_SIZE` items per iteration via `LRANGE + LTRIM` pipeline
+   - dedupes within batch and against existing `Run.id`s in Postgres
+   - bulk-creates `Run`, then `TurnEvent`, then `SpecialTileTrigger` in one transaction
+   - on failure, returns items to the queue tail for retry
+
+The flusher is a hard runtime dependency. If it isn't running, runs queue indefinitely in Redis without persisting.
 
 ### Data mapping details that matter
 
+- `Run.id` is deterministic: `run_<sha256_32>` derived from canonical Unity fields via `derive_run_id_from_unity_payload`. Same payload twice → same `run_id` → idempotent retries.
 - `player_won` is derived as `place == 1`
-- `elapsed_ms = runEndedUnixMs - runStartedUnixMs`
-- negative elapsed time is clamped to `0`
-- elapsed times over 2 hours are capped at `7_200_000`
+- `elapsed_ms = clamp_elapsed_ms(runStartedUnixMs, runEndedUnixMs)`: clamped to `[0, 7_200_000]`
 - `game_map` stores `gameMap.mapTiles`
 - `tile_before_type` uses Unity's `tileBefore.tileIndex`, not `tileType`
 - `special_tile_type` uses `specialTile.tileIndex`
-- `target_tile_type` is hard-coded to `0` because the Unity payload does not include it
-- special tile movement delta is taken from Unity trigger payload for `insertRunData/`; canon supplied by you says clown is `-4` and skateboard is `+5`
+- `target_tile_type` is hard-coded to `0` because the Unity payload doesn't include it
+- canon: clown trigger is `-4`, skateboard is `+5`
 
-### Important trust boundary
+### Trust boundary
 
-`insertRunData/` ignores `classroomKey` and `user` after validation. The only student identity actually enforced is `userID`.
+`runs/ingest/` ignores `classroomKey` and `user` after validation. The only enforced student identity is `userID`. The server trusts the client not to mismatch these fields.
 
-That means the server currently trusts the client not to mismatch these fields.
+### Response behavior
 
-### Error behavior
+| Condition | Status | Body |
+| --- | --- | --- |
+| accepted (queued) | `202` | `{"message": "Run accepted", "run_id": "..."}` |
+| duplicate (already persisted) | `200` | `{"message": "Run already ingested", "run_id": "..."}` |
+| validation failure | `400` | `{"error": "Validation failed", "details": [...]}` |
+| malformed JSON | `400` | `{"error": "Invalid JSON"}` |
+| closed recording week | `409` | `{"error": "Statistics recording for this week is closed...", "week_start": "...", "recording_closed_at": "..."}` |
 
-- serializer failure -> `400`
-- database integrity problem -> `409`
-- unexpected error -> `500`
-
-## Alternative ingestion: `runs/ingest/`
-
-### Why it exists
-
-This endpoint is now the preferred canonical ingestion path for Unity and any backend-native client. It preserves the idempotent `run_id` contract while also accepting the full Unity gameplay payload shape.
-
-### Current behavior
-
-- accepts either:
-  - canonical snake_case payloads, or
-  - the same full-fidelity Unity payload shape accepted by `insertRunData/`
-- derives a deterministic `run_id` when the Unity payload omits it
-- returns `200` if the run already exists
-- catches duplicate-key race conditions and also returns `200`
-- persists `place`, `game_map`, normalized card metadata, turns, and special-tile triggers with Unity parity
-- derives `player_won` from `place == 1` when Unity payloads use final place semantics
-- derives elapsed time from `runStartedUnixMs` and `runEndedUnixMs` with the same clamp rules as `insertRunData/`
-- rejects writes for closed reporting weeks with a business error response instead of a generic server error
-- logs structured ingest accept, duplicate/idempotent, and closed-week rejection events
-
-### Practical implication
-
-Future Unity ingestion work should target `/panel/api/runs/ingest/` first. `insertRunData/` remains a legacy compatibility path until the Unity client migration is complete.
+A `202` response does **not** guarantee the row is in Postgres yet — only that the payload is in the Redis buffer. The flusher typically writes within ~50ms but a downstream consumer querying the DB immediately may not see the row.
 
 ## Teacher-scoped CRUD/API endpoints
 

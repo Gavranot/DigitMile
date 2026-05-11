@@ -6,7 +6,7 @@
     "students_per_classroom": 16,
     "weeks": 10,
     "runs_per_student_per_week": 4,
-    "avg_turns_per_run": 6,
+    "avg_turns_per_run": 20,
     "card_mix_profile": "bag_heavy",
     "bag_level_ratio": 0.45,
     "compact_weeks": "1-8",

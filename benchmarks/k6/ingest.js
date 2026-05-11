@@ -36,21 +36,28 @@ export const options = useArrivalRate
     };
 
 
-export default function () {
+export function setup() {
+  // CSRF is bootstrapped once per test (real Unity clients keep the token
+  // across the whole game session; re-fetching per iteration both inflated
+  // observed RPS to the server and confounded the ingest measurement).
+  return { csrf: fetchApiCsrf() };
+}
+
+
+export default function (setupData) {
   const targets = datasetReport.ingest_targets_hot_week || datasetReport.ingest_targets || [];
   if (targets.length === 0) {
     throw new Error("No ingest targets found in DATASET_REPORT");
   }
 
-  const csrf = fetchApiCsrf();
   const response = http.post(
     `${baseUrl()}/panel/api/runs/ingest/`,
     JSON.stringify(buildUnityPayload(randomChoice(targets), datasetReport)),
     {
       headers: benchmarkHeaders(datasetReport, {
         "Content-Type": "application/json",
-        "X-CSRFToken": csrf.csrfToken,
-        Cookie: csrf.cookieHeader,
+        "X-CSRFToken": setupData.csrf.csrfToken,
+        Cookie: setupData.csrf.cookieHeader,
       }),
       tags: {
         traffic_class: "ingest",

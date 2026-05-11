@@ -66,6 +66,7 @@ This is the most important scenario for production readiness. Run it first.
 | `mixed_semester_medium/heavy` | Full-semester scale tests; use after Tier 1 and 2 are understood |
 | `retry_storm_ingest` | Ingest retry and idempotency validation |
 | `ingest_isolation` | Find the ingest throughput ceiling before running national scenarios |
+| `lesson_bell` | Burst-regime scenario: 10s ramp + 60s hold at peak + 30s drain; models classroom synchronisation at end of IT period |
 
 ## National-scale scenarios
 
@@ -78,18 +79,22 @@ quantify the gap so you know what you need to scale to.
 
 DigitMile has an asymmetric traffic profile:
 
-- **Students** only generate ingest traffic — one API call per completed run (~1.3 turns/min per active student).
+- **Students** only generate ingest traffic — exactly one API call per completed Run. No heartbeats, no per-turn submissions, no leaderboard polling.
 - **Teachers** generate all read traffic — dashboard reloads, analytics, turn_insights.
 
-With ~60,000 grade 3–5 pupils in North Macedonia and 93% attendance in one weekly IT lesson:
+**Canonical formula reference:** `docs/research/ingest-capacity-model.md`. Open that doc to change input parameters (adoption, attendance, mean turns, wall-time per turn, clustering, burst window) and recalculate every downstream metric. The summary below is a copy of its §7 base scenarios for quick reference.
 
-| Adoption | Peak concurrent students | Ingest RPS | Peak concurrent teachers | Dashboard RPS |
-|----------|--------------------------|------------|--------------------------|---------------|
-| Medium 50% | ~1,580 | **~35** | ~80 | ~2 |
-| High 75% | ~2,370 | **~52** | ~120 | ~3 |
+| Adoption | Peak concurrent students (CCU) | Steady ingest RPS | Lesson-bell burst RPS (60s) | Peak concurrent teachers | Dashboard RPS |
+|----------|--------------------------------|-------------------|------------------------------|--------------------------|---------------|
+| Medium 50% | ~4,243 | **~11** | **~29** | ~80 | ~2 |
+| High 75%   | ~6,365 | **~16** | **~44** | ~120 | ~3 |
 
-The ingest RPS figure dominates. At 35–52 RPS with 3 Gunicorn workers you need to know
-the ingest endpoint's per-call cost first. Run `ingest_isolation` before these scenarios.
+Two distinct load regimes matter:
+
+1. **Steady-state** (`national_medium` / `national_high`) — sustained ~11–16 RPS over the busy 10–15 min window. Each ingest carries a full Run payload (~15.5 KB with `T=20`), so per-request CPU is the binding cost, not RPS.
+2. **Lesson-bell burst** (`lesson_bell`) — ~29–44 RPS for ~60 s as classrooms finish their final Run before the bell. The Redis write buffer absorbs the spike; PG never sees the peak directly. Stage profile is 10 s ramp + 60 s hold + 30 s drain; bump `ingest_rate_per_sec` from 29 → 44 for the high-adoption variant.
+
+Run `ingest_isolation` before either set to find the raw ingest ceiling on the current hardware.
 
 ### Run order for national scenarios
 

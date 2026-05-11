@@ -178,82 +178,182 @@ function benchmarkRunId(startedAt) {
 }
 
 
-export function buildUnityPayload(target, datasetReport) {
+// Per-level turn-count distribution. Mirrors LEVEL_TURN_DISTRIBUTION in
+// DigitMilePanel/digitmileapi/management/commands/prepare_benchmark_dataset.py
+// so synthetic payloads match seeded data shape.  Anchored on
+// docs/research/ingest-capacity-model.md §2.3 (T = 20, bracket means 18/20/22).
+export const LEVEL_TURN_DISTRIBUTION = {
+  1: { mean: 17, std: 2.0, min: 12, max: 22 },
+  2: { mean: 19, std: 2.0, min: 12, max: 23 },
+  3: { mean: 19, std: 2.5, min: 12, max: 24 },
+  4: { mean: 21, std: 2.5, min: 12, max: 25 },
+  5: { mean: 21, std: 3.0, min: 12, max: 27 },
+  6: { mean: 23, std: 3.0, min: 12, max: 28 },
+};
+
+
+function sampleGaussian(mean, std) {
+  // Box-Muller. Guard Math.random()==0 producing -Infinity.
+  const u1 = Math.max(Math.random(), 1e-12);
+  const u2 = Math.random();
+  return mean + std * Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+}
+
+
+export function sampleTurnCount(level, scale) {
+  const profile = LEVEL_TURN_DISTRIBUTION[level] || LEVEL_TURN_DISTRIBUTION[1];
+  const turnScale = scale == null ? 1.0 : scale;
+  const mean = profile.mean * turnScale;
+  const std = Math.max(0.5, profile.std * turnScale);
+  const floor = Math.max(2, Math.round(profile.min * turnScale));
+  const ceiling = Math.max(floor, Math.round(profile.max * turnScale));
+  const sample = sampleGaussian(mean, std);
+  return Math.max(floor, Math.min(ceiling, Math.round(sample)));
+}
+
+
+export function pickLevel(bagLevelRatio) {
+  const ratio = bagLevelRatio == null ? 0.35 : bagLevelRatio;
+  if (Math.random() < ratio) {
+    return Math.random() < 0.5 ? 5 : 6;
+  }
+  return [1, 2, 3, 4][Math.floor(Math.random() * 4)];
+}
+
+
+const CARD_TEMPLATES = [
+  { type: "MoveX", data: "[CardData: tileType=, ifSign=, ifValue=, thenValue=2, elseValue=]" },
+  { type: "IfXMoveYElseMoveZ", data: "[CardData: tileType=1, ifSign=, ifValue=, thenValue=2, elseValue=1]" },
+  { type: "Back", data: "[CardData: tileType=, ifSign=, ifValue=, thenValue=2, elseValue=]" },
+  { type: "ForXMoveY", data: "[CardData: tileType=1, ifSign=, ifValue=, thenValue=2, elseValue=]" },
+];
+const BAG_CARD_TEMPLATES = [
+  { type: "IfBagEqualXMoveYElseMoveZ", data: "[CardData: tileType=, ifSign===, ifValue=3, thenValue=2, elseValue=1]" },
+  { type: "IfBagLessXMoveYElseMoveZ", data: "[CardData: tileType=, ifSign=<, ifValue=4, thenValue=3, elseValue=1]" },
+  { type: "BagCount", data: "[CardData: tileType=, ifSign=, ifValue=, thenValue=, elseValue=]" },
+];
+
+const MAP_TILES = [
+  { tileMapIndex: 0, tileIndex: 0, tileType: 0, special: "normal", special_delta: 0 },
+  { tileMapIndex: 1, tileIndex: 1, tileType: 1, special: "normal", special_delta: 0 },
+  { tileMapIndex: 2, tileIndex: 4, tileType: 4, special: "clown", special_delta: -4 },
+  { tileMapIndex: 3, tileIndex: 5, tileType: 5, special: "skateboard", special_delta: 5 },
+];
+
+
+function buildTurn(turnIndex, level, prevPos, timestampMs, isCorrect, specialChance) {
+  const pool = level >= 5 ? CARD_TEMPLATES.concat(BAG_CARD_TEMPLATES) : CARD_TEMPLATES;
+  const chosen = pool[Math.floor(Math.random() * pool.length)];
+  const offered = [{ type: chosen.type, data: chosen.data }];
+  while (offered.length < 3) {
+    const next = pool[Math.floor(Math.random() * pool.length)];
+    offered.push({ type: next.type, data: next.data });
+  }
+
+  const movement = isCorrect ? 1 + Math.floor(Math.random() * 3) : 1;
+  const newPos = (prevPos + movement) % 60;
+  const placeBefore = 1 + Math.floor(Math.random() * 3);
+  const placeAfter = Math.max(1, Math.min(4, placeBefore + (isCorrect ? -1 : 1)));
+
+  const tileBefore = MAP_TILES[prevPos % MAP_TILES.length];
+  const turn = {
+    turnIndex,
+    timestampPlayedUnixMs: timestampMs,
+    chosenCard: { type: chosen.type, data: chosen.data },
+    wasCorrect: isCorrect,
+    offeredCards: offered,
+    playerPositionBefore: { placeRelativeToBots: placeBefore, tileMapIndex: prevPos % MAP_TILES.length },
+    playerPositionAfter: { placeRelativeToBots: placeAfter, tileMapIndex: newPos % MAP_TILES.length },
+    botPositionsBefore: [],
+    botPositionsAfter: [],
+    tileBefore,
+    cardDecisionTimeMs: 800 + Math.floor(Math.random() * 1800),
+    offeredNumbers: level >= 5 ? [1 + Math.floor(Math.random() * 5), 1 + Math.floor(Math.random() * 5), 1 + Math.floor(Math.random() * 5)] : [],
+    chosenNumber: level >= 5 ? 1 + Math.floor(Math.random() * 5) : -1,
+    numberDecisionTimeMs: level >= 5 ? 400 + Math.floor(Math.random() * 1500) : -1,
+    specialTileTriggers: [],
+  };
+
+  if (Math.random() < specialChance) {
+    const delta = Math.random() < 0.5 ? -4 : 5;
+    const targetPos = Math.max(0, (newPos + delta + 60) % 60);
+    turn.specialTileTriggers.push({
+      chainIndex: 0,
+      specialTile: delta < 0 ? MAP_TILES[2] : MAP_TILES[3],
+      positionOnSpecialTile: { placeRelativeToBots: placeAfter, tileMapIndex: newPos % MAP_TILES.length },
+      effectDeltaTiles: delta,
+      positionAfterEffect: { placeRelativeToBots: Math.max(1, Math.min(4, placeAfter + (delta < 0 ? 1 : -1))), tileMapIndex: targetPos % MAP_TILES.length },
+    });
+  }
+
+  return { turn, newPos };
+}
+
+
+// buildUnityPayload — generates a schema-valid Unity ingest payload with
+// realistic turn count and level mix.
+//
+// Options (all optional, fall through to env vars):
+//   level                 fixed level 1..6 (env: INGEST_FIXED_LEVEL — 0 = sample)
+//   turnScale             scales per-level mean/std/min/max uniformly
+//                         (env: INGEST_TURN_SCALE, default 1.0)
+//   bagLevelRatio         P(level ∈ {5,6}) for level sampling
+//                         (env: INGEST_BAG_LEVEL_RATIO, default 0.35)
+//   specialChance         per-turn probability of a SpecialTileTrigger
+//                         (env: INGEST_SPECIAL_TILE_CHANCE, default 0.05)
+//   correctChance         per-turn probability of wasCorrect=true
+//                         (env: INGEST_CORRECT_CHANCE, default 0.72)
+export function buildUnityPayload(target, datasetReport, options) {
+  const opts = options || {};
+  const turnScale = opts.turnScale != null ? opts.turnScale : envFloat("INGEST_TURN_SCALE", 1.0);
+  const bagLevelRatio = opts.bagLevelRatio != null ? opts.bagLevelRatio : envFloat("INGEST_BAG_LEVEL_RATIO", 0.35);
+  const specialChance = opts.specialChance != null ? opts.specialChance : envFloat("INGEST_SPECIAL_TILE_CHANCE", 0.05);
+  const correctChance = opts.correctChance != null ? opts.correctChance : envFloat("INGEST_CORRECT_CHANCE", 0.72);
+  const forcedLevel = opts.level != null ? opts.level : envInt("INGEST_FIXED_LEVEL", 0);
+  const level = forcedLevel > 0 ? forcedLevel : pickLevel(bagLevelRatio);
+  const turnCount = sampleTurnCount(level, turnScale);
+
   const window = pickSyntheticRunWindow(datasetReport);
   const runId = benchmarkRunId(window.startedAt);
+
+  const spanMs = Math.max(turnCount * 1000, window.finishedAt - window.startedAt - 1000);
+  const turnInterval = Math.max(500, Math.floor(spanMs / turnCount));
+
+  let pos = 0;
+  let timestamp = window.startedAt + 1000;
+  let correctFromTurns = 0;
+  const turns = [];
+  for (let i = 0; i < turnCount; i++) {
+    const isCorrect = Math.random() < correctChance;
+    if (isCorrect) correctFromTurns += 1;
+    const built = buildTurn(i, level, pos, timestamp, isCorrect, specialChance);
+    turns.push(built.turn);
+    pos = built.newPos;
+    timestamp += turnInterval;
+  }
+
+  // place == 1 (won) → validator expects correct_moves = correctFromTurns + 1.
+  // wrong_moves = turnCount - correctFromTurns.
+  const place = 1;
+  const correctMoves = correctFromTurns + 1;
+  const wrongMoves = turnCount - correctFromTurns;
+  const score = 100 + correctFromTurns * 20;
+
   return {
     classroomKey: target.classroom_key,
     user: target.student_name,
     userID: target.student_id,
     run: {
       runId,
-      level: 5,
-      score: 140,
-      place: 1,
-      correct_moves: 2,
-      wrong_moves: 1,
+      level,
+      score,
+      place,
+      correct_moves: correctMoves,
+      wrong_moves: wrongMoves,
       runStartedUnixMs: window.startedAt,
-      runEndedUnixMs: window.finishedAt,
-      gameMap: {
-        mapTiles: [
-          { tileMapIndex: 0, tileIndex: 0, tileType: 0, special: "normal", special_delta: 0 },
-          { tileMapIndex: 1, tileIndex: 1, tileType: 1, special: "normal", special_delta: 0 },
-          { tileMapIndex: 2, tileIndex: 4, tileType: 4, special: "clown", special_delta: -4 },
-          { tileMapIndex: 3, tileIndex: 5, tileType: 5, special: "skateboard", special_delta: 5 },
-        ],
-      },
-      turns: [
-        {
-          runId,
-          turnIndex: 0,
-          timestampPlayedUnixMs: window.startedAt + 1000,
-          chosenCard: { type: "MoveX", data: "[CardData: tileType=, ifSign=, ifValue=, thenValue=1, elseValue=]" },
-          wasCorrect: true,
-          offeredCards: [
-            { type: "MoveX", data: "[CardData: tileType=, ifSign=, ifValue=, thenValue=1, elseValue=]" },
-            { type: "IfXMoveYElseMoveZ", data: "[CardData: tileType=1, ifSign=, ifValue=, thenValue=2, elseValue=1]" },
-          ],
-          playerPositionBefore: { placeRelativeToBots: 2, tileMapIndex: 0 },
-          playerPositionAfter: { placeRelativeToBots: 1, tileMapIndex: 1 },
-          botPositionsBefore: [],
-          botPositionsAfter: [],
-          tileBefore: { tileMapIndex: 0, tileIndex: 0, tileType: 0, special: "normal", special_delta: 0 },
-          cardDecisionTimeMs: 1200,
-          offeredNumbers: [2, 3, 4],
-          chosenNumber: 3,
-          numberDecisionTimeMs: 600,
-          specialTileTriggers: [],
-        },
-        {
-          runId,
-          turnIndex: 1,
-          timestampPlayedUnixMs: window.startedAt + 2500,
-          chosenCard: { type: "Back", data: "[CardData: tileType=, ifSign=, ifValue=, thenValue=2, elseValue=]" },
-          wasCorrect: false,
-          offeredCards: [
-            { type: "Back", data: "[CardData: tileType=, ifSign=, ifValue=, thenValue=2, elseValue=]" },
-            { type: "BagCount", data: "[CardData: tileType=, ifSign=, ifValue=, thenValue=, elseValue=]" },
-          ],
-          playerPositionBefore: { placeRelativeToBots: 1, tileMapIndex: 1 },
-          playerPositionAfter: { placeRelativeToBots: 2, tileMapIndex: 2 },
-          botPositionsBefore: [],
-          botPositionsAfter: [],
-          tileBefore: { tileMapIndex: 1, tileIndex: 1, tileType: 1, special: "normal", special_delta: 0 },
-          cardDecisionTimeMs: 1500,
-          offeredNumbers: [1, 3, 5],
-          chosenNumber: 5,
-          numberDecisionTimeMs: 900,
-          specialTileTriggers: [
-            {
-              chainIndex: 0,
-              specialTile: { tileMapIndex: 2, tileIndex: 4, tileType: 4, special: "clown", special_delta: -4 },
-              positionOnSpecialTile: { placeRelativeToBots: 2, tileMapIndex: 2 },
-              effectDeltaTiles: -4,
-              positionAfterEffect: { placeRelativeToBots: 3, tileMapIndex: 0 },
-            },
-          ],
-        },
-      ],
+      runEndedUnixMs: Math.max(window.finishedAt, timestamp + 500),
+      gameMap: { mapTiles: MAP_TILES },
+      turns,
     },
   };
 }

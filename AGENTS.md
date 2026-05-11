@@ -290,8 +290,7 @@ Important endpoints:
 - `/panel/api/checkStudentCredentials/`
 - `/panel/api/checkClassroomKey/`
 - `/panel/api/insertLevelStatistics/` (legacy)
-- `/panel/api/insertRunData/` (legacy compatibility)
-- `/panel/api/runs/ingest/` (canonical current ingest path)
+- `/panel/api/runs/ingest/` (Unity ingest path)
 - `/panel/api/pending-registrations/`
 - `/panel/api/approve-school/<school_id>/`
 - `/panel/api/reject-school/<school_id>/`
@@ -311,26 +310,26 @@ Important endpoints:
 
 ## 10. Ingestion architecture
 
-### Canonical ingest endpoint
+### Unity ingest endpoint
 
-Use `/panel/api/runs/ingest/` as the preferred current ingestion path.
+`/panel/api/runs/ingest/` is the sole full-fidelity run ingestion path. Implemented in `ingest_router.py` with Ninja + pydantic (Rust-core validation).
 
-Implemented behavior:
+Behavior:
 
-- accepts canonical snake_case payloads
-- also accepts Unity-style full gameplay payloads
-- normalizes into `Run`, `TurnEvent`, and `SpecialTileTrigger`
-- preserves idempotent `run_id` behavior
-- can derive a deterministic `run_id` when Unity payloads do not provide one
-- preserves replay-critical fields such as `place`, `game_map`, and turn metadata
-- returns safe duplicate/idempotent success on retries
+- accepts the Unity-shaped payload (camelCase, nested) — same shape Unity has always sent
+- validates with `UnityIngestPayload` / `CanonicalIngestPayload` (union, single Rust JSON pass)
+- normalizes via `normalize_unity_run_ingestion_payload` to canonical snake_case
+- derives a deterministic `Run.id` via SHA-256 of canonical fields → idempotent retries
+- pushes validated canonical payload to a Redis buffer, returns `202` synchronously
+- a separate flusher worker (`python manage.py flush_ingest_buffer`) drains the buffer into Postgres in batched transactions, writing `Run` + `TurnEvent` + `SpecialTileTrigger`
+- the flusher is a **hard runtime dependency** — runs queue indefinitely without it
+- returns `200` on duplicate retries (idempotent), `409` on closed recording weeks, `400` on validation failure
 
 ### Legacy ingest endpoints still present
 
-- `/panel/api/insertRunData/`: older full-fidelity path
-- `/panel/api/insertLevelStatistics/`: legacy coarse summary path
+- `/panel/api/insertLevelStatistics/`: legacy coarse summary path (RunStatistics)
 
-Do not remove or silently change these unless the user asks. Current docs treat them as compatibility paths.
+The previous `/panel/api/insertRunData/` (DRF) endpoint was removed on 2026-05-11 after the Unity client migrated to `/runs/ingest/`. Do not reintroduce it.
 
 ### Recording-window policy
 

@@ -1,6 +1,8 @@
 # Ingest Performance Optimizations
 
-> **Status: NOT YET APPLIED.** The five optimizations below are a plan, not an implemented change. Verified against `models.py` on 2026-04-19: `offered_cards`, `bot_positions_before`, `bot_positions_after`, `chosen_card`, and `game_map` all still exist on their respective models. The Redis write-buffering described in `write-buffering-adr.md` is a separate, already-shipped optimization; it is not one of the five below.
+> **Status: SUPERSEDED (2026-05-11).** Optimizations 1 and 2 targeted `RunIngestionSerializer` / `UnityRunUploadPayloadSerializer` in `serializers.py`, both removed on 2026-05-11 when the Unity client migrated from `insertRunData/` to `runs/ingest/`. The new pydantic-based path in `ingest_router.py` doesn't have the double-validation or double-student-check problem these optimizations addressed. Optimizations 3–5 (schema migrations on `TurnEvent`/`Run` JSONB columns) may still be relevant — re-evaluate against current `models.py` before acting. Original status note preserved below for context.
+
+> **Original status (2026-03-18): NOT YET APPLIED.** The five optimizations below are a plan, not an implemented change. Verified against `models.py` on 2026-04-19: `offered_cards`, `bot_positions_before`, `bot_positions_after`, `chosen_card`, and `game_map` all still exist on their respective models. The Redis write-buffering described in `write-buffering-adr.md` is a separate, already-shipped optimization; it is not one of the five below.
 
 Last updated: 2026-03-18
 

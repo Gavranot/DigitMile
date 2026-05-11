@@ -39,6 +39,7 @@ DigitMile is a Unity WebGL math game served alongside a Django/PostgreSQL backen
 - `weekly-rollup-prd.md`
 - `write-buffering-adr.md`
 - `hardware-sizing.md`
+- `capacity-math-correction.md` — **outdated**, kept for historical context. Initial derivation that motivated the corrected ingest model; superseded by `docs/research/ingest-capacity-model.md` after gameplay testing revised `T` from 27 to 20.
 - `ingest-optimization-plan.md` (pending)
 - `hot-week-load-testing-plan.md` + `hot-week-load-testing-checklist.md`
 - `optimality-metrics-proposal.md` (proposed)
@@ -48,7 +49,8 @@ DigitMile is a Unity WebGL math game served alongside a Django/PostgreSQL backen
 ### …looking at research / thesis context
 `docs/research/` — the thesis-scope inputs:
 - `voved.md` — Macedonian introduction to the platform.
-- `north-macedonia-weekly-load-estimate.md` — load-model study that underpins the benchmark scenarios.
+- `north-macedonia-weekly-load-estimate.md` — population baseline and original load-model study (note: RPS sections are pre-correction; see below).
+- `ingest-capacity-model.md` — **definitive** CCU/RPS formula reference with correct per-run ingest model. Self-service: change any input parameter, recalculate all metrics. Maps directly to k6 benchmark parameters.
 
 ## Navigating the folder
 
