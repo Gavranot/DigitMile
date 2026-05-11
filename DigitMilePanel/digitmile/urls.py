@@ -23,9 +23,9 @@ from digitmileapi import views as api_views
 from ninja import NinjaAPI
 from digitmileapi.ingest_router import router as ingest_router
 
-# Ninja API for the ingest endpoint — replaces the DRF RunIngestionView.
-# Mounted at panel/api/ alongside the DRF routes; Django falls through to here
-# for any path DRF doesn't claim (currently only runs/ingest/).
+# Ninja API for the ingest endpoint. Mounted at panel/api/ alongside the DRF
+# routes; Django falls through here for any path DRF doesn't claim (currently
+# only runs/ingest/).
 _ingest_api = NinjaAPI(auth=None, urls_namespace="ingest_api")
 _ingest_api.add_router("/", ingest_router)
 

@@ -2,6 +2,7 @@ import json
 import logging
 import random
 import uuid
+from contextlib import contextmanager
 from datetime import datetime, time, timedelta
 from io import StringIO
 from pathlib import Path
@@ -10,8 +11,25 @@ from time import perf_counter
 from django.contrib.auth.models import Group, User
 from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
+from django.db import transaction
 from django.db.models import Sum
 from django.utils import timezone
+
+
+@contextmanager
+def _ignore_auto_timestamps(*fields):
+    """Temporarily disable auto_now / auto_now_add so explicit timestamps
+    pass through bulk_create unchanged."""
+    saved = [(field, field.auto_now, field.auto_now_add) for field in fields]
+    try:
+        for field in fields:
+            field.auto_now = False
+            field.auto_now_add = False
+        yield
+    finally:
+        for field, auto_now, auto_now_add in saved:
+            field.auto_now = auto_now
+            field.auto_now_add = auto_now_add
 
 from digitmileapi.models import (
     Classroom,
@@ -57,6 +75,26 @@ CARD_FAMILY_BY_TYPE = {
     "ForXMoveY": "foreach_tile",
     "Back": "back",
 }
+# Per-level turn-count distribution anchored on docs/research/ingest-capacity-model.md §2.3.
+# Sampled as a truncated normal: gauss(mean, std) clipped to [min, max]. Means follow
+# the bracket targets L1-2 → 18, L3-4 → 20, L5-6 → 22 (grand mean across levels = 20.0,
+# matching `T = 20` in the model doc). Std widens slightly with level to reflect more
+# RNG-driven variance (bag mechanic, back-card frequency) on later levels. Floor at 12
+# is the structural minimum from game mechanics; ceiling absorbs the observed edge.
+# `--avg-turns-per-run` is interpreted as the target grand mean: per-level mean and std
+# are scaled by (avg-turns-per-run / 20) so the weighted mean across levels matches the
+# flag. Passing 20 reproduces the table verbatim.
+LEVEL_TURN_DISTRIBUTION = {
+    1: {"mean": 17, "std": 2.0, "min": 12, "max": 22},
+    2: {"mean": 19, "std": 2.0, "min": 12, "max": 23},
+    3: {"mean": 19, "std": 2.5, "min": 12, "max": 24},
+    4: {"mean": 21, "std": 2.5, "min": 12, "max": 25},
+    5: {"mean": 21, "std": 3.0, "min": 12, "max": 27},
+    6: {"mean": 23, "std": 3.0, "min": 12, "max": 28},
+}
+LEVEL_TURN_BASELINE_MEAN = sum(
+    profile["mean"] for profile in LEVEL_TURN_DISTRIBUTION.values()
+) / len(LEVEL_TURN_DISTRIBUTION)  # 20.0
 CARD_MIX_PROFILES = {
     "balanced": [
         ("MoveX", 0.34),
@@ -150,6 +188,7 @@ class Command(BaseCommand):
         self.rng = random.Random(options["seed"])
         self.card_mix_profile = options["card_mix_profile"]
         self.avg_turns_per_run = max(1, options["avg_turns_per_run"])
+        self.turn_scale = self.avg_turns_per_run / LEVEL_TURN_BASELINE_MEAN
         self.bag_level_ratio = options["bag_level_ratio"]
         self.game_map = self._build_game_map()
         self.tile_type_by_index = {
@@ -233,6 +272,12 @@ class Command(BaseCommand):
             uncompressed=Sum("uncompressed_size_bytes"),
         )
 
+        classroom_ids_by_teacher = {}
+        for classroom in classrooms:
+            classroom_ids_by_teacher.setdefault(classroom.teacher_id, []).append(
+                classroom.id
+            )
+
         report = {
             "seed": options["seed"],
             "anchor_week_start": self.anchor_week_start.isoformat(),
@@ -246,11 +291,7 @@ class Command(BaseCommand):
                     "teacher_id": teacher.id,
                     "username": teacher.user.username if teacher.user else "",
                     "email": teacher.email,
-                    "classroom_ids": list(
-                        Classroom.objects.filter(teacher=teacher).values_list(
-                            "id", flat=True
-                        )
-                    ),
+                    "classroom_ids": classroom_ids_by_teacher.get(teacher.id, []),
                 }
                 for teacher in teachers
             ],
@@ -463,16 +504,16 @@ class Command(BaseCommand):
         return classrooms
 
     def _create_students(self, classrooms, students_per_classroom):
-        students = []
-        for classroom in classrooms:
-            for index in range(students_per_classroom):
-                students.append(
-                    Student.objects.create(
-                        full_name=f"Benchmark Student {classroom.classroom_name} {index + 1}",
-                        grade=classroom.grade,
-                        classroom=classroom,
-                    )
-                )
+        students = [
+            Student(
+                full_name=f"Benchmark Student {classroom.classroom_name} {index + 1}",
+                grade=classroom.grade,
+                classroom=classroom,
+            )
+            for classroom in classrooms
+            for index in range(students_per_classroom)
+        ]
+        Student.objects.bulk_create(students, batch_size=500)
         return students
 
     def _week_starts(self, week_count):
@@ -651,6 +692,15 @@ class Command(BaseCommand):
             return self.rng.choice([5, 6])
         return self.rng.choice([1, 2, 3, 4])
 
+    def _sample_turn_count(self, level):
+        profile = LEVEL_TURN_DISTRIBUTION.get(level, LEVEL_TURN_DISTRIBUTION[1])
+        mean = profile["mean"] * self.turn_scale
+        std = max(0.5, profile["std"] * self.turn_scale)
+        floor = max(2, int(round(profile["min"] * self.turn_scale)))
+        ceiling = max(floor, int(round(profile["max"] * self.turn_scale)))
+        sample = self.rng.gauss(mean, std)
+        return max(floor, min(ceiling, int(round(sample))))
+
     def _generate_runs(
         self, students, week_starts, hot_week_starts, runs_per_student_per_week
     ):
@@ -674,6 +724,30 @@ class Command(BaseCommand):
         )
         progress_interval = max(250, total_runs_expected // 20 or 1)
 
+        run_buffer = []
+        turn_buffer = []
+        trigger_buffer = []
+        run_flush_size = 500
+        run_created_at_field = Run._meta.get_field("created_at")
+        run_updated_at_field = Run._meta.get_field("updated_at")
+
+        def flush():
+            if not run_buffer:
+                return
+            with _ignore_auto_timestamps(
+                run_created_at_field, run_updated_at_field
+            ):
+                Run.objects.bulk_create(run_buffer, batch_size=run_flush_size)
+            if turn_buffer:
+                TurnEvent.objects.bulk_create(turn_buffer, batch_size=1000)
+            if trigger_buffer:
+                SpecialTileTrigger.objects.bulk_create(
+                    trigger_buffer, batch_size=1000
+                )
+            run_buffer.clear()
+            turn_buffer.clear()
+            trigger_buffer.clear()
+
         self._log_progress(
             "benchmark_dataset_run_generation_start",
             student_count=total_students,
@@ -681,6 +755,7 @@ class Command(BaseCommand):
             runs_per_student_per_week=runs_per_student_per_week,
             expected_runs=total_runs_expected,
             progress_interval=progress_interval,
+            run_flush_size=run_flush_size,
         )
 
         for student in students:
@@ -706,216 +781,226 @@ class Command(BaseCommand):
                 )
                 dashboard_filter_ids.add(student.classroom.id)
 
-        for student_index, student in enumerate(students, start=1):
-            for week_start in week_starts:
-                for _ in range(runs_per_student_per_week):
-                    level = self._run_level()
-                    created_at = timezone.make_aware(
-                        datetime.combine(
-                            week_start + timedelta(days=self.rng.randint(0, 4)),
-                            time(
-                                hour=8 + self.rng.randint(0, 8),
-                                minute=self.rng.randint(0, 59),
-                            ),
-                        ),
-                        timezone.get_current_timezone(),
-                    )
-                    turn_total = max(
-                        2, self.avg_turns_per_run + self.rng.randint(-1, 2)
-                    )
-                    player_position = 0
-                    bag_number = 1
-                    bot_positions = [2, 3]
-                    correct_moves = 0
-                    wrong_moves = 0
-                    run = Run.objects.create(
-                        id=f"run_{uuid.uuid4().hex[:32]}",
-                        student=student,
-                        level=level,
-                        player_won=False,
-                        score=0,
-                        place=4,
-                        elapsed_ms=0,
-                        correct_moves=0,
-                        wrong_moves=0,
-                        game_map=self.game_map,
-                    )
-                    Run.objects.filter(id=run.id).update(
-                        created_at=created_at, updated_at=created_at
-                    )
-
-                    turn_timestamp = created_at
-                    for turn_index in range(turn_total):
-                        tile_before_type = self.tile_type_by_index.get(
-                            player_position, 0
-                        )
-                        card_type = self._weighted_card_type(level)
-                        card = self._build_card(card_type, tile_before_type, bag_number)
-                        was_correct = self.rng.random() < 0.72
-                        movement = (
-                            card["movement"]
-                            if was_correct
-                            else max(1, abs(card["movement"]) - 1)
-                        )
-                        movement = movement if card["movement"] >= 0 else -movement
-                        tile_after_index = max(0, min(11, player_position + movement))
-                        card_decision_time_ms = self.rng.randint(800, 4000)
-                        offered_numbers = []
-                        chosen_number = None
-                        number_decision_time_ms = None
-                        if level >= 5:
-                            offered_numbers = self.rng.sample([1, 2, 3, 4, 5], 3)
-                            chosen_number = self.rng.choice(offered_numbers)
-                            number_decision_time_ms = self.rng.randint(400, 2500)
-                            bag_number = chosen_number
-
-                        bot_positions_before = [
-                            {"tileMapIndex": value, "botID": f"bot_{index + 1}"}
-                            for index, value in enumerate(bot_positions)
-                        ]
-                        bot_positions = [
-                            max(0, min(11, value + self.rng.choice([0, 1, 1, 2])))
-                            for value in bot_positions
-                        ]
-                        bot_positions_after = [
-                            {"tileMapIndex": value, "botID": f"bot_{index + 1}"}
-                            for index, value in enumerate(bot_positions)
-                        ]
-                        place_before = 1 + sum(
-                            value > player_position for value in bot_positions
-                        )
-                        place_after = 1 + sum(
-                            value > tile_after_index for value in bot_positions
-                        )
-                        turn = TurnEvent.objects.create(
-                            run=run,
-                            turn_index=turn_index,
-                            timestamp_played=turn_timestamp,
-                            chosen_card={"type": card["type"], "data": card["data"]},
-                            chosen_card_type=card["type"],
-                            chosen_card_family=CARD_FAMILY_BY_TYPE[card["type"]],
-                            chosen_card_tile_type=card["tile_type"],
-                            offered_cards=self._offered_cards(
-                                level, tile_before_type, bag_number, card
-                            ),
-                            was_correct=was_correct,
-                            tile_before_index=player_position,
-                            tile_before_type=tile_before_type,
-                            tile_after_index=tile_after_index,
-                            place_before=place_before,
-                            place_after=place_after,
-                            bot_positions_before=bot_positions_before,
-                            bot_positions_after=bot_positions_after,
-                            card_decision_time_ms=card_decision_time_ms,
-                            offered_numbers=offered_numbers,
-                            chosen_number=chosen_number,
-                            number_decision_time_ms=number_decision_time_ms,
-                        )
-                        turn_count += 1
-                        correct_moves += 1 if was_correct else 0
-                        wrong_moves += 0 if was_correct else 1
-
-                        tile_after_type = self.tile_type_by_index.get(
-                            tile_after_index, 0
-                        )
-                        special_delta = {4: -4, 5: 5}.get(tile_after_type)
-                        if special_delta is not None:
-                            target_tile_index = max(
-                                0, min(11, tile_after_index + special_delta)
-                            )
-                            SpecialTileTrigger.objects.create(
-                                turn=turn,
-                                chain_index=0,
-                                special_tile_index=tile_after_index,
-                                special_tile_type=tile_after_type,
-                                effect_delta_tiles=special_delta,
-                                target_tile_index=target_tile_index,
-                                target_tile_type=self.tile_type_by_index.get(
-                                    target_tile_index, 0
+        with transaction.atomic():
+            for student_index, student in enumerate(students, start=1):
+                for week_start in week_starts:
+                    for _ in range(runs_per_student_per_week):
+                        level = self._run_level()
+                        created_at = timezone.make_aware(
+                            datetime.combine(
+                                week_start + timedelta(days=self.rng.randint(0, 4)),
+                                time(
+                                    hour=8 + self.rng.randint(0, 8),
+                                    minute=self.rng.randint(0, 59),
                                 ),
-                                place_before=place_after,
-                                place_after=1
-                                + sum(
-                                    value > target_tile_index for value in bot_positions
-                                ),
+                            ),
+                            timezone.get_current_timezone(),
+                        )
+                        turn_total = self._sample_turn_count(level)
+                        player_position = 0
+                        bag_number = 1
+                        bot_positions = [2, 3]
+                        correct_moves = 0
+                        wrong_moves = 0
+                        run_id = f"run_{uuid.uuid4().hex[:32]}"
+
+                        turn_timestamp = created_at
+                        for turn_index in range(turn_total):
+                            tile_before_type = self.tile_type_by_index.get(
+                                player_position, 0
                             )
-                            trigger_count += 1
-                            player_position = target_tile_index
-                        else:
-                            player_position = tile_after_index
+                            card_type = self._weighted_card_type(level)
+                            card = self._build_card(
+                                card_type, tile_before_type, bag_number
+                            )
+                            was_correct = self.rng.random() < 0.72
+                            movement = (
+                                card["movement"]
+                                if was_correct
+                                else max(1, abs(card["movement"]) - 1)
+                            )
+                            movement = movement if card["movement"] >= 0 else -movement
+                            tile_after_index = max(
+                                0, min(11, player_position + movement)
+                            )
+                            card_decision_time_ms = self.rng.randint(800, 4000)
+                            offered_numbers = []
+                            chosen_number = None
+                            number_decision_time_ms = None
+                            if level >= 5:
+                                offered_numbers = self.rng.sample([1, 2, 3, 4, 5], 3)
+                                chosen_number = self.rng.choice(offered_numbers)
+                                number_decision_time_ms = self.rng.randint(400, 2500)
+                                bag_number = chosen_number
 
-                        turn_timestamp += timedelta(
-                            milliseconds=card_decision_time_ms
-                            + (number_decision_time_ms or 0)
+                            bot_positions_before = [
+                                {"tileMapIndex": value, "botID": f"bot_{index + 1}"}
+                                for index, value in enumerate(bot_positions)
+                            ]
+                            bot_positions = [
+                                max(0, min(11, value + self.rng.choice([0, 1, 1, 2])))
+                                for value in bot_positions
+                            ]
+                            bot_positions_after = [
+                                {"tileMapIndex": value, "botID": f"bot_{index + 1}"}
+                                for index, value in enumerate(bot_positions)
+                            ]
+                            place_before = 1 + sum(
+                                value > player_position for value in bot_positions
+                            )
+                            place_after = 1 + sum(
+                                value > tile_after_index for value in bot_positions
+                            )
+                            turn = TurnEvent(
+                                run_id=run_id,
+                                turn_index=turn_index,
+                                timestamp_played=turn_timestamp,
+                                chosen_card={
+                                    "type": card["type"],
+                                    "data": card["data"],
+                                },
+                                chosen_card_type=card["type"],
+                                chosen_card_family=CARD_FAMILY_BY_TYPE[card["type"]],
+                                chosen_card_tile_type=card["tile_type"],
+                                offered_cards=self._offered_cards(
+                                    level, tile_before_type, bag_number, card
+                                ),
+                                was_correct=was_correct,
+                                tile_before_index=player_position,
+                                tile_before_type=tile_before_type,
+                                tile_after_index=tile_after_index,
+                                place_before=place_before,
+                                place_after=place_after,
+                                bot_positions_before=bot_positions_before,
+                                bot_positions_after=bot_positions_after,
+                                card_decision_time_ms=card_decision_time_ms,
+                                offered_numbers=offered_numbers,
+                                chosen_number=chosen_number,
+                                number_decision_time_ms=number_decision_time_ms,
+                            )
+                            turn_buffer.append(turn)
+                            turn_count += 1
+                            correct_moves += 1 if was_correct else 0
+                            wrong_moves += 0 if was_correct else 1
+
+                            tile_after_type = self.tile_type_by_index.get(
+                                tile_after_index, 0
+                            )
+                            special_delta = {4: -4, 5: 5}.get(tile_after_type)
+                            if special_delta is not None:
+                                target_tile_index = max(
+                                    0, min(11, tile_after_index + special_delta)
+                                )
+                                trigger_buffer.append(
+                                    SpecialTileTrigger(
+                                        turn=turn,
+                                        chain_index=0,
+                                        special_tile_index=tile_after_index,
+                                        special_tile_type=tile_after_type,
+                                        effect_delta_tiles=special_delta,
+                                        target_tile_index=target_tile_index,
+                                        target_tile_type=self.tile_type_by_index.get(
+                                            target_tile_index, 0
+                                        ),
+                                        place_before=place_after,
+                                        place_after=1
+                                        + sum(
+                                            value > target_tile_index
+                                            for value in bot_positions
+                                        ),
+                                    )
+                                )
+                                trigger_count += 1
+                                player_position = target_tile_index
+                            else:
+                                player_position = tile_after_index
+
+                            turn_timestamp += timedelta(
+                                milliseconds=card_decision_time_ms
+                                + (number_decision_time_ms or 0)
+                            )
+
+                        player_won = player_position >= 10 or self.rng.random() < 0.4
+                        place = 1 if player_won else self.rng.randint(2, 4)
+                        score = max(
+                            0,
+                            (correct_moves * 25)
+                            - (wrong_moves * 8)
+                            + (180 if player_won else 60),
                         )
-
-                    player_won = player_position >= 10 or self.rng.random() < 0.4
-                    place = 1 if player_won else self.rng.randint(2, 4)
-                    score = max(
-                        0,
-                        (correct_moves * 25)
-                        - (wrong_moves * 8)
-                        + (180 if player_won else 60),
-                    )
-                    elapsed_ms = max(
-                        1000, int((turn_timestamp - created_at).total_seconds() * 1000)
-                    )
-                    Run.objects.filter(id=run.id).update(
-                        player_won=player_won,
-                        place=place,
-                        score=score,
-                        elapsed_ms=elapsed_ms,
-                        correct_moves=correct_moves,
-                        wrong_moves=wrong_moves,
-                    )
-                    run_count += 1
-                    ingest_target = {
-                        "student_id": student.id,
-                        "student_name": student.full_name,
-                        "classroom_key": student.classroom.classroom_key,
-                    }
-                    if student.id not in ingest_target_ids:
-                        ingest_targets.append(ingest_target)
-                        ingest_target_ids.add(student.id)
-                    if (
-                        week_start in hot_week_starts
-                        and student.id not in ingest_target_hot_week_ids
-                    ):
-                        ingest_targets_hot_week.append(ingest_target)
-                        ingest_target_hot_week_ids.add(student.id)
-                    if len(replay_run_ids) < 50:
-                        replay_run_ids.append(run.id)
-                    replay_target = {
-                        "run_id": run.id,
-                        "student_id": student.id,
-                        "week_start": week_start.isoformat(),
-                        "hot": week_start in hot_week_starts,
-                    }
-                    if week_start in hot_week_starts:
-                        if len(replay_targets_hot) < 50:
-                            replay_targets_hot.append(replay_target)
-                    elif len(replay_targets_cold) < 50:
-                        replay_targets_cold.append(replay_target)
-
-                    if run_count % progress_interval == 0:
-                        self._log_progress(
-                            "benchmark_dataset_run_generation_progress",
-                            runs_created=run_count,
-                            expected_runs=total_runs_expected,
-                            turns_created=turn_count,
-                            triggers_created=trigger_count,
-                            current_student_index=student_index,
-                            total_students=total_students,
-                            current_week_start=week_start.isoformat(),
+                        elapsed_ms = max(
+                            1000,
+                            int((turn_timestamp - created_at).total_seconds() * 1000),
                         )
+                        run_buffer.append(
+                            Run(
+                                id=run_id,
+                                student=student,
+                                level=level,
+                                player_won=player_won,
+                                score=score,
+                                place=place,
+                                elapsed_ms=elapsed_ms,
+                                correct_moves=correct_moves,
+                                wrong_moves=wrong_moves,
+                                game_map=self.game_map,
+                                created_at=created_at,
+                                updated_at=created_at,
+                            )
+                        )
+                        run_count += 1
+                        ingest_target = {
+                            "student_id": student.id,
+                            "student_name": student.full_name,
+                            "classroom_key": student.classroom.classroom_key,
+                        }
+                        if student.id not in ingest_target_ids:
+                            ingest_targets.append(ingest_target)
+                            ingest_target_ids.add(student.id)
+                        if (
+                            week_start in hot_week_starts
+                            and student.id not in ingest_target_hot_week_ids
+                        ):
+                            ingest_targets_hot_week.append(ingest_target)
+                            ingest_target_hot_week_ids.add(student.id)
+                        if len(replay_run_ids) < 50:
+                            replay_run_ids.append(run_id)
+                        replay_target = {
+                            "run_id": run_id,
+                            "student_id": student.id,
+                            "week_start": week_start.isoformat(),
+                            "hot": week_start in hot_week_starts,
+                        }
+                        if week_start in hot_week_starts:
+                            if len(replay_targets_hot) < 50:
+                                replay_targets_hot.append(replay_target)
+                        elif len(replay_targets_cold) < 50:
+                            replay_targets_cold.append(replay_target)
 
-            if student_index % max(1, total_students // 10 or 1) == 0:
-                self._log_progress(
-                    "benchmark_dataset_student_progress",
-                    students_processed=student_index,
-                    total_students=total_students,
-                    runs_created=run_count,
-                )
+                        if len(run_buffer) >= run_flush_size:
+                            flush()
+
+                        if run_count % progress_interval == 0:
+                            self._log_progress(
+                                "benchmark_dataset_run_generation_progress",
+                                runs_created=run_count,
+                                expected_runs=total_runs_expected,
+                                turns_created=turn_count,
+                                triggers_created=trigger_count,
+                                current_student_index=student_index,
+                                total_students=total_students,
+                                current_week_start=week_start.isoformat(),
+                            )
+
+                if student_index % max(1, total_students // 10 or 1) == 0:
+                    self._log_progress(
+                        "benchmark_dataset_student_progress",
+                        students_processed=student_index,
+                        total_students=total_students,
+                        runs_created=run_count,
+                    )
+
+            flush()
 
         self._log_progress(
             "benchmark_dataset_run_generation_complete",

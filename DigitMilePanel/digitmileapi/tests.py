@@ -33,7 +33,6 @@ from .models import (
 )
 from .run_ingestion import get_recording_window_status_for_run_finish
 from .run_bucket_trends import get_student_run_bucket_points, rebuild_run_bucket_trends
-from .serializers import RunIngestionSerializer
 from .replay_archives import (
     get_replay_payload_for_run,
     load_archive_payload,
@@ -267,28 +266,6 @@ class RunIngestionTests(TestCase):
             "run_finished_at": datetime(2026, 3, 4, 10, 0, tzinfo=dt_timezone.utc),
         }
 
-    def test_run_ingestion_serializer_accepts_unity_payload(self):
-        payload = self._unity_payload()
-
-        serializer = RunIngestionSerializer(data=payload)
-
-        self.assertTrue(serializer.is_valid(), serializer.errors)
-        validated = serializer.validated_data
-        self.assertEqual(validated["student_id"], self.student.id)
-        self.assertTrue(validated["player_won"])
-        self.assertEqual(validated["place"], 1)
-        self.assertEqual(validated["elapsed_ms"], 45000)
-        self.assertEqual(validated["game_map"], payload["run"]["gameMap"]["mapTiles"])
-        self.assertEqual(validated["turn_events"][0]["chosen_number"], 4)
-        self.assertIsNone(validated["turn_events"][1]["chosen_number"])
-        self.assertIsNone(validated["turn_events"][1]["number_decision_time_ms"])
-
-        second_serializer = RunIngestionSerializer(data=self._unity_payload())
-        self.assertTrue(second_serializer.is_valid(), second_serializer.errors)
-        self.assertEqual(
-            validated["run_id"], second_serializer.validated_data["run_id"]
-        )
-
     @mock.patch(
         "digitmileapi.views.get_recording_window_status_for_run_finish",
     )
@@ -378,125 +355,6 @@ class RunIngestionTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(Run.objects.count(), 0)
-
-    @mock.patch(
-        "digitmileapi.views.get_recording_window_status_for_run_finish",
-    )
-    def test_runs_ingest_matches_insert_run_data_persistence_for_key_fields(
-        self,
-        recording_window_mock,
-    ):
-        recording_window_mock.return_value = self._open_recording_window()
-        payload = self._unity_payload()
-
-        legacy_response = self.client.post(
-            "/panel/api/insertRunData/",
-            payload,
-            format="json",
-        )
-        canonical_response = self.client.post(
-            "/panel/api/runs/ingest/",
-            payload,
-            format="json",
-        )
-
-        self.assertEqual(legacy_response.status_code, 201)
-        self.assertEqual(canonical_response.status_code, 201)
-
-        legacy_run = Run.objects.get(id=legacy_response.data["run_id"])
-        canonical_run = Run.objects.get(id=canonical_response.data["run_id"])
-        self.assertEqual(legacy_run.level, canonical_run.level)
-        self.assertEqual(legacy_run.score, canonical_run.score)
-        self.assertEqual(legacy_run.place, canonical_run.place)
-        self.assertEqual(legacy_run.player_won, canonical_run.player_won)
-        self.assertEqual(legacy_run.elapsed_ms, canonical_run.elapsed_ms)
-        self.assertEqual(legacy_run.correct_moves, canonical_run.correct_moves)
-        self.assertEqual(legacy_run.wrong_moves, canonical_run.wrong_moves)
-        self.assertEqual(legacy_run.game_map, canonical_run.game_map)
-
-        legacy_turns = list(
-            TurnEvent.objects.filter(run=legacy_run).order_by("turn_index")
-        )
-        canonical_turns = list(
-            TurnEvent.objects.filter(run=canonical_run).order_by("turn_index")
-        )
-        self.assertEqual(len(legacy_turns), len(canonical_turns))
-
-        for legacy_turn, canonical_turn in zip(legacy_turns, canonical_turns):
-            self.assertEqual(legacy_turn.turn_index, canonical_turn.turn_index)
-            self.assertEqual(legacy_turn.chosen_card, canonical_turn.chosen_card)
-            self.assertEqual(
-                legacy_turn.chosen_card_type, canonical_turn.chosen_card_type
-            )
-            self.assertEqual(
-                legacy_turn.chosen_card_family,
-                canonical_turn.chosen_card_family,
-            )
-            self.assertEqual(legacy_turn.offered_cards, canonical_turn.offered_cards)
-            self.assertEqual(legacy_turn.was_correct, canonical_turn.was_correct)
-            self.assertEqual(
-                legacy_turn.tile_before_index, canonical_turn.tile_before_index
-            )
-            self.assertEqual(
-                legacy_turn.tile_before_type, canonical_turn.tile_before_type
-            )
-            self.assertEqual(
-                legacy_turn.tile_after_index, canonical_turn.tile_after_index
-            )
-            self.assertEqual(legacy_turn.place_before, canonical_turn.place_before)
-            self.assertEqual(legacy_turn.place_after, canonical_turn.place_after)
-            self.assertEqual(
-                legacy_turn.card_decision_time_ms,
-                canonical_turn.card_decision_time_ms,
-            )
-            self.assertEqual(legacy_turn.chosen_number, canonical_turn.chosen_number)
-            self.assertEqual(
-                legacy_turn.number_decision_time_ms,
-                canonical_turn.number_decision_time_ms,
-            )
-
-        legacy_triggers = list(
-            SpecialTileTrigger.objects.filter(turn__run=legacy_run).order_by(
-                "turn__turn_index",
-                "chain_index",
-            )
-        )
-        canonical_triggers = list(
-            SpecialTileTrigger.objects.filter(turn__run=canonical_run).order_by(
-                "turn__turn_index",
-                "chain_index",
-            )
-        )
-        self.assertEqual(len(legacy_triggers), len(canonical_triggers))
-
-        for legacy_trigger, canonical_trigger in zip(
-            legacy_triggers, canonical_triggers
-        ):
-            self.assertEqual(legacy_trigger.chain_index, canonical_trigger.chain_index)
-            self.assertEqual(
-                legacy_trigger.special_tile_index,
-                canonical_trigger.special_tile_index,
-            )
-            self.assertEqual(
-                legacy_trigger.special_tile_type,
-                canonical_trigger.special_tile_type,
-            )
-            self.assertEqual(
-                legacy_trigger.effect_delta_tiles,
-                canonical_trigger.effect_delta_tiles,
-            )
-            self.assertEqual(
-                legacy_trigger.target_tile_index,
-                canonical_trigger.target_tile_index,
-            )
-            self.assertEqual(
-                legacy_trigger.target_tile_type,
-                canonical_trigger.target_tile_type,
-            )
-            self.assertEqual(
-                legacy_trigger.place_before, canonical_trigger.place_before
-            )
-            self.assertEqual(legacy_trigger.place_after, canonical_trigger.place_after)
 
     @override_settings(BENCHMARK_TIME_OVERRIDE_ENABLED=True)
     def test_runs_ingest_accepts_synthetic_open_week_benchmark_time(self):

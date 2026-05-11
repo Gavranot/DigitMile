@@ -161,8 +161,7 @@ sequenceDiagram
 ## Evidence-backed implementation caveats
 
 - `RunStatistics` still has API and admin surfaces, but the modern dashboard ignores it.
-- `insertRunData/` trusts `userID` and does not cross-check the submitted `classroomKey` or `user` against that student.
-- `runs/ingest/` is the only ingestion endpoint that is explicitly idempotent.
+- `runs/ingest/` trusts `userID` and does not cross-check the submitted `classroomKey` or `user` against that student. It is idempotent: the same Unity payload always derives the same `Run.id`.
 - Pending teachers are allowed to authenticate and access teacher functionality by design.
 - Most card semantics are now clarified by gameplay canon in `CODEX.md` and your follow-up notes, but the backend still stores them as raw JSON-derived values rather than strict enums.
 
