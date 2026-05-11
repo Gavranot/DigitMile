@@ -419,6 +419,33 @@ commits can carry incompatible management-command signatures or schema
 expectations relative to the harness. Validate each baseline once before
 relying on it for thesis numbers.
 
+### Global PgBouncer toggle: `BENCHMARK_DISABLE_PGBOUNCER`
+
+Set the env var to force `no-pgbouncer.yml` into every scenario's overlay set
+for the duration of a shell session. Lets you re-run every comparison without
+PgBouncer in the stack without editing any scenario JSON. Reports land under
+`benchmarks/reports/no_pgbouncer/` so the two sets of numbers don't collide.
+
+```bash
+# Sweep the full comparison set without PgBouncer
+export BENCHMARK_DISABLE_PGBOUNCER=1
+
+python benchmarks/run_scenario.py benchmarks/scenarios/ingest_isolation.json
+python benchmarks/run_scenario.py benchmarks/scenarios/before_pg_tuning_ingest_isolation.json
+python benchmarks/run_scenario.py benchmarks/scenarios/before_query_cache_realistic_school_day.json
+python benchmarks/run_scenario.py benchmarks/scenarios/before_write_buffer_ingest_isolation.json
+# (etc.)
+
+# Switch back to the standard with-PgBouncer set
+unset BENCHMARK_DISABLE_PGBOUNCER
+python benchmarks/run_scenario.py benchmarks/scenarios/ingest_isolation.json
+```
+
+Scenarios that already include `no-pgbouncer.yml` are deduped automatically —
+no harm in setting the env var across a sweep that includes
+`before_pgbouncer_ingest_isolation.json`. The verification banner shows the
+final overlay list so you can confirm the toggle landed.
+
 ### Running baseline scenarios on hosts without git
 
 The deployment server is not a git checkout — `git rev-parse` fails, and

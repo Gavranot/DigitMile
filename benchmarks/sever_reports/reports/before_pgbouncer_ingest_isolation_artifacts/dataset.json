@@ -1,0 +1,1375 @@
+{
+  "seed": 20260312,
+  "anchor_week_start": "2026-03-09",
+  "hot_week_start": "2026-03-09",
+  "hot_week_end": "2026-03-15",
+  "synthetic_now": "2026-03-13T19:00:00+00:00",
+  "synthetic_week_close_at": "2026-03-13T20:00:00+00:00",
+  "teacher_password": "benchmark_password_123",
+  "teachers": [
+    {
+      "teacher_id": "tch_33c40a78db9f",
+      "username": "benchmark_teacher_1",
+      "email": "benchmark-teacher-1@example.com",
+      "classroom_ids": [
+        "cls_e5d276f948b8",
+        "cls_6cf77db151af"
+      ]
+    }
+  ],
+  "counts": {
+    "schools": 1,
+    "teachers": 1,
+    "classrooms": 2,
+    "students": 60,
+    "runs": 720,
+    "turns": 14499,
+    "triggers": 1152
+  },
+  "weeks": [
+    {
+      "index": 1,
+      "week_start": "2026-02-16",
+      "compacted": true,
+      "hot": false
+    },
+    {
+      "index": 2,
+      "week_start": "2026-02-23",
+      "compacted": true,
+      "hot": false
+    },
+    {
+      "index": 3,
+      "week_start": "2026-03-02",
+      "compacted": false,
+      "hot": true
+    },
+    {
+      "index": 4,
+      "week_start": "2026-03-09",
+      "compacted": false,
+      "hot": true
+    }
+  ],
+  "compactions": [
+    {
+      "week_start": "2026-02-16",
+      "duration_ms": 7902.95,
+      "status": "COMPACTED",
+      "archive_runs_verified": 180,
+      "turn_rows_deleted": 3665,
+      "trigger_rows_deleted": 273,
+      "stdout": "Compaction complete: runs=180, archives_verified=180, turns_deleted=3665, triggers_deleted=273"
+    },
+    {
+      "week_start": "2026-02-23",
+      "duration_ms": 8128.99,
+      "status": "COMPACTED",
+      "archive_runs_verified": 180,
+      "turn_rows_deleted": 3620,
+      "trigger_rows_deleted": 311,
+      "stdout": "Compaction complete: runs=180, archives_verified=180, turns_deleted=3620, triggers_deleted=311"
+    }
+  ],
+  "archive": {
+    "compressed_size_bytes": 609129,
+    "uncompressed_size_bytes": 7366443
+  },
+  "ingest_targets": [
+    {
+      "student_id": "stu_40ea76179247",
+      "student_name": "Benchmark Student 2-A 1",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_1247d3f22fd0",
+      "student_name": "Benchmark Student 2-A 2",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_ddcfb27c4c31",
+      "student_name": "Benchmark Student 2-A 3",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_d71691b608ef",
+      "student_name": "Benchmark Student 2-A 4",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_74546027c71b",
+      "student_name": "Benchmark Student 2-A 5",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_24f012b0cc4a",
+      "student_name": "Benchmark Student 2-A 6",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_1fd35f035687",
+      "student_name": "Benchmark Student 2-A 7",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_04cc1c884696",
+      "student_name": "Benchmark Student 2-A 8",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_af3b5be50b49",
+      "student_name": "Benchmark Student 2-A 9",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_13c821bdd079",
+      "student_name": "Benchmark Student 2-A 10",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_94ac2de31dbb",
+      "student_name": "Benchmark Student 2-A 11",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_5c50a47f690b",
+      "student_name": "Benchmark Student 2-A 12",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_80212f93e3ad",
+      "student_name": "Benchmark Student 2-A 13",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_3d7218734008",
+      "student_name": "Benchmark Student 2-A 14",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_4db257b06657",
+      "student_name": "Benchmark Student 2-A 15",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_b2079b108f39",
+      "student_name": "Benchmark Student 2-A 16",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_bf190eed2bdf",
+      "student_name": "Benchmark Student 2-A 17",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_93129d1aad61",
+      "student_name": "Benchmark Student 2-A 18",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_d54e650030f0",
+      "student_name": "Benchmark Student 2-A 19",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_44b660c4c007",
+      "student_name": "Benchmark Student 2-A 20",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_e3463a4b2e3c",
+      "student_name": "Benchmark Student 2-A 21",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_90ac127c0768",
+      "student_name": "Benchmark Student 2-A 22",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_a687747ee4d0",
+      "student_name": "Benchmark Student 2-A 23",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_19ca0d1249ee",
+      "student_name": "Benchmark Student 2-A 24",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_11b2d9f23bed",
+      "student_name": "Benchmark Student 2-A 25",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_86cf625d9626",
+      "student_name": "Benchmark Student 2-A 26",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_9a95d898b926",
+      "student_name": "Benchmark Student 2-A 27",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_bac568906d01",
+      "student_name": "Benchmark Student 2-A 28",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_8141965bde5d",
+      "student_name": "Benchmark Student 2-A 29",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_99e308909035",
+      "student_name": "Benchmark Student 2-A 30",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_bc58d2b7d34f",
+      "student_name": "Benchmark Student 3-B 1",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_b5cc6a8231fa",
+      "student_name": "Benchmark Student 3-B 2",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_23fbbe17bc26",
+      "student_name": "Benchmark Student 3-B 3",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_5cfc69a976ac",
+      "student_name": "Benchmark Student 3-B 4",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_dc79b3b6e945",
+      "student_name": "Benchmark Student 3-B 5",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_2c72eaf52b68",
+      "student_name": "Benchmark Student 3-B 6",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_511cde85fa35",
+      "student_name": "Benchmark Student 3-B 7",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_9a2d1fa28600",
+      "student_name": "Benchmark Student 3-B 8",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_2daf59b784c3",
+      "student_name": "Benchmark Student 3-B 9",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_770770902b91",
+      "student_name": "Benchmark Student 3-B 10",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_b81288cb1001",
+      "student_name": "Benchmark Student 3-B 11",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_7eb794ac8be7",
+      "student_name": "Benchmark Student 3-B 12",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_bb2da1299178",
+      "student_name": "Benchmark Student 3-B 13",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_9347527ebc05",
+      "student_name": "Benchmark Student 3-B 14",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_1e6b31b3ec9b",
+      "student_name": "Benchmark Student 3-B 15",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_38b2d69615b3",
+      "student_name": "Benchmark Student 3-B 16",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_7f7bec2a2876",
+      "student_name": "Benchmark Student 3-B 17",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_91fb60d7fce2",
+      "student_name": "Benchmark Student 3-B 18",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_d91ac87d65d6",
+      "student_name": "Benchmark Student 3-B 19",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_e5909d0ba1c5",
+      "student_name": "Benchmark Student 3-B 20",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_69007f4819ed",
+      "student_name": "Benchmark Student 3-B 21",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_57714d74d329",
+      "student_name": "Benchmark Student 3-B 22",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_494c67fe2f6f",
+      "student_name": "Benchmark Student 3-B 23",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_b5cc8563ff21",
+      "student_name": "Benchmark Student 3-B 24",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_ffa00b794917",
+      "student_name": "Benchmark Student 3-B 25",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_7c8cade54b24",
+      "student_name": "Benchmark Student 3-B 26",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_ae925b419160",
+      "student_name": "Benchmark Student 3-B 27",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_f8b20e7661b8",
+      "student_name": "Benchmark Student 3-B 28",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_89182095a162",
+      "student_name": "Benchmark Student 3-B 29",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_22fdbea04fce",
+      "student_name": "Benchmark Student 3-B 30",
+      "classroom_key": "BMK-0102"
+    }
+  ],
+  "ingest_targets_hot_week": [
+    {
+      "student_id": "stu_40ea76179247",
+      "student_name": "Benchmark Student 2-A 1",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_1247d3f22fd0",
+      "student_name": "Benchmark Student 2-A 2",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_ddcfb27c4c31",
+      "student_name": "Benchmark Student 2-A 3",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_d71691b608ef",
+      "student_name": "Benchmark Student 2-A 4",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_74546027c71b",
+      "student_name": "Benchmark Student 2-A 5",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_24f012b0cc4a",
+      "student_name": "Benchmark Student 2-A 6",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_1fd35f035687",
+      "student_name": "Benchmark Student 2-A 7",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_04cc1c884696",
+      "student_name": "Benchmark Student 2-A 8",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_af3b5be50b49",
+      "student_name": "Benchmark Student 2-A 9",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_13c821bdd079",
+      "student_name": "Benchmark Student 2-A 10",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_94ac2de31dbb",
+      "student_name": "Benchmark Student 2-A 11",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_5c50a47f690b",
+      "student_name": "Benchmark Student 2-A 12",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_80212f93e3ad",
+      "student_name": "Benchmark Student 2-A 13",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_3d7218734008",
+      "student_name": "Benchmark Student 2-A 14",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_4db257b06657",
+      "student_name": "Benchmark Student 2-A 15",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_b2079b108f39",
+      "student_name": "Benchmark Student 2-A 16",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_bf190eed2bdf",
+      "student_name": "Benchmark Student 2-A 17",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_93129d1aad61",
+      "student_name": "Benchmark Student 2-A 18",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_d54e650030f0",
+      "student_name": "Benchmark Student 2-A 19",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_44b660c4c007",
+      "student_name": "Benchmark Student 2-A 20",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_e3463a4b2e3c",
+      "student_name": "Benchmark Student 2-A 21",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_90ac127c0768",
+      "student_name": "Benchmark Student 2-A 22",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_a687747ee4d0",
+      "student_name": "Benchmark Student 2-A 23",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_19ca0d1249ee",
+      "student_name": "Benchmark Student 2-A 24",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_11b2d9f23bed",
+      "student_name": "Benchmark Student 2-A 25",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_86cf625d9626",
+      "student_name": "Benchmark Student 2-A 26",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_9a95d898b926",
+      "student_name": "Benchmark Student 2-A 27",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_bac568906d01",
+      "student_name": "Benchmark Student 2-A 28",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_8141965bde5d",
+      "student_name": "Benchmark Student 2-A 29",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_99e308909035",
+      "student_name": "Benchmark Student 2-A 30",
+      "classroom_key": "BMK-0101"
+    },
+    {
+      "student_id": "stu_bc58d2b7d34f",
+      "student_name": "Benchmark Student 3-B 1",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_b5cc6a8231fa",
+      "student_name": "Benchmark Student 3-B 2",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_23fbbe17bc26",
+      "student_name": "Benchmark Student 3-B 3",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_5cfc69a976ac",
+      "student_name": "Benchmark Student 3-B 4",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_dc79b3b6e945",
+      "student_name": "Benchmark Student 3-B 5",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_2c72eaf52b68",
+      "student_name": "Benchmark Student 3-B 6",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_511cde85fa35",
+      "student_name": "Benchmark Student 3-B 7",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_9a2d1fa28600",
+      "student_name": "Benchmark Student 3-B 8",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_2daf59b784c3",
+      "student_name": "Benchmark Student 3-B 9",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_770770902b91",
+      "student_name": "Benchmark Student 3-B 10",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_b81288cb1001",
+      "student_name": "Benchmark Student 3-B 11",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_7eb794ac8be7",
+      "student_name": "Benchmark Student 3-B 12",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_bb2da1299178",
+      "student_name": "Benchmark Student 3-B 13",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_9347527ebc05",
+      "student_name": "Benchmark Student 3-B 14",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_1e6b31b3ec9b",
+      "student_name": "Benchmark Student 3-B 15",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_38b2d69615b3",
+      "student_name": "Benchmark Student 3-B 16",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_7f7bec2a2876",
+      "student_name": "Benchmark Student 3-B 17",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_91fb60d7fce2",
+      "student_name": "Benchmark Student 3-B 18",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_d91ac87d65d6",
+      "student_name": "Benchmark Student 3-B 19",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_e5909d0ba1c5",
+      "student_name": "Benchmark Student 3-B 20",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_69007f4819ed",
+      "student_name": "Benchmark Student 3-B 21",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_57714d74d329",
+      "student_name": "Benchmark Student 3-B 22",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_494c67fe2f6f",
+      "student_name": "Benchmark Student 3-B 23",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_b5cc8563ff21",
+      "student_name": "Benchmark Student 3-B 24",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_ffa00b794917",
+      "student_name": "Benchmark Student 3-B 25",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_7c8cade54b24",
+      "student_name": "Benchmark Student 3-B 26",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_ae925b419160",
+      "student_name": "Benchmark Student 3-B 27",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_f8b20e7661b8",
+      "student_name": "Benchmark Student 3-B 28",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_89182095a162",
+      "student_name": "Benchmark Student 3-B 29",
+      "classroom_key": "BMK-0102"
+    },
+    {
+      "student_id": "stu_22fdbea04fce",
+      "student_name": "Benchmark Student 3-B 30",
+      "classroom_key": "BMK-0102"
+    }
+  ],
+  "replay_run_ids": [
+    "run_b688e98c823f41ea9943acbf01f7483f",
+    "run_4064d2c658e3405c9337212cc240f8b6",
+    "run_2f3394c03ec94726908810df8e79c427",
+    "run_d8927cc1b09a46b8994a1f1cfa7a865a",
+    "run_d5bfc5a07e274fbba9fbe9e0a6c9ea07",
+    "run_9509d6168fd6458aa4327995d67c2880",
+    "run_742a694cf53b4978a1f4452cf23a9536",
+    "run_1112f8f3a2734fc6b59f125a4b9c906d",
+    "run_e2d71f98473641ac898b535de6157587",
+    "run_21a1d1cb39664fb28c871b1f3175cd76",
+    "run_3a475142d43e40608ebbee7c2f2e2563",
+    "run_d2da215fb78b440093b8e8d789c05751",
+    "run_b033bfa9be6d4b22bbf8033e7d7192ce",
+    "run_68feea901e9d4bce9617b054a9844ae3",
+    "run_6a25f23264ae48dd856bf6aeb6362b1e",
+    "run_7d4f64f0787643d18db5e0d1c282f525",
+    "run_b55bed1f34004555ac753b15cdeffb4f",
+    "run_36e74b24b9f7437a88d117c572b65964",
+    "run_89613100c36d48a794e2cb44c0c362e1",
+    "run_c5aa97b1bc79461c8b61dcd0101d7a52",
+    "run_7c6be5ea56f34002b985cbe0ebda001a",
+    "run_7818b321ae2340d5a5b3cb428b6c9fc0",
+    "run_30fab489e0e84a728e61a59531cced90",
+    "run_3098b26494ac4c929ed2e5d2497b8e24",
+    "run_3e39ff50f7e54279ae12a3a349839d46",
+    "run_de6e331246ed4f8f9294b4b2570591af",
+    "run_fdfa6de0d5744de9928cc0b04a30ee23",
+    "run_f4725cce3f4d4e2aa2a60efdca2c28de",
+    "run_62196dc61fae4b76b93f229964cf40aa",
+    "run_5cd6369681c147daa0883ecb58a37aca",
+    "run_b2abca01a84f406b9e6f60986a4f24df",
+    "run_d645a1c1dc0145598dbbfe73236e6891",
+    "run_37260e7b01bc47a4837a62ca501ad0ab",
+    "run_5132c3fcbc594a659e643040f2df3d5a",
+    "run_f0625e6aa07d435890bb64ceb0c74cf8",
+    "run_435d8bc6ad80429781adde1543052b51",
+    "run_e8e51560a9594de9b1bf6650c51553e6",
+    "run_e5281182d326476ba8bb1f75c2b284cc",
+    "run_0b609f5e25464eb99e080feb6fb3f0fa",
+    "run_9594a3c714cd4b029a8b9aec8967c565",
+    "run_50ab64861b9d480885f3a1ea6c3ccc01",
+    "run_485450b2633d413fae5ad19390ba79c2",
+    "run_74b39040154e4e788d6f1dfe37ff7b03",
+    "run_ad9b3d83c5204e5fa35e7a5401d686a9",
+    "run_941c1627927a429680e1264edd1dd337",
+    "run_a900160b5dbc4338b66b6505d50b0c8d",
+    "run_fc23899dfe094d3cad5e6423bfb599e0",
+    "run_97ea76a57b0b462bbdc5a4f7db2ec251",
+    "run_6c0d478cfae64591bbbf2b5a85291a9d",
+    "run_c05c04938cac48da8296c77940d4c36c"
+  ],
+  "replay_targets_hot": [
+    {
+      "run_id": "run_742a694cf53b4978a1f4452cf23a9536",
+      "student_id": "stu_40ea76179247",
+      "week_start": "2026-03-02",
+      "hot": true
+    },
+    {
+      "run_id": "run_1112f8f3a2734fc6b59f125a4b9c906d",
+      "student_id": "stu_40ea76179247",
+      "week_start": "2026-03-02",
+      "hot": true
+    },
+    {
+      "run_id": "run_e2d71f98473641ac898b535de6157587",
+      "student_id": "stu_40ea76179247",
+      "week_start": "2026-03-02",
+      "hot": true
+    },
+    {
+      "run_id": "run_21a1d1cb39664fb28c871b1f3175cd76",
+      "student_id": "stu_40ea76179247",
+      "week_start": "2026-03-09",
+      "hot": true
+    },
+    {
+      "run_id": "run_3a475142d43e40608ebbee7c2f2e2563",
+      "student_id": "stu_40ea76179247",
+      "week_start": "2026-03-09",
+      "hot": true
+    },
+    {
+      "run_id": "run_d2da215fb78b440093b8e8d789c05751",
+      "student_id": "stu_40ea76179247",
+      "week_start": "2026-03-09",
+      "hot": true
+    },
+    {
+      "run_id": "run_89613100c36d48a794e2cb44c0c362e1",
+      "student_id": "stu_1247d3f22fd0",
+      "week_start": "2026-03-02",
+      "hot": true
+    },
+    {
+      "run_id": "run_c5aa97b1bc79461c8b61dcd0101d7a52",
+      "student_id": "stu_1247d3f22fd0",
+      "week_start": "2026-03-02",
+      "hot": true
+    },
+    {
+      "run_id": "run_7c6be5ea56f34002b985cbe0ebda001a",
+      "student_id": "stu_1247d3f22fd0",
+      "week_start": "2026-03-02",
+      "hot": true
+    },
+    {
+      "run_id": "run_7818b321ae2340d5a5b3cb428b6c9fc0",
+      "student_id": "stu_1247d3f22fd0",
+      "week_start": "2026-03-09",
+      "hot": true
+    },
+    {
+      "run_id": "run_30fab489e0e84a728e61a59531cced90",
+      "student_id": "stu_1247d3f22fd0",
+      "week_start": "2026-03-09",
+      "hot": true
+    },
+    {
+      "run_id": "run_3098b26494ac4c929ed2e5d2497b8e24",
+      "student_id": "stu_1247d3f22fd0",
+      "week_start": "2026-03-09",
+      "hot": true
+    },
+    {
+      "run_id": "run_b2abca01a84f406b9e6f60986a4f24df",
+      "student_id": "stu_ddcfb27c4c31",
+      "week_start": "2026-03-02",
+      "hot": true
+    },
+    {
+      "run_id": "run_d645a1c1dc0145598dbbfe73236e6891",
+      "student_id": "stu_ddcfb27c4c31",
+      "week_start": "2026-03-02",
+      "hot": true
+    },
+    {
+      "run_id": "run_37260e7b01bc47a4837a62ca501ad0ab",
+      "student_id": "stu_ddcfb27c4c31",
+      "week_start": "2026-03-02",
+      "hot": true
+    },
+    {
+      "run_id": "run_5132c3fcbc594a659e643040f2df3d5a",
+      "student_id": "stu_ddcfb27c4c31",
+      "week_start": "2026-03-09",
+      "hot": true
+    },
+    {
+      "run_id": "run_f0625e6aa07d435890bb64ceb0c74cf8",
+      "student_id": "stu_ddcfb27c4c31",
+      "week_start": "2026-03-09",
+      "hot": true
+    },
+    {
+      "run_id": "run_435d8bc6ad80429781adde1543052b51",
+      "student_id": "stu_ddcfb27c4c31",
+      "week_start": "2026-03-09",
+      "hot": true
+    },
+    {
+      "run_id": "run_74b39040154e4e788d6f1dfe37ff7b03",
+      "student_id": "stu_d71691b608ef",
+      "week_start": "2026-03-02",
+      "hot": true
+    },
+    {
+      "run_id": "run_ad9b3d83c5204e5fa35e7a5401d686a9",
+      "student_id": "stu_d71691b608ef",
+      "week_start": "2026-03-02",
+      "hot": true
+    },
+    {
+      "run_id": "run_941c1627927a429680e1264edd1dd337",
+      "student_id": "stu_d71691b608ef",
+      "week_start": "2026-03-02",
+      "hot": true
+    },
+    {
+      "run_id": "run_a900160b5dbc4338b66b6505d50b0c8d",
+      "student_id": "stu_d71691b608ef",
+      "week_start": "2026-03-09",
+      "hot": true
+    },
+    {
+      "run_id": "run_fc23899dfe094d3cad5e6423bfb599e0",
+      "student_id": "stu_d71691b608ef",
+      "week_start": "2026-03-09",
+      "hot": true
+    },
+    {
+      "run_id": "run_97ea76a57b0b462bbdc5a4f7db2ec251",
+      "student_id": "stu_d71691b608ef",
+      "week_start": "2026-03-09",
+      "hot": true
+    },
+    {
+      "run_id": "run_72c7b9e961d24cc781ad49e8bcc0bea2",
+      "student_id": "stu_74546027c71b",
+      "week_start": "2026-03-02",
+      "hot": true
+    },
+    {
+      "run_id": "run_e4abe20e76c3497098b18af3f2660808",
+      "student_id": "stu_74546027c71b",
+      "week_start": "2026-03-02",
+      "hot": true
+    },
+    {
+      "run_id": "run_20bb4177114f48fb9ec24c5ec9d96933",
+      "student_id": "stu_74546027c71b",
+      "week_start": "2026-03-02",
+      "hot": true
+    },
+    {
+      "run_id": "run_d5ebfcce522f4d6096c35cd54f2d3768",
+      "student_id": "stu_74546027c71b",
+      "week_start": "2026-03-09",
+      "hot": true
+    },
+    {
+      "run_id": "run_fbf85a89aebc4042bcf0211760290adb",
+      "student_id": "stu_74546027c71b",
+      "week_start": "2026-03-09",
+      "hot": true
+    },
+    {
+      "run_id": "run_57219c59a0f4403d945f24e2200006df",
+      "student_id": "stu_74546027c71b",
+      "week_start": "2026-03-09",
+      "hot": true
+    },
+    {
+      "run_id": "run_c75991848f944a3ea77c85624d6dd700",
+      "student_id": "stu_24f012b0cc4a",
+      "week_start": "2026-03-02",
+      "hot": true
+    },
+    {
+      "run_id": "run_56904d1494bb4c22ac87c9359d3b001d",
+      "student_id": "stu_24f012b0cc4a",
+      "week_start": "2026-03-02",
+      "hot": true
+    },
+    {
+      "run_id": "run_c22d3bbf814648db9cc35f6805cdede3",
+      "student_id": "stu_24f012b0cc4a",
+      "week_start": "2026-03-02",
+      "hot": true
+    },
+    {
+      "run_id": "run_3dea4deab79f430b8b2b379857baf75c",
+      "student_id": "stu_24f012b0cc4a",
+      "week_start": "2026-03-09",
+      "hot": true
+    },
+    {
+      "run_id": "run_024a8ab0f24b4f048a9e9a7987abc212",
+      "student_id": "stu_24f012b0cc4a",
+      "week_start": "2026-03-09",
+      "hot": true
+    },
+    {
+      "run_id": "run_dce5107af2d141a089d732df27e17039",
+      "student_id": "stu_24f012b0cc4a",
+      "week_start": "2026-03-09",
+      "hot": true
+    },
+    {
+      "run_id": "run_32a6ad0bd69f4812a0d53373bcbc5d3c",
+      "student_id": "stu_1fd35f035687",
+      "week_start": "2026-03-02",
+      "hot": true
+    },
+    {
+      "run_id": "run_cde1a490888a45ea948f8cdabf076ee4",
+      "student_id": "stu_1fd35f035687",
+      "week_start": "2026-03-02",
+      "hot": true
+    },
+    {
+      "run_id": "run_c63abe605bcf4a0d9ff776011c7af6c9",
+      "student_id": "stu_1fd35f035687",
+      "week_start": "2026-03-02",
+      "hot": true
+    },
+    {
+      "run_id": "run_56f9df2932cf417d8af7b6039a9c1449",
+      "student_id": "stu_1fd35f035687",
+      "week_start": "2026-03-09",
+      "hot": true
+    },
+    {
+      "run_id": "run_3f3e778ff7ba4cd09af60093f5feeeb5",
+      "student_id": "stu_1fd35f035687",
+      "week_start": "2026-03-09",
+      "hot": true
+    },
+    {
+      "run_id": "run_d730106ab60a4e97aa5e6298d0c58b1f",
+      "student_id": "stu_1fd35f035687",
+      "week_start": "2026-03-09",
+      "hot": true
+    },
+    {
+      "run_id": "run_2e6b168e4c044f3fb4bb4c3f864eda59",
+      "student_id": "stu_04cc1c884696",
+      "week_start": "2026-03-02",
+      "hot": true
+    },
+    {
+      "run_id": "run_f7c563ec89b94afe9c4cf19ae4f05e84",
+      "student_id": "stu_04cc1c884696",
+      "week_start": "2026-03-02",
+      "hot": true
+    },
+    {
+      "run_id": "run_c2dd9d845249460ea3528b2af82cea87",
+      "student_id": "stu_04cc1c884696",
+      "week_start": "2026-03-02",
+      "hot": true
+    },
+    {
+      "run_id": "run_843a6b584c0c468982713fe7494f6a5b",
+      "student_id": "stu_04cc1c884696",
+      "week_start": "2026-03-09",
+      "hot": true
+    },
+    {
+      "run_id": "run_ce4fb9a9a837477eaa84ecbf649c97cb",
+      "student_id": "stu_04cc1c884696",
+      "week_start": "2026-03-09",
+      "hot": true
+    },
+    {
+      "run_id": "run_8780dd458d5d454a9802df730e1101e5",
+      "student_id": "stu_04cc1c884696",
+      "week_start": "2026-03-09",
+      "hot": true
+    },
+    {
+      "run_id": "run_e1c83b4af5714c5bb0b1f8aca9c9755d",
+      "student_id": "stu_af3b5be50b49",
+      "week_start": "2026-03-02",
+      "hot": true
+    },
+    {
+      "run_id": "run_b0f0948240b64b4a8f81678e933dbae9",
+      "student_id": "stu_af3b5be50b49",
+      "week_start": "2026-03-02",
+      "hot": true
+    }
+  ],
+  "replay_targets_cold": [
+    {
+      "run_id": "run_b688e98c823f41ea9943acbf01f7483f",
+      "student_id": "stu_40ea76179247",
+      "week_start": "2026-02-16",
+      "hot": false
+    },
+    {
+      "run_id": "run_4064d2c658e3405c9337212cc240f8b6",
+      "student_id": "stu_40ea76179247",
+      "week_start": "2026-02-16",
+      "hot": false
+    },
+    {
+      "run_id": "run_2f3394c03ec94726908810df8e79c427",
+      "student_id": "stu_40ea76179247",
+      "week_start": "2026-02-16",
+      "hot": false
+    },
+    {
+      "run_id": "run_d8927cc1b09a46b8994a1f1cfa7a865a",
+      "student_id": "stu_40ea76179247",
+      "week_start": "2026-02-23",
+      "hot": false
+    },
+    {
+      "run_id": "run_d5bfc5a07e274fbba9fbe9e0a6c9ea07",
+      "student_id": "stu_40ea76179247",
+      "week_start": "2026-02-23",
+      "hot": false
+    },
+    {
+      "run_id": "run_9509d6168fd6458aa4327995d67c2880",
+      "student_id": "stu_40ea76179247",
+      "week_start": "2026-02-23",
+      "hot": false
+    },
+    {
+      "run_id": "run_b033bfa9be6d4b22bbf8033e7d7192ce",
+      "student_id": "stu_1247d3f22fd0",
+      "week_start": "2026-02-16",
+      "hot": false
+    },
+    {
+      "run_id": "run_68feea901e9d4bce9617b054a9844ae3",
+      "student_id": "stu_1247d3f22fd0",
+      "week_start": "2026-02-16",
+      "hot": false
+    },
+    {
+      "run_id": "run_6a25f23264ae48dd856bf6aeb6362b1e",
+      "student_id": "stu_1247d3f22fd0",
+      "week_start": "2026-02-16",
+      "hot": false
+    },
+    {
+      "run_id": "run_7d4f64f0787643d18db5e0d1c282f525",
+      "student_id": "stu_1247d3f22fd0",
+      "week_start": "2026-02-23",
+      "hot": false
+    },
+    {
+      "run_id": "run_b55bed1f34004555ac753b15cdeffb4f",
+      "student_id": "stu_1247d3f22fd0",
+      "week_start": "2026-02-23",
+      "hot": false
+    },
+    {
+      "run_id": "run_36e74b24b9f7437a88d117c572b65964",
+      "student_id": "stu_1247d3f22fd0",
+      "week_start": "2026-02-23",
+      "hot": false
+    },
+    {
+      "run_id": "run_3e39ff50f7e54279ae12a3a349839d46",
+      "student_id": "stu_ddcfb27c4c31",
+      "week_start": "2026-02-16",
+      "hot": false
+    },
+    {
+      "run_id": "run_de6e331246ed4f8f9294b4b2570591af",
+      "student_id": "stu_ddcfb27c4c31",
+      "week_start": "2026-02-16",
+      "hot": false
+    },
+    {
+      "run_id": "run_fdfa6de0d5744de9928cc0b04a30ee23",
+      "student_id": "stu_ddcfb27c4c31",
+      "week_start": "2026-02-16",
+      "hot": false
+    },
+    {
+      "run_id": "run_f4725cce3f4d4e2aa2a60efdca2c28de",
+      "student_id": "stu_ddcfb27c4c31",
+      "week_start": "2026-02-23",
+      "hot": false
+    },
+    {
+      "run_id": "run_62196dc61fae4b76b93f229964cf40aa",
+      "student_id": "stu_ddcfb27c4c31",
+      "week_start": "2026-02-23",
+      "hot": false
+    },
+    {
+      "run_id": "run_5cd6369681c147daa0883ecb58a37aca",
+      "student_id": "stu_ddcfb27c4c31",
+      "week_start": "2026-02-23",
+      "hot": false
+    },
+    {
+      "run_id": "run_e8e51560a9594de9b1bf6650c51553e6",
+      "student_id": "stu_d71691b608ef",
+      "week_start": "2026-02-16",
+      "hot": false
+    },
+    {
+      "run_id": "run_e5281182d326476ba8bb1f75c2b284cc",
+      "student_id": "stu_d71691b608ef",
+      "week_start": "2026-02-16",
+      "hot": false
+    },
+    {
+      "run_id": "run_0b609f5e25464eb99e080feb6fb3f0fa",
+      "student_id": "stu_d71691b608ef",
+      "week_start": "2026-02-16",
+      "hot": false
+    },
+    {
+      "run_id": "run_9594a3c714cd4b029a8b9aec8967c565",
+      "student_id": "stu_d71691b608ef",
+      "week_start": "2026-02-23",
+      "hot": false
+    },
+    {
+      "run_id": "run_50ab64861b9d480885f3a1ea6c3ccc01",
+      "student_id": "stu_d71691b608ef",
+      "week_start": "2026-02-23",
+      "hot": false
+    },
+    {
+      "run_id": "run_485450b2633d413fae5ad19390ba79c2",
+      "student_id": "stu_d71691b608ef",
+      "week_start": "2026-02-23",
+      "hot": false
+    },
+    {
+      "run_id": "run_6c0d478cfae64591bbbf2b5a85291a9d",
+      "student_id": "stu_74546027c71b",
+      "week_start": "2026-02-16",
+      "hot": false
+    },
+    {
+      "run_id": "run_c05c04938cac48da8296c77940d4c36c",
+      "student_id": "stu_74546027c71b",
+      "week_start": "2026-02-16",
+      "hot": false
+    },
+    {
+      "run_id": "run_122cb03803744831a6ae2a914ce1052b",
+      "student_id": "stu_74546027c71b",
+      "week_start": "2026-02-16",
+      "hot": false
+    },
+    {
+      "run_id": "run_6018c8e5b35f49e8b4412b7480588c6f",
+      "student_id": "stu_74546027c71b",
+      "week_start": "2026-02-23",
+      "hot": false
+    },
+    {
+      "run_id": "run_0a7200f377da4952ac5c5a2901440615",
+      "student_id": "stu_74546027c71b",
+      "week_start": "2026-02-23",
+      "hot": false
+    },
+    {
+      "run_id": "run_aee539b9405f40af953fdc72e70d625a",
+      "student_id": "stu_74546027c71b",
+      "week_start": "2026-02-23",
+      "hot": false
+    },
+    {
+      "run_id": "run_58262093a9194590a604d35ee8815675",
+      "student_id": "stu_24f012b0cc4a",
+      "week_start": "2026-02-16",
+      "hot": false
+    },
+    {
+      "run_id": "run_2093ab36692a41d9853f42c2f791d95b",
+      "student_id": "stu_24f012b0cc4a",
+      "week_start": "2026-02-16",
+      "hot": false
+    },
+    {
+      "run_id": "run_a26f4738661f485bbc72dc565db9aa04",
+      "student_id": "stu_24f012b0cc4a",
+      "week_start": "2026-02-16",
+      "hot": false
+    },
+    {
+      "run_id": "run_9fc11e24d4a44a4bb500aa2da44ba415",
+      "student_id": "stu_24f012b0cc4a",
+      "week_start": "2026-02-23",
+      "hot": false
+    },
+    {
+      "run_id": "run_542fdb80e15f4aafaf9e2e002bf4f29b",
+      "student_id": "stu_24f012b0cc4a",
+      "week_start": "2026-02-23",
+      "hot": false
+    },
+    {
+      "run_id": "run_9611519f07d54f3b8e35472d3554dc66",
+      "student_id": "stu_24f012b0cc4a",
+      "week_start": "2026-02-23",
+      "hot": false
+    },
+    {
+      "run_id": "run_7b8317194f754727a7fd715285559ece",
+      "student_id": "stu_1fd35f035687",
+      "week_start": "2026-02-16",
+      "hot": false
+    },
+    {
+      "run_id": "run_340d24d9f5754e508a7b8f4a5ab307e8",
+      "student_id": "stu_1fd35f035687",
+      "week_start": "2026-02-16",
+      "hot": false
+    },
+    {
+      "run_id": "run_91615f9285b64086818ae08291f8ed5f",
+      "student_id": "stu_1fd35f035687",
+      "week_start": "2026-02-16",
+      "hot": false
+    },
+    {
+      "run_id": "run_455d113907f240d38b18257429a06078",
+      "student_id": "stu_1fd35f035687",
+      "week_start": "2026-02-23",
+      "hot": false
+    },
+    {
+      "run_id": "run_28f338751590452e88312a03e3763805",
+      "student_id": "stu_1fd35f035687",
+      "week_start": "2026-02-23",
+      "hot": false
+    },
+    {
+      "run_id": "run_22a280ab6ae24f96831f38af8a0f617b",
+      "student_id": "stu_1fd35f035687",
+      "week_start": "2026-02-23",
+      "hot": false
+    },
+    {
+      "run_id": "run_a99649cf11c14948b563c8931da7f442",
+      "student_id": "stu_04cc1c884696",
+      "week_start": "2026-02-16",
+      "hot": false
+    },
+    {
+      "run_id": "run_2e5b0aaf3db04e6190770cf32712f3ee",
+      "student_id": "stu_04cc1c884696",
+      "week_start": "2026-02-16",
+      "hot": false
+    },
+    {
+      "run_id": "run_fc0e310462f440709dad67f8d06ca5ec",
+      "student_id": "stu_04cc1c884696",
+      "week_start": "2026-02-16",
+      "hot": false
+    },
+    {
+      "run_id": "run_6030703723484f2883ed9b6ea1f1ef41",
+      "student_id": "stu_04cc1c884696",
+      "week_start": "2026-02-23",
+      "hot": false
+    },
+    {
+      "run_id": "run_886b5527d2964d7b895ff83c4ddc274f",
+      "student_id": "stu_04cc1c884696",
+      "week_start": "2026-02-23",
+      "hot": false
+    },
+    {
+      "run_id": "run_17d54c0aa4a1414bb221db57f0a7b61b",
+      "student_id": "stu_04cc1c884696",
+      "week_start": "2026-02-23",
+      "hot": false
+    },
+    {
+      "run_id": "run_c1e64059ab1d4cb9a93b02a126f7d325",
+      "student_id": "stu_af3b5be50b49",
+      "week_start": "2026-02-16",
+      "hot": false
+    },
+    {
+      "run_id": "run_f218222bc0e84e2c9f1052fff9c61f81",
+      "student_id": "stu_af3b5be50b49",
+      "week_start": "2026-02-16",
+      "hot": false
+    }
+  ],
+  "teacher_targets": [
+    {
+      "teacher_id": "tch_33c40a78db9f",
+      "username": "benchmark_teacher_1",
+      "classroom_id": "cls_e5d276f948b8",
+      "classroom_key": "BMK-0101"
+    }
+  ],
+  "dashboard_filter_targets": [
+    {
+      "classroom_id": "cls_e5d276f948b8",
+      "classroom_key": "BMK-0101",
+      "teacher_id": "tch_33c40a78db9f",
+      "grade": 2
+    },
+    {
+      "classroom_id": "cls_6cf77db151af",
+      "classroom_key": "BMK-0102",
+      "teacher_id": "tch_33c40a78db9f",
+      "grade": 3
+    }
+  ],
+  "classrooms": [
+    {
+      "classroom_id": "cls_e5d276f948b8",
+      "classroom_key": "BMK-0101",
+      "teacher_id": "tch_33c40a78db9f",
+      "grade": 2
+    },
+    {
+      "classroom_id": "cls_6cf77db151af",
+      "classroom_key": "BMK-0102",
+      "teacher_id": "tch_33c40a78db9f",
+      "grade": 3
+    }
+  ]
+}

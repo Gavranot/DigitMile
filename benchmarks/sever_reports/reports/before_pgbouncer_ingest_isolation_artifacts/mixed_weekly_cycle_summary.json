@@ -1,0 +1,144 @@
+{
+    "metrics": {
+        "iteration_duration": {
+            "max": 2002.855809,
+            "p(90)": 23.338516300000006,
+            "p(95)": 29.959984449999986,
+            "avg": 14.017073815138922,
+            "min": 6.687684,
+            "med": 10.3746705
+        },
+        "http_req_duration": {
+            "min": 5.066419,
+            "med": 7.635154,
+            "max": 1443.634436,
+            "p(90)": 17.7811416,
+            "p(95)": 23.466740899999998,
+            "avg": 10.6649237574285
+        },
+        "vus_max": {
+            "max": 50,
+            "value": 50,
+            "min": 50
+        },
+        "checks": {
+            "passes": 7199,
+            "fails": 0,
+            "value": 1
+        },
+        "http_req_receiving": {
+            "p(90)": 0.4689169000000005,
+            "p(95)": 0.7278000999999992,
+            "avg": 0.3074580930297137,
+            "min": 0.057449,
+            "med": 0.15565400000000001,
+            "max": 16.099566
+        },
+        "http_req_waiting": {
+            "max": 1442.938886,
+            "p(90)": 16.520439,
+            "p(95)": 21.946457549999998,
+            "avg": 9.808226463065814,
+            "min": 2.063338,
+            "med": 6.898649
+        },
+        "http_req_duration{expected_response:true}": {
+            "p(90)": 17.7811416,
+            "p(95)": 23.466740899999998,
+            "avg": 10.6649237574285,
+            "min": 5.066419,
+            "med": 7.635154,
+            "max": 1443.634436
+        },
+        "http_req_failed": {
+            "passes": 0,
+            "fails": 7202,
+            "value": 0
+        },
+        "http_req_tls_handshaking": {
+            "p(95)": 0,
+            "avg": 0,
+            "min": 0,
+            "med": 0,
+            "max": 0,
+            "p(90)": 0
+        },
+        "http_req_blocked": {
+            "max": 24.296574,
+            "p(90)": 1.6131530000000005,
+            "p(95)": 2.6147249499999985,
+            "avg": 0.8082512474312707,
+            "min": 0.213717,
+            "med": 0.516714
+        },
+        "data_sent": {
+            "count": 137309838,
+            "rate": 567394.2552665516
+        },
+        "http_req_connecting": {
+            "max": 15.599928,
+            "p(90)": 0.9499114000000027,
+            "p(95)": 1.9476635499999997,
+            "avg": 0.5810528032490984,
+            "min": 0.143057,
+            "med": 0.4052095
+        },
+        "data_received": {
+            "count": 2943580,
+            "rate": 12163.515784772217
+        },
+        "iterations": {
+            "count": 7199,
+            "rate": 29.747841110000472
+        },
+        "http_reqs": {
+            "count": 7202,
+            "rate": 29.76023776555402
+        },
+        "vus": {
+            "value": 1,
+            "min": 0,
+            "max": 3
+        },
+        "http_req_sending": {
+            "p(95)": 1.63359485,
+            "avg": 0.5492392013329614,
+            "min": 0.095715,
+            "med": 0.251166,
+            "max": 13.704724,
+            "p(90)": 1.4002678000000004
+        }
+    },
+    "setup_data": {
+        "csrf": {
+            "cookieHeader": "csrftoken=yqtlwG18Y5OAPN7VaT8VUjaUhJLH1mY6",
+            "csrfToken": "FmrHKjsdhhw44sHGxGiIIT0w1EVWVDH63CKS6Pjb5cauJ5Erxpgts20g8dwtMPv2"
+        },
+        "auth": {
+            "cookieHeader": "csrftoken=17sg9oI0sW5gogvnBHriw0VVVmY2bkk7; csrftoken=yqtlwG18Y5OAPN7VaT8VUjaUhJLH1mY6; sessionid=xpkkauiq6dkszya4a5xrv5w1fgk2nt6e"
+        }
+    },
+    "root_group": {
+        "name": "",
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {
+            "setup": {
+                "id": "5c0f8025f7e0b6654089e5b00e950f1a",
+                "groups": {},
+                "checks": {},
+                "name": "setup",
+                "path": "::setup"
+            }
+        },
+        "checks": {
+            "mixed open-week ingest accepted": {
+                "name": "mixed open-week ingest accepted",
+                "path": "::mixed open-week ingest accepted",
+                "id": "8cb89e322d1775f551fc502abd7d806f",
+                "passes": 7199,
+                "fails": 0
+            }
+        }
+    }
+}
