@@ -1,0 +1,54 @@
+{
+  "name": "before_write_buffer_ingest_isolation",
+  "benchmark_image_ref": "baseline/pre-write-buffer",
+  "compose_overlays": ["no-flusher.yml"],
+  "_comparison_notes": [
+    "Paired with benchmarks/scenarios/ingest_isolation.json — same dataset and",
+    "traffic shape; the difference is the backend image is built from commit",
+    "6d77836 (predecessor of the Redis write-buffer introduction). At this",
+    "baseline the ingest endpoint writes synchronously to Postgres inside a",
+    "transaction.atomic block; no Redis buffer, no flusher process.",
+    "",
+    "This is the headline comparison for the thesis: synchronous vs buffered",
+    "ingest at identical hardware, dataset, and traffic shape.",
+    "",
+    "Expected: sustained RPS will be MUCH lower at this baseline (per the",
+    "write-buffering-adr.md, ~16–18 RPS vs the buffered version's higher",
+    "ceiling), and dropped_iterations should appear much earlier in the ramp.",
+    "",
+    "Run both and diff via benchmarks/compare_reports.py."
+  ],
+  "dataset": {
+    "teachers": 1,
+    "classrooms_per_teacher": 2,
+    "students_per_classroom": 30,
+    "weeks": 4,
+    "runs_per_student_per_week": 3,
+    "avg_turns_per_run": 20,
+    "card_mix_profile": "balanced",
+    "bag_level_ratio": 0.35,
+    "compact_weeks": "1-2",
+    "hot_weeks": 2,
+    "anchor_week_start": "2026-03-09"
+  },
+  "traffic": {
+    "base_url": "http://benchmark-backend:8000",
+    "request_host_header": "localhost",
+    "duration": "4m",
+    "ramp_mode": true,
+    "ingest_rate_per_sec": 60,
+    "dashboard_rate_per_sec": 0,
+    "analytics_rate_per_sec": 0,
+    "turn_insights_rate_per_sec": 0,
+    "replay_rate_per_sec": 0,
+    "ingest_pre_allocated_vus": 50,
+    "ingest_max_vus": 200,
+    "resource_sample_interval_seconds": 5,
+    "ingest_expected_mode": "accepted",
+    "scripts": ["mixed_weekly_cycle.js"]
+  },
+  "verification": {
+    "benchmark_iterations": 3
+  },
+  "report_output": "benchmarks/reports/before_write_buffer_ingest_isolation.json"
+}

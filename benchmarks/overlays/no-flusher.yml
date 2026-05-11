@@ -1,0 +1,25 @@
+# Benchmark overlay: disable the ingest flusher service.
+#
+# Required for any baseline image built from a commit older than e27b758
+# (the Redis write-buffer introduction), because the `flush_ingest_buffer`
+# management command does not exist yet at those commits — the base compose
+# file would otherwise crash-loop the flusher container.
+#
+# At pre-buffer baselines the ingest endpoint writes synchronously to
+# Postgres, so there is no Redis buffer that needs draining anyway.
+#
+# The service is left declared (so the base compose's depends_on graph
+# still resolves and run_scenario.py's container-id lookup still works);
+# only the image and command are replaced with a sleeping busybox. We also
+# override restart: always so the container doesn't fight the no-op command.
+#
+# Apply via scenario JSON: "compose_overlays": ["no-flusher.yml"]
+# DOES NOT affect production — only the benchmark stack uses this file.
+
+services:
+  benchmark-flusher:
+    image: busybox:latest
+    command: sleep infinity
+    restart: "no"
+    healthcheck:
+      disable: true

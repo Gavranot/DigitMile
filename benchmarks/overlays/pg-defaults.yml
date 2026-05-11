@@ -1,0 +1,13 @@
+# Benchmark overlay: stock PostgreSQL configuration.
+#
+# Reverts optimization B (PG tuning: synchronous_commit=off, shared_buffers,
+# work_mem, wal_buffers, checkpoint_completion_target, random_page_cost) by
+# replacing the tuned command line with a bare `postgres` invocation. The
+# server then runs with PostgreSQL 16's out-of-the-box defaults.
+#
+# Apply via scenario JSON: "compose_overlays": ["pg-defaults.yml"]
+# DOES NOT affect production — only the benchmark stack uses this file.
+
+services:
+  benchmark-db:
+    command: postgres

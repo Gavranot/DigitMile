@@ -133,6 +133,16 @@ elif not db_port_env:
 # If DB_PORT is set but is not a simple number (e.g., an empty string from .env, or non-numeric),
 # processed_db_port remains '', which is fine for Django's database wrapper.
 
+# PgBouncer transaction pooling requires CONN_MAX_AGE=0 (Django must not hold
+# persistent connections — PgBouncer owns the pool) and
+# DISABLE_SERVER_SIDE_CURSORS=True (PgBouncer can't forward prepared statements
+# across transaction boundaries). Defaults match prod exactly; the benchmark
+# "no-pgbouncer" overlay flips these to test the pre-PgBouncer baseline.
+# Production .env does not set DB_CONN_MAX_AGE / DB_DISABLE_SERVER_SIDE_CURSORS.
+_conn_max_age_env = os.getenv("DB_CONN_MAX_AGE")
+_conn_max_age = int(_conn_max_age_env) if _conn_max_age_env and _conn_max_age_env.strip().isdigit() else 0
+_disable_ssc = os.getenv("DB_DISABLE_SERVER_SIDE_CURSORS", "True") == "True"
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
@@ -141,26 +151,35 @@ DATABASES = {
         "PASSWORD": os.getenv("DB_PASS"),
         "HOST": os.getenv("DB_HOST"),
         "PORT": processed_db_port,  # Use the explicitly processed port
-        # PgBouncer transaction pooling requires these two settings:
-        # - CONN_MAX_AGE=0: Django must not hold persistent connections;
-        #   PgBouncer owns the pool, not Django.
-        # - DISABLE_SERVER_SIDE_CURSORS=True: PgBouncer can't forward prepared
-        #   statements across transaction boundaries.
-        "CONN_MAX_AGE": 0,
-        "DISABLE_SERVER_SIDE_CURSORS": True,
+        "CONN_MAX_AGE": _conn_max_age,
+        "DISABLE_SERVER_SIDE_CURSORS": _disable_ssc,
     }
 }
 # END OF BLOCK TO PASTE
 
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": os.getenv("REDIS_URL", "redis://localhost:6379/1"),
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        },
+# Single source of truth for the Redis connection URL. The ingest write
+# buffer (a Redis LIST consumed by the flusher) and the Django query cache
+# both read this — they're conceptually independent but share an instance.
+# Keeping them as one setting means swapping cache backends (e.g. to
+# DummyCache via the benchmark overlay) doesn't accidentally break the
+# ingest buffer connection.
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/1")
+
+# Cache backend is env-selectable so the benchmark "dummy-cache" overlay can
+# disable query caching to measure the pre-cache baseline. Production .env
+# does not set DJANGO_CACHE_BACKEND, so the redis backend remains the default.
+if os.getenv("DJANGO_CACHE_BACKEND", "redis").lower() == "dummy":
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.dummy.DummyCache"}}
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": REDIS_URL,
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            },
+        }
     }
-}
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators

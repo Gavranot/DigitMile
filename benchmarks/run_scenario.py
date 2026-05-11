@@ -29,12 +29,18 @@ if _dotenv_path.is_file():
                 os.environ[_key] = _value
 
 BENCHMARK_COMPOSE_FILE = REPO_ROOT / "benchmarks" / "docker-compose.benchmark.yml"
+BENCHMARK_OVERLAYS_DIR = REPO_ROOT / "benchmarks" / "overlays"
+BASELINE_WORKTREE_ROOT = REPO_ROOT / ".baseline-worktrees"
 BENCHMARK_BACKEND_SERVICE = "benchmark-backend"
 BENCHMARK_DB_SERVICE = "benchmark-db"
 BENCHMARK_REDIS_SERVICE = "benchmark-redis"
 BENCHMARK_FLUSHER_SERVICE = "benchmark-flusher"
 K6_IMAGE = "grafana/k6:0.49.0"
 K6_CONTAINER_NAME = "digitmile-k6-runner"
+
+# Set by main() once the scenario JSON is parsed. compose_command() reads
+# this so every docker compose invocation picks up the overlays.
+_ACTIVE_OVERLAY_PATHS: list[Path] = []
 BYTE_UNITS = {
     "B": 1,
     "kB": 1000,
@@ -141,6 +147,9 @@ def compose_command(project_name, *args):
         "-f",
         str(BENCHMARK_COMPOSE_FILE),
     ]
+    # Scenario-declared overlays merge in declared order, left-to-right.
+    for overlay_path in _ACTIVE_OVERLAY_PATHS:
+        cmd.extend(["-f", str(overlay_path)])
     # Load .env from repo root so compose picks up BENCHMARK_BACKEND_IMAGE
     # and other variables. Without this, compose only looks in the compose
     # file's directory (benchmarks/), which has no .env.
@@ -650,6 +659,288 @@ def ensure_backend_image():
     log_step(f"benchmark backend image {image} missing and BENCHMARK_BACKEND_IMAGE is set — cannot build locally")
     return False
 
+
+def _resolve_overlay_paths(scenario):
+    """Validate and resolve compose_overlays entries from the scenario JSON.
+
+    Each entry may be a bare filename (resolved against benchmarks/overlays/)
+    or an explicit path. Missing files abort the run before any docker work.
+    """
+    overlays = scenario.get("compose_overlays") or []
+    if not isinstance(overlays, list):
+        raise ValueError("scenario.compose_overlays must be a list of overlay filenames")
+    resolved: list[Path] = []
+    for entry in overlays:
+        candidate = Path(entry)
+        if not candidate.is_absolute():
+            candidate = BENCHMARK_OVERLAYS_DIR / candidate
+        if not candidate.is_file():
+            raise FileNotFoundError(f"compose overlay not found: {candidate}")
+        resolved.append(candidate)
+    return resolved
+
+
+def _sanitize_ref_for_tag(ref):
+    return re.sub(r"[^A-Za-z0-9._-]+", "-", ref).strip("-").lower() or "ref"
+
+
+def _git_resolve_sha(ref):
+    result = run_command(["git", "rev-parse", "--verify", f"{ref}^{{commit}}"])
+    return result.stdout.strip()
+
+
+def _ensure_worktree(sha):
+    worktree_path = BASELINE_WORKTREE_ROOT / sha[:12]
+    if worktree_path.exists():
+        return worktree_path
+    BASELINE_WORKTREE_ROOT.mkdir(parents=True, exist_ok=True)
+    log_step(f"creating git worktree at {worktree_path} for {sha[:12]}")
+    run_command(["git", "worktree", "add", "--detach", str(worktree_path), sha])
+    return worktree_path
+
+
+def _build_baseline_image(ref):
+    """Build the backend image from a historical commit and return its tag.
+
+    Worktrees under .baseline-worktrees/ are reused across runs so subsequent
+    scenarios using the same baseline skip the checkout cost.
+    """
+    sha = _git_resolve_sha(ref)
+    image_tag = f"digitmile-benchmark-backend:baseline-{_sanitize_ref_for_tag(ref)}-{sha[:12]}"
+
+    inspect = run_command(["docker", "image", "inspect", image_tag], check=False)
+    if inspect.returncode == 0:
+        log_step(f"reusing baseline image {image_tag}")
+        return image_tag
+
+    worktree = _ensure_worktree(sha)
+    backend_dir = worktree / "DigitMilePanel"
+    dockerfile = backend_dir / "Dockerfile.compose"
+    if not dockerfile.is_file():
+        raise FileNotFoundError(
+            f"baseline ref {ref} ({sha[:12]}) has no DigitMilePanel/Dockerfile.compose — "
+            "older commits may use a different image layout"
+        )
+    log_step(f"building baseline image {image_tag} from {ref} ({sha[:12]})")
+    stream_command(
+        [
+            "docker",
+            "build",
+            "-t",
+            image_tag,
+            "-f",
+            str(dockerfile),
+            str(backend_dir),
+        ],
+        heartbeat_label=f"docker build baseline {ref}",
+    )
+    return image_tag
+
+
+def _apply_baseline_image_ref(scenario):
+    """Honour scenario.benchmark_image_ref by overriding BENCHMARK_BACKEND_IMAGE.
+
+    Sets the env var that compose reads, which also flips run_scenario.py out
+    of "local build" mode so docker compose pulls/uses the prebuilt image
+    instead of trying to build from the live working tree.
+    """
+    ref = scenario.get("benchmark_image_ref")
+    if not ref:
+        return None
+    image_tag = _build_baseline_image(ref)
+    os.environ["BENCHMARK_BACKEND_IMAGE"] = image_tag
+    log_step(f"benchmark_image_ref={ref} → using image {image_tag}")
+    return image_tag
+
+
+def _extract_sha_from_image_tag(image):
+    """Pull the 12-hex commit SHA suffix from a baseline image tag, if present."""
+    match = re.search(r"baseline-.*-([0-9a-f]{12})$", image)
+    return match.group(1) if match else None
+
+
+def verify_backend_image(project_name, scenario):
+    """Confirm the running backend container is using the image the scenario asked for.
+
+    Queries the live container, compares against expectations, prints a
+    prominent log block, and returns a dict that gets embedded in the
+    scenario report under scenario_summary.image_info. Mismatches are fatal
+    so a stale image can't silently invalidate a thesis comparison run.
+    """
+    container_id = compose_service_container_id(project_name, BENCHMARK_BACKEND_SERVICE)
+    if not container_id:
+        raise RuntimeError("backend container not found — cannot verify image")
+
+    inspect = run_command(
+        ["docker", "inspect", container_id, "--format", "{{.Config.Image}}|{{.Image}}"]
+    )
+    image_name, _, image_digest = inspect.stdout.strip().partition("|")
+
+    requested_ref = scenario.get("benchmark_image_ref")
+    expected_image = os.environ.get("BENCHMARK_BACKEND_IMAGE")
+    sha = _extract_sha_from_image_tag(image_name)
+
+    info = {
+        "image": image_name,
+        "image_digest": image_digest,
+        "container_id": container_id,
+        "mode": "baseline" if sha else "tree-HEAD",
+        "requested_benchmark_image_ref": requested_ref,
+        "resolved_sha": sha,
+    }
+
+    if sha:
+        try:
+            commit = run_command(["git", "show", "-s", "--format=%h %s", sha], check=False)
+            if commit.returncode == 0:
+                info["commit_subject"] = commit.stdout.strip()
+        except Exception:
+            pass
+
+    if requested_ref and expected_image and image_name != expected_image:
+        raise RuntimeError(
+            f"backend image mismatch — scenario asked for {requested_ref!r} "
+            f"(image {expected_image}) but the running container is using "
+            f"{image_name}. Aborting before any traffic runs."
+        )
+    if requested_ref and not sha:
+        raise RuntimeError(
+            f"backend image mismatch — scenario asked for benchmark_image_ref "
+            f"{requested_ref!r} but the running container's image {image_name} "
+            f"is not a baseline build. Aborting."
+        )
+
+    banner = "=" * 64
+    log_step(banner)
+    log_step(f"benchmark backend image: {image_name}")
+    log_step(f"  mode: {info['mode']}")
+    if requested_ref:
+        log_step(f"  requested ref: {requested_ref}")
+    if sha:
+        log_step(f"  resolved SHA: {sha}")
+    if info.get("commit_subject"):
+        log_step(f"  commit: {info['commit_subject']}")
+    if _ACTIVE_OVERLAY_PATHS:
+        log_step(f"  overlays: {', '.join(p.name for p in _ACTIVE_OVERLAY_PATHS)}")
+    else:
+        log_step("  overlays: (none)")
+    log_step(banner)
+
+    return info
+
+
+_PG_SETTINGS_TO_PROBE = (
+    "synchronous_commit",
+    "shared_buffers",
+    "effective_cache_size",
+    "work_mem",
+    "maintenance_work_mem",
+    "wal_buffers",
+    "checkpoint_completion_target",
+    "random_page_cost",
+)
+
+_BACKEND_ENV_TO_PROBE = (
+    "DB_HOST",
+    "DB_CONN_MAX_AGE",
+    "DB_DISABLE_SERVER_SIDE_CURSORS",
+    "DJANGO_CACHE_BACKEND",
+    "REDIS_URL",
+)
+
+
+def verify_stack_state(project_name):
+    """Probe the running stack for the settings the overlays target.
+
+    Confirms that overlays *actually* changed runtime state — not just that
+    docker compose was given the override file. PG settings come from
+    pg_settings (authoritative), backend env vars come from /proc, and the
+    Django CACHES backend comes from the live settings module so it includes
+    any conditional logic in settings.py.
+    """
+    state = {}
+
+    # Postgres — pg_settings is the source of truth for what PG actually picked up.
+    db_user = os.getenv("BENCHMARK_DB_USER", "digitmile")
+    db_name = os.getenv("BENCHMARK_DB_NAME", "digitmile_benchmark")
+    pg_names = ",".join(f"'{name}'" for name in _PG_SETTINGS_TO_PROBE)
+    pg_query = (
+        f"SELECT name || '=' || setting FROM pg_settings "
+        f"WHERE name IN ({pg_names});"
+    )
+    try:
+        result = compose_exec(
+            project_name, BENCHMARK_DB_SERVICE,
+            "psql", "-U", db_user, "-d", db_name, "-tA", "-c", pg_query,
+        )
+        state["postgres_settings"] = {
+            line.split("=", 1)[0]: line.split("=", 1)[1]
+            for line in result.stdout.strip().splitlines() if "=" in line
+        }
+    except subprocess.CalledProcessError as exc:
+        state["postgres_settings_error"] = (exc.output or str(exc))[:500]
+
+    # Backend env: shows which DB_HOST / cache backend / pool settings the
+    # container actually booted with, which is what settings.py reads.
+    try:
+        printenv_script = "; ".join(f'echo "{name}=$' + name + '"' for name in _BACKEND_ENV_TO_PROBE)
+        result = compose_exec(
+            project_name, BENCHMARK_BACKEND_SERVICE,
+            "sh", "-c", printenv_script,
+        )
+        state["backend_env"] = {
+            line.split("=", 1)[0]: line.split("=", 1)[1]
+            for line in result.stdout.strip().splitlines() if "=" in line
+        }
+    except subprocess.CalledProcessError as exc:
+        state["backend_env_error"] = (exc.output or str(exc))[:500]
+
+    # Django CACHES backend as resolved by settings.py at boot. This catches
+    # any drift between the env var and the actual configured backend.
+    try:
+        result = compose_exec(
+            project_name, BENCHMARK_BACKEND_SERVICE,
+            "python", "manage.py", "shell", "-c",
+            "from django.conf import settings; "
+            "print(settings.CACHES['default']['BACKEND'])",
+        )
+        state["django_cache_backend"] = result.stdout.strip().splitlines()[-1]
+    except subprocess.CalledProcessError as exc:
+        state["django_cache_backend_error"] = (exc.output or str(exc))[:500]
+
+    # Flusher image — confirms no-flusher.yml swap actually replaced it.
+    try:
+        flusher_container_id = compose_service_container_id(
+            project_name, BENCHMARK_FLUSHER_SERVICE
+        )
+        if flusher_container_id:
+            inspect = run_command([
+                "docker", "inspect", flusher_container_id,
+                "--format", "{{.Config.Image}}",
+            ])
+            state["flusher_image"] = inspect.stdout.strip()
+    except subprocess.CalledProcessError as exc:
+        state["flusher_image_error"] = (exc.output or str(exc))[:500]
+
+    banner = "-" * 64
+    log_step(banner)
+    log_step("stack state (overlay verification):")
+    pg = state.get("postgres_settings") or {}
+    for name in _PG_SETTINGS_TO_PROBE:
+        if name in pg:
+            log_step(f"  pg.{name} = {pg[name]}")
+    env = state.get("backend_env") or {}
+    for name in _BACKEND_ENV_TO_PROBE:
+        if name in env:
+            log_step(f"  backend.{name} = {env[name] or '(unset)'}")
+    if "django_cache_backend" in state:
+        log_step(f"  django CACHES backend = {state['django_cache_backend']}")
+    if "flusher_image" in state:
+        log_step(f"  flusher image = {state['flusher_image']}")
+    log_step(banner)
+
+    return state
+
 def should_keep_stack_on_failure():
     return os.getenv("BENCHMARK_KEEP_STACK", "0") == "1"
 
@@ -679,6 +970,17 @@ def main():
     scenario_report_dir = report_output_path.parent / f"{scenario_name}_artifacts"
     scenario_report_dir.mkdir(parents=True, exist_ok=True)
 
+    # Resolve overlays + baseline image before any docker compose calls so a
+    # bad scenario JSON fails fast without leaving a half-started stack.
+    _ACTIVE_OVERLAY_PATHS.clear()
+    _ACTIVE_OVERLAY_PATHS.extend(_resolve_overlay_paths(scenario))
+    if _ACTIVE_OVERLAY_PATHS:
+        log_step(
+            "applying compose overlays: "
+            + ", ".join(p.name for p in _ACTIVE_OVERLAY_PATHS)
+        )
+    _apply_baseline_image_ref(scenario)
+
     backend_container_id = None
     db_container_id = None
     redis_container_id = None
@@ -689,6 +991,8 @@ def main():
             return
         compose_up(project_name)
         backend_container_id = wait_for_backend_ready(project_name)
+        image_info = verify_backend_image(project_name, scenario)
+        stack_state = verify_stack_state(project_name)
         db_container_id = compose_service_container_id(
             project_name, BENCHMARK_DB_SERVICE
         )
@@ -999,6 +1303,9 @@ def main():
                 "base_url": env_map["BASE_URL"],
                 "request_host_header": env_map["REQUEST_HOST_HEADER"],
                 "benchmark_reference_time": env_map["BENCHMARK_REFERENCE_TIME"],
+                "image_info": image_info,
+                "compose_overlays": [str(p) for p in _ACTIVE_OVERLAY_PATHS],
+                "stack_state": stack_state,
             },
             "dataset_report": dataset_report,
             "pre_benchmark": pre_benchmark,

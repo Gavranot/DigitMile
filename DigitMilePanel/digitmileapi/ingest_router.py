@@ -19,8 +19,10 @@ from .run_ingestion import (
 )
 from .views import _log_run_ingest_event
 
-# Redis connection for the ingest write buffer (same instance as Django cache)
-_redis = redis_client.from_url(settings.CACHES["default"]["LOCATION"])
+# Redis connection for the ingest write buffer. Read directly from REDIS_URL
+# rather than CACHES['default']['LOCATION'] so swapping the Django cache to
+# DummyCache (e.g. via the benchmark overlay) doesn't break ingest.
+_redis = redis_client.from_url(settings.REDIS_URL)
 
 logger = logging.getLogger(__name__)
 

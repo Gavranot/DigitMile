@@ -1,0 +1,18 @@
+# Benchmark overlay: disable Django cache.
+#
+# Reverts optimization D (django-redis dashboard query cache + invalidation)
+# by switching the CACHES backend to django.core.cache.backends.dummy.DummyCache.
+# `cache.get` always misses, `cache.set` is a no-op, so every dashboard query
+# hits the database — the pre-cache baseline.
+#
+# Apply via scenario JSON: "compose_overlays": ["dummy-cache.yml"]
+# DOES NOT affect production — only the benchmark stack uses this file.
+
+services:
+  benchmark-backend:
+    environment:
+      DJANGO_CACHE_BACKEND: dummy
+
+  benchmark-flusher:
+    environment:
+      DJANGO_CACHE_BACKEND: dummy

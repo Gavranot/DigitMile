@@ -1,0 +1,31 @@
+# Benchmark overlay: bypass PgBouncer.
+#
+# Reverts optimization A (PgBouncer transaction pooling + Django settings that
+# depend on it) by pointing the backend and flusher directly at benchmark-db,
+# and re-enabling Django connection reuse + server-side cursors.
+#
+# The pgbouncer service is left declared so the depends_on graph in the base
+# compose file still resolves, but its image is replaced with a no-op
+# busybox container so PgBouncer itself never runs.
+#
+# Apply via scenario JSON: "compose_overlays": ["no-pgbouncer.yml"]
+# DOES NOT affect production — only the benchmark stack uses this file.
+
+services:
+  benchmark-pgbouncer:
+    image: busybox:latest
+    command: sleep infinity
+    healthcheck:
+      disable: true
+
+  benchmark-backend:
+    environment:
+      DB_HOST: benchmark-db
+      DB_CONN_MAX_AGE: "60"
+      DB_DISABLE_SERVER_SIDE_CURSORS: "False"
+
+  benchmark-flusher:
+    environment:
+      DB_HOST: benchmark-db
+      DB_CONN_MAX_AGE: "60"
+      DB_DISABLE_SERVER_SIDE_CURSORS: "False"

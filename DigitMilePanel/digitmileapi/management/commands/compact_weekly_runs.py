@@ -221,7 +221,11 @@ class Command(BaseCommand):
         compaction.notes = f"Compaction complete for {week_start} through {week_end}"
         compaction.save()
 
-        cache.delete_pattern("teacher_stats_viz:*")
+        # delete_pattern is a django-redis extension; skip when the cache
+        # backend doesn't provide it (e.g. DummyCache under the benchmark
+        # dummy-cache overlay, where there is nothing to invalidate).
+        if hasattr(cache, "delete_pattern"):
+            cache.delete_pattern("teacher_stats_viz:*")
 
         self.stdout.write(
             self.style.SUCCESS(
