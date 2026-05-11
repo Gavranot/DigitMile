@@ -656,7 +656,19 @@ def ensure_backend_image():
         log_step(f"local image {image} not found — will be built by compose up --build")
         return True
 
-    log_step(f"benchmark backend image {image} missing and BENCHMARK_BACKEND_IMAGE is set — cannot build locally")
+    # BENCHMARK_BACKEND_IMAGE is set (registry image, including scenario.benchmark_image
+    # baselines pushed to a registry for git-less hosts). Try to pull before giving up
+    # — this is the path used on the deployment server.
+    log_step(f"image {image} not local; attempting docker pull")
+    pull = run_command(["docker", "pull", image], check=False)
+    if pull.returncode == 0:
+        log_step(f"pulled {image}")
+        return True
+
+    log_step(
+        f"docker pull failed for {image} (exit {pull.returncode}): "
+        f"{(pull.stderr or pull.stdout or '').strip()[:300]}"
+    )
     return False
 
 
