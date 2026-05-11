@@ -1,0 +1,70 @@
+{
+  "name": "mixed_steady",
+  "dataset": {
+    "teachers": 10,
+    "classrooms_per_teacher": 4,
+    "students_per_classroom": 25,
+    "weeks": 8,
+    "runs_per_student_per_week": 3,
+    "avg_turns_per_run": 20,
+    "card_mix_profile": "balanced",
+    "bag_level_ratio": 0.35,
+    "compact_weeks": "1-6",
+    "hot_weeks": 2,
+    "anchor_week_start": "2026-03-09"
+  },
+  "_dataset_notes": [
+    "national_medium scale — 1,000 students, 6 cold weeks (rolled up) + 2 hot.",
+    "Reader queries hit the realistic mixed regime: dashboard reads only from",
+    "rollups (optimization C), analytics/turn_insights query the hot weeks."
+  ],
+  "_nfr": "Closes NFR-3 and NFR-4 from docs/decisions/thesis-benchmark-plan.md §3.",
+  "traffic": {
+    "base_url": "http://benchmark-backend:8000",
+    "request_host_header": "localhost",
+    "duration": "10m",
+    "hot_replay_ratio": 0.6,
+    "grade_filter_ratio": 0.4,
+    "classroom_filter_ratio": 0.4,
+    "ingest_rate_per_sec": 11,
+    "dashboard_rate_per_sec": 1,
+    "analytics_rate_per_sec": 1,
+    "turn_insights_rate_per_sec": 1,
+    "replay_rate_per_sec": 1,
+    "ingest_pre_allocated_vus": 60,
+    "ingest_max_vus": 200,
+    "dashboard_pre_allocated_vus": 6,
+    "dashboard_max_vus": 16,
+    "analytics_pre_allocated_vus": 6,
+    "analytics_max_vus": 16,
+    "turn_insights_pre_allocated_vus": 10,
+    "turn_insights_max_vus": 30,
+    "replay_pre_allocated_vus": 4,
+    "replay_max_vus": 10,
+    "resource_sample_interval_seconds": 10,
+    "ingest_expected_mode": "accepted",
+    "scripts": ["mixed_weekly_cycle.js"]
+  },
+  "_traffic_notes": [
+    "Steady mixed-traffic regime: NFR-1 ingest rate (11 RPS) plus four reader",
+    "classes at 1 req/s each for 10 min. Mirrors a class-in-session window",
+    "where students play while a teacher refreshes the dashboard.",
+    "Pass criteria:",
+    "  NFR-3 — dashboard p95 < 3000 ms across the window,",
+    "  NFR-3 — analytics p95 < 5000 ms,",
+    "  NFR-3 — zero dropped iterations on any read class,",
+    "  NFR-4 — post-traffic compaction of week 7 completes in < 60 s,",
+    "  NFR-4 — no dropped read iterations during traffic.",
+    "Compaction is triggered AFTER the traffic window by",
+    "verification.compact_after_traffic_week_index, so the read-load pass is",
+    "evaluated independently from the compaction-duration pass.",
+    "Week 7 is the older of the two hot weeks (weeks=8, hot_weeks=2 -> hot",
+    "weeks are 7 and 8). The week_start is resolved from dataset_report.weeks",
+    "by run_scenario.py."
+  ],
+  "verification": {
+    "benchmark_iterations": 4,
+    "compact_after_traffic_week_index": 7
+  },
+  "report_output": "benchmarks/reports/mixed_steady.json"
+}
