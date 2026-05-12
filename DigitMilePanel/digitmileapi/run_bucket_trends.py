@@ -182,27 +182,7 @@ def rebuild_historical_run_bucket_trends(student_level_pairs, include_run_ids=No
     )
 
 
-def get_student_run_bucket_points(student, level=None):
-    trend_queryset = StudentRunBucketTrend.objects.filter(student=student)
-    hot_runs_queryset = Run.objects.filter(
-        student=student,
-        raw_data_compacted_at__isnull=True,
-    )
-
-    if level is not None:
-        trend_queryset = trend_queryset.filter(level=level)
-        hot_runs_queryset = hot_runs_queryset.filter(level=level)
-
-    buckets_by_level = defaultdict(list)
-    for trend in trend_queryset.order_by("level", "bucket_index"):
-        buckets_by_level[trend.level].append(_bucket_from_trend(trend))
-
-    hot_runs_by_level = defaultdict(list)
-    for run in hot_runs_queryset.select_related("student__classroom__teacher").order_by(
-        "level", "created_at", "id"
-    ):
-        hot_runs_by_level[run.level].append(run)
-
+def _merge_buckets_and_hot_runs(buckets_by_level, hot_runs_by_level):
     merged_by_level = {}
     all_levels = set(buckets_by_level.keys()) | set(hot_runs_by_level.keys())
     for bucket_level in sorted(all_levels):
@@ -246,3 +226,65 @@ def get_student_run_bucket_points(student, level=None):
         "points": overall_points,
         "by_level": merged_by_level,
     }
+
+
+def get_student_run_bucket_points(student, level=None, include_hot=False):
+    """Return run-bucket trend points for a student.
+
+    `include_hot` controls whether uncompacted (hot) Run rows are merged
+    into the tail of the trend sequence. With incremental rollups in the
+    flusher (digitmileapi/rollup_incremental.py) the rollup tables stay
+    current, so the dashboard never needs to merge hot data and the
+    "no hot data in dashboard" invariant holds. Pre-incremental callers
+    can opt in by passing include_hot=True.
+    """
+    trend_queryset = StudentRunBucketTrend.objects.filter(student=student)
+    if level is not None:
+        trend_queryset = trend_queryset.filter(level=level)
+
+    buckets_by_level = defaultdict(list)
+    for trend in trend_queryset.order_by("level", "bucket_index"):
+        buckets_by_level[trend.level].append(_bucket_from_trend(trend))
+
+    hot_runs_by_level = defaultdict(list)
+    if include_hot:
+        hot_runs_queryset = Run.objects.filter(
+            student=student,
+            raw_data_compacted_at__isnull=True,
+        )
+        if level is not None:
+            hot_runs_queryset = hot_runs_queryset.filter(level=level)
+        for run in hot_runs_queryset.select_related(
+            "student__classroom__teacher"
+        ).order_by("level", "created_at", "id"):
+            hot_runs_by_level[run.level].append(run)
+
+    return _merge_buckets_and_hot_runs(buckets_by_level, hot_runs_by_level)
+
+
+def bulk_student_run_bucket_points(student_ids):
+    """Bulk-fetch StudentRunBucketTrend points for many students at once.
+
+    Returns {student_id: {"points": [...], "by_level": {...}}}. Rollup-only
+    by design — the dashboard reads only from rollup tables and relies on
+    the flusher's incremental updates (rollup_incremental.py) to keep them
+    current for the open week.
+    """
+    if not student_ids:
+        return {}
+
+    trends_by_student = defaultdict(lambda: defaultdict(list))
+    for trend in StudentRunBucketTrend.objects.filter(
+        student_id__in=student_ids
+    ).order_by("student_id", "level", "bucket_index"):
+        trends_by_student[trend.student_id][trend.level].append(
+            _bucket_from_trend(trend)
+        )
+
+    result = {}
+    for sid in set(student_ids) | set(trends_by_student.keys()):
+        result[sid] = _merge_buckets_and_hot_runs(
+            trends_by_student.get(sid, {}),
+            {},
+        )
+    return result

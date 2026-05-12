@@ -54,7 +54,7 @@ from .run_ingestion import (
     get_recording_window_status_for_run_finish,
     unix_ms_to_datetime,
 )
-from .run_bucket_trends import get_student_run_bucket_points
+from .run_bucket_trends import bulk_student_run_bucket_points, get_student_run_bucket_points
 from .rollup_analytics import (
     back_card_usage_by_place_by_level as rollup_back_card_usage_by_place_by_level,
     bag_conditional_accuracy_by_comparator_by_level as rollup_bag_conditional_accuracy_by_comparator_by_level,
@@ -1357,27 +1357,48 @@ def calculate_consistency_score(values):
     return max(0, min(1, consistency))  # Clamp between 0 and 1
 
 
+_STUDENT_WEEK_HISTORY_FIELDS = (
+    "student_id",
+    "week_start",
+    "runs",
+    "wins",
+    "correct_moves",
+    "wrong_moves",
+    "score_sum",
+    "score_count",
+    "elapsed_sum_ms",
+    "elapsed_count",
+    "latest_run_id",
+    "latest_run__level",
+    "latest_run_created_at",
+    "first_run_created_at",
+)
+
+
 def _student_weekly_history(student):
-    weekly_rows = list(
+    return list(
         StudentWeekStats.objects.filter(student=student)
         .order_by("week_start")
-        .values(
-            "week_start",
-            "runs",
-            "wins",
-            "correct_moves",
-            "wrong_moves",
-            "score_sum",
-            "score_count",
-            "elapsed_sum_ms",
-            "elapsed_count",
-            "latest_run_id",
-            "latest_run__level",
-            "latest_run_created_at",
-            "first_run_created_at",
-        )
+        .values(*_STUDENT_WEEK_HISTORY_FIELDS)
     )
-    return weekly_rows
+
+
+def _bulk_student_weekly_history(student_ids):
+    """Bulk-fetch StudentWeekStats for many students in one query.
+
+    Returns {student_id: [weekly_row, ...]} where each row matches the shape
+    _student_weekly_history produces for the per-student variant.
+    """
+    if not student_ids:
+        return {}
+    rows_by_student = defaultdict(list)
+    for row in (
+        StudentWeekStats.objects.filter(student_id__in=student_ids)
+        .order_by("student_id", "week_start")
+        .values(*_STUDENT_WEEK_HISTORY_FIELDS)
+    ):
+        rows_by_student[row["student_id"]].append(row)
+    return rows_by_student
 
 
 def _student_weekly_level_history(student):
@@ -1400,12 +1421,21 @@ def _student_weekly_level_history(student):
     )
 
 
-def _build_student_dashboard_info(student):
-    weekly_rows = _student_weekly_history(student)
+def _build_student_dashboard_info(student, weekly_rows=None, bucket_data=None):
+    """Build the per-student dashboard info dict.
+
+    When the caller has already bulk-fetched weekly history and bucket
+    points (the dashboard view path), pass them in to skip the per-student
+    queries. Callers without pre-fetched data (benchmarks, tests) get the
+    original behaviour.
+    """
+    if weekly_rows is None:
+        weekly_rows = _student_weekly_history(student)
     if not weekly_rows:
         return None
 
-    bucket_data = get_student_run_bucket_points(student)
+    if bucket_data is None:
+        bucket_data = get_student_run_bucket_points(student)
     bucket_points = bucket_data["points"]
     total_runs = sum(row["runs"] or 0 for row in weekly_rows)
     wins = sum(row["wins"] or 0 for row in weekly_rows)
@@ -1576,22 +1606,43 @@ def _build_student_dashboard_info(student):
     }
 
 
-def _build_classroom_dashboard_stats(classroom, grade_filter=None):
+_CLASSROOM_WEEK_STATS_FIELDS = (
+    "classroom_id",
+    "student_count",
+    "runs",
+    "wins",
+    "correct_moves",
+    "wrong_moves",
+    "score_sum",
+    "score_count",
+    "elapsed_sum_ms",
+)
+
+
+def _bulk_classroom_weekly_history(classroom_ids):
+    """Bulk-fetch ClassroomWeekStats keyed by classroom_id."""
+    if not classroom_ids:
+        return {}
+    rows_by_classroom = defaultdict(list)
+    for row in ClassroomWeekStats.objects.filter(
+        classroom_id__in=classroom_ids
+    ).values(*_CLASSROOM_WEEK_STATS_FIELDS):
+        rows_by_classroom[row["classroom_id"]].append(row)
+    return rows_by_classroom
+
+
+def _build_classroom_dashboard_stats(
+    classroom, grade_filter=None, weekly_rows=None, student_count=None
+):
     if grade_filter and str(classroom.grade) != str(grade_filter):
         return None
 
-    weekly_rows = list(
-        ClassroomWeekStats.objects.filter(classroom=classroom).values(
-            "student_count",
-            "runs",
-            "wins",
-            "correct_moves",
-            "wrong_moves",
-            "score_sum",
-            "score_count",
-            "elapsed_sum_ms",
+    if weekly_rows is None:
+        weekly_rows = list(
+            ClassroomWeekStats.objects.filter(classroom=classroom).values(
+                *_CLASSROOM_WEEK_STATS_FIELDS
+            )
         )
-    )
 
     if not weekly_rows:
         return None
@@ -1604,11 +1655,12 @@ def _build_classroom_dashboard_stats(classroom, grade_filter=None):
     score_sum = sum(row["score_sum"] or 0 for row in weekly_rows)
     score_count = sum(row["score_count"] or 0 for row in weekly_rows)
 
-    student_count = (
-        classroom.students.filter(grade=grade_filter).count()
-        if grade_filter
-        else classroom.students.count()
-    )
+    if student_count is None:
+        student_count = (
+            classroom.students.filter(grade=grade_filter).count()
+            if grade_filter
+            else classroom.students.count()
+        )
     classroom_accuracy = calculate_accuracy_rate(total_correct, total_wrong)
     avg_decision_time = calculate_decision_time(
         total_elapsed_ms / 1000,
@@ -1668,6 +1720,147 @@ def teacher_statistics_viz_data(request):
     return JsonResponse({"section": section, "data": payload})
 
 
+def _compute_teacher_dashboard_data(teacher, grade_filter, classroom_filter):
+    """Return the per-teacher dashboard data payload (no ORM objects).
+
+    All structured lists in the result are JSON-serialisable, so the value
+    is safe to put in cache. The view layer wraps this and adds the
+    request-time bits (Teacher object, grades, classroom list).
+    """
+    all_classrooms = list(Classroom.objects.filter(teacher=teacher))
+    if classroom_filter:
+        classrooms = [c for c in all_classrooms if str(c.id) == str(classroom_filter)]
+    else:
+        classrooms = all_classrooms
+
+    students = list(
+        _get_filtered_students_for_teacher(
+            teacher=teacher,
+            grade_filter=grade_filter,
+            classroom_filter=classroom_filter,
+        ).select_related("classroom")
+    )
+    if classroom_filter:
+        comparison_students_qs = Student.objects.filter(classroom__teacher=teacher)
+        if grade_filter:
+            comparison_students_qs = comparison_students_qs.filter(grade=grade_filter)
+        comparison_students = list(
+            comparison_students_qs.select_related("classroom")
+        )
+    else:
+        comparison_students = students
+
+    # Bulk-fetch once for the union of students we'll need to render.
+    all_student_ids = list({s.id for s in students} | {s.id for s in comparison_students})
+    weekly_by_student = _bulk_student_weekly_history(all_student_ids)
+    buckets_by_student = bulk_student_run_bucket_points(all_student_ids)
+
+    def build_info(student):
+        return _build_student_dashboard_info(
+            student,
+            weekly_rows=weekly_by_student.get(student.id, []),
+            bucket_data=buckets_by_student.get(
+                student.id, {"points": [], "by_level": {}}
+            ),
+        )
+
+    student_data = []
+    students_needing_attention = []
+    students_ready_for_rewards = []
+    for student in students:
+        info = build_info(student)
+        if not info:
+            continue
+        student_data.append(info)
+        if info["needs_attention"]:
+            students_needing_attention.append(info)
+        if info["ready_for_reward"]:
+            students_ready_for_rewards.append(info)
+
+    if classroom_filter:
+        comparison_student_data = []
+        for student in comparison_students:
+            info = build_info(student)
+            if info:
+                comparison_student_data.append(info)
+    else:
+        comparison_student_data = list(student_data)
+
+    top_by_accuracy = sorted(
+        student_data, key=lambda x: x["accuracy"], reverse=True
+    )[:10]
+    top_by_improvement = sorted(
+        [s for s in student_data if s["improvement_rate"] != 0],
+        key=lambda x: x["improvement_rate"],
+        reverse=True,
+    )[:10]
+    bottom_by_accuracy = sorted(student_data, key=lambda x: x["accuracy"])[:10]
+    bottom_by_learning_curve = sorted(
+        [
+            s
+            for s in student_data
+            if s["learning_curve_trend"] in ["declining", "plateaued"]
+            and s["accuracy"] < 80
+        ],
+        key=lambda x: x["learning_curve_slope"],
+    )[:10]
+
+    # Bulk-fetch ClassroomWeekStats and per-classroom student counts for the
+    # classroom panels.
+    classroom_ids_for_stats = list({c.id for c in classrooms} | {c.id for c in all_classrooms})
+    classroom_weekly_by_id = _bulk_classroom_weekly_history(classroom_ids_for_stats)
+    student_count_by_classroom = defaultdict(int)
+    student_count_query = Student.objects.filter(
+        classroom_id__in=classroom_ids_for_stats
+    )
+    if grade_filter:
+        student_count_query = student_count_query.filter(grade=grade_filter)
+    for entry in (
+        student_count_query.values("classroom_id")
+        .annotate(student_count=Count("id"))
+    ):
+        student_count_by_classroom[entry["classroom_id"]] = entry["student_count"]
+
+    def build_classroom_stats(classrooms_iter):
+        stats = []
+        for classroom in classrooms_iter:
+            info = _build_classroom_dashboard_stats(
+                classroom,
+                grade_filter=grade_filter,
+                weekly_rows=classroom_weekly_by_id.get(classroom.id, []),
+                student_count=student_count_by_classroom.get(classroom.id, 0),
+            )
+            if info:
+                stats.append(info)
+        return stats
+
+    classroom_stats = build_classroom_stats(classrooms)
+    if classroom_filter:
+        comparison_classroom_stats = build_classroom_stats(all_classrooms)
+    else:
+        comparison_classroom_stats = list(classroom_stats)
+
+    return {
+        "student_data": student_data,
+        "comparison_student_data": comparison_student_data,
+        "classroom_stats": classroom_stats,
+        "comparison_classroom_stats": comparison_classroom_stats,
+        "top_by_accuracy": top_by_accuracy,
+        "top_by_improvement": top_by_improvement,
+        "bottom_by_accuracy": bottom_by_accuracy,
+        "bottom_by_learning_curve": bottom_by_learning_curve,
+        "students_needing_attention": students_needing_attention,
+        "students_ready_for_rewards": students_ready_for_rewards,
+    }
+
+
+def _teacher_dashboard_cache_key(teacher_id, grade_filter, classroom_filter):
+    return (
+        f"teacher_dashboard:{teacher_id}:"
+        f"{grade_filter or 'all'}:{classroom_filter or 'all'}"
+    )
+
+
 @login_required
 @user_passes_test(
     lambda u: hasattr(u, "teacher_profile")
@@ -1680,104 +1873,17 @@ def teacher_statistics_dashboard(request):
     Accessible to PENDING and APPROVED teachers.
     """
     teacher = request.user.teacher_profile
-
-    # Get filters from request
     grade_filter = request.GET.get("grade", None)
     classroom_filter = request.GET.get("classroom", None)
 
-    # Base querysets for this teacher (used for both filtered and comparison scopes)
-    all_classrooms = Classroom.objects.filter(teacher=teacher).prefetch_related(
-        "students"
-    )
-    classrooms = all_classrooms
+    cache_key = _teacher_dashboard_cache_key(teacher.id, grade_filter, classroom_filter)
+    payload = cache.get(cache_key)
+    if payload is None:
+        payload = _compute_teacher_dashboard_data(
+            teacher, grade_filter, classroom_filter
+        )
+        cache.set(cache_key, payload, timeout=604800)
 
-    # Apply classroom filter if specified
-    if classroom_filter:
-        classrooms = classrooms.filter(id=classroom_filter)
-
-    # Get all students for this teacher
-    students = _get_filtered_students_for_teacher(
-        teacher=teacher,
-        grade_filter=grade_filter,
-        classroom_filter=classroom_filter,
-    )
-    comparison_students = Student.objects.filter(classroom__teacher=teacher)
-
-    # Apply grade filter if specified
-    if grade_filter:
-        comparison_students = comparison_students.filter(grade=grade_filter)
-
-    # Prepare enhanced data for each student
-    student_data = []
-    students_needing_attention = []
-    students_ready_for_rewards = []
-
-    def build_student_info(student):
-        return _build_student_dashboard_info(student)
-
-    for student in students:
-        student_info = build_student_info(student)
-        if not student_info:
-            continue
-
-        student_data.append(student_info)
-
-        if student_info["needs_attention"]:
-            students_needing_attention.append(student_info)
-        if student_info["ready_for_reward"]:
-            students_ready_for_rewards.append(student_info)
-
-    if classroom_filter:
-        comparison_student_data = []
-        for student in comparison_students:
-            comparison_info = build_student_info(student)
-            if comparison_info:
-                comparison_student_data.append(comparison_info)
-    else:
-        comparison_student_data = list(student_data)
-
-    # Sort students for top/bottom rankings
-    top_by_accuracy = sorted(
-        [s for s in student_data], key=lambda x: x["accuracy"], reverse=True
-    )[:10]
-    top_by_improvement = sorted(
-        [s for s in student_data if s["improvement_rate"] != 0],
-        key=lambda x: x["improvement_rate"],
-        reverse=True,
-    )[:10]
-
-    bottom_by_accuracy = sorted([s for s in student_data], key=lambda x: x["accuracy"])[
-        :10
-    ]
-    bottom_by_learning_curve = [
-        s
-        for s in student_data
-        if s["learning_curve_trend"] in ["declining", "plateaued"]
-        and s["accuracy"] < 80
-    ]
-    bottom_by_learning_curve = sorted(
-        bottom_by_learning_curve, key=lambda x: x["learning_curve_slope"]
-    )[:10]
-
-    def build_classroom_stats(classrooms_queryset):
-        stats = []
-        for classroom in classrooms_queryset:
-            classroom_info = _build_classroom_dashboard_stats(
-                classroom,
-                grade_filter=grade_filter,
-            )
-            if classroom_info:
-                stats.append(classroom_info)
-        return stats
-
-    # Top-level sections use classroom filter; comparison section uses all classrooms.
-    classroom_stats = build_classroom_stats(classrooms)
-    if classroom_filter:
-        comparison_classroom_stats = build_classroom_stats(all_classrooms)
-    else:
-        comparison_classroom_stats = list(classroom_stats)
-
-    # Get unique grades for filter
     all_grades = (
         Student.objects.filter(classroom__teacher=teacher)
         .values_list("grade", flat=True)
@@ -1788,30 +1894,29 @@ def teacher_statistics_dashboard(request):
         "classroom_name"
     )
 
-    # Visualizations are fetched lazily via `teacher_statistics_viz_data`.
     starter_viz_data = {}
 
     context = {
         "teacher": teacher,
-        "student_data": student_data,
-        "student_data_json": json.dumps(student_data, default=str),
-        "comparison_student_data": comparison_student_data,
+        "student_data": payload["student_data"],
+        "student_data_json": json.dumps(payload["student_data"], default=str),
+        "comparison_student_data": payload["comparison_student_data"],
         "comparison_student_data_json": json.dumps(
-            comparison_student_data, default=str
+            payload["comparison_student_data"], default=str
         ),
-        "classroom_stats": classroom_stats,
-        "classroom_stats_json": json.dumps(classroom_stats, default=str),
-        "comparison_classroom_stats": comparison_classroom_stats,
+        "classroom_stats": payload["classroom_stats"],
+        "classroom_stats_json": json.dumps(payload["classroom_stats"], default=str),
+        "comparison_classroom_stats": payload["comparison_classroom_stats"],
         "comparison_classroom_stats_json": json.dumps(
-            comparison_classroom_stats, default=str
+            payload["comparison_classroom_stats"], default=str
         ),
         # Enhanced panels
-        "top_by_accuracy": top_by_accuracy,
-        "top_by_improvement": top_by_improvement,
-        "bottom_by_accuracy": bottom_by_accuracy,
-        "bottom_by_learning_curve": bottom_by_learning_curve,
-        "students_needing_attention": students_needing_attention,
-        "students_ready_for_rewards": students_ready_for_rewards,
+        "top_by_accuracy": payload["top_by_accuracy"],
+        "top_by_improvement": payload["top_by_improvement"],
+        "bottom_by_accuracy": payload["bottom_by_accuracy"],
+        "bottom_by_learning_curve": payload["bottom_by_learning_curve"],
+        "students_needing_attention": payload["students_needing_attention"],
+        "students_ready_for_rewards": payload["students_ready_for_rewards"],
         # Filters
         "all_grades": all_grades,
         "classroom_list": classroom_list,

@@ -1013,6 +1013,11 @@ class RunBucketTrendTests(TestCase):
         self.assertEqual(buckets[1].last_run_created_at, runs[6].created_at)
 
     def test_run_bucket_points_merge_compacted_history_with_hot_tail(self):
+        # include_hot=True exercises the legacy hot-merge path. The dashboard
+        # path no longer uses this — it reads rollup-only and relies on the
+        # flusher's incremental rollups (rollup_incremental.py) to keep the
+        # tail bucket current. This test verifies the merge code still works
+        # for callers that need it (legacy code paths, manual debugging).
         base_time = datetime(2026, 1, 5, 9, 0, tzinfo=dt_timezone.utc)
         compacted_runs = [
             self._create_run(
@@ -1042,7 +1047,9 @@ class RunBucketTrendTests(TestCase):
             for index in range(2)
         ]
 
-        payload = get_student_run_bucket_points(self.student, level=3)
+        payload = get_student_run_bucket_points(
+            self.student, level=3, include_hot=True
+        )
 
         self.assertEqual(len(payload["by_level"][3]), 2)
         self.assertEqual(payload["by_level"][3][0]["run_count"], 5)
@@ -1054,6 +1061,8 @@ class RunBucketTrendTests(TestCase):
         )
 
     def test_student_dashboard_info_uses_bucket_learning_curves(self):
+        from .rollup_incremental import apply_runs_to_dashboard_rollups
+
         base_time = datetime(2026, 1, 6, 8, 0, tzinfo=dt_timezone.utc)
         accuracy_profiles = [
             (1, 4),
@@ -1072,14 +1081,21 @@ class RunBucketTrendTests(TestCase):
             (5, 0),
             (5, 0),
         ]
+        runs = []
         for index, (correct_moves, wrong_moves) in enumerate(accuracy_profiles):
-            self._create_run(
-                level=4,
-                created_at=base_time + timedelta(minutes=index),
-                correct_moves=correct_moves,
-                wrong_moves=wrong_moves,
-                score=80 + index * 5,
+            runs.append(
+                self._create_run(
+                    level=4,
+                    created_at=base_time + timedelta(minutes=index),
+                    correct_moves=correct_moves,
+                    wrong_moves=wrong_moves,
+                    score=80 + index * 5,
+                )
             )
+
+        # Simulate the flusher's incremental-rollup pass that populates the
+        # dashboard tables for the open week.
+        apply_runs_to_dashboard_rollups(runs)
 
         dashboard_info = _build_student_dashboard_info(self.student)
 
@@ -1091,6 +1107,275 @@ class RunBucketTrendTests(TestCase):
         self.assertEqual(
             dashboard_info["level_performance"][4]["learning_curve_trend"], "improving"
         )
+
+
+class IncrementalRollupTests(TestCase):
+    """Layer 3 contract: the flusher's incremental rollups must converge to
+    the same values that weekly compaction produces from raw rows. If this
+    test fails, the dashboard's current-week numbers will disagree with the
+    week's authoritative aggregate after compaction runs.
+    """
+
+    def setUp(self):
+        self.school = School.objects.create(
+            name="Inc School",
+            municipality="Skopje",
+            region="Skopje",
+            address="Inc Address 1",
+            director_name="Inc Director",
+            school_email="inc-school@example.com",
+        )
+        self.teacher = Teacher.objects.create(
+            full_name="Inc Teacher",
+            email="inc-teacher@example.com",
+            status="APPROVED",
+        )
+        self.classroom = Classroom.objects.create(
+            classroom_key="INC-1234",
+            classroom_name="5-A",
+            grade=5,
+            teacher=self.teacher,
+            school=self.school,
+        )
+        self.student_a = Student.objects.create(
+            full_name="Inc Student A", grade=5, classroom=self.classroom
+        )
+        self.student_b = Student.objects.create(
+            full_name="Inc Student B", grade=5, classroom=self.classroom
+        )
+
+    def _create_run(self, *, student, level, created_at, correct, wrong, score, elapsed):
+        run = Run.objects.create(
+            student=student,
+            level=level,
+            player_won=correct >= wrong,
+            score=score,
+            place=1 if correct >= wrong else 3,
+            elapsed_ms=elapsed,
+            correct_moves=correct,
+            wrong_moves=wrong,
+            game_map=[{"tileMapIndex": 0, "tileType": 0}],
+        )
+        TurnEvent.objects.create(
+            run=run,
+            turn_index=0,
+            timestamp_played=created_at,
+            chosen_card={"type": "MoveX", "data": "[CardData: thenValue=2]"},
+            chosen_card_type="MoveX",
+            chosen_card_family="move",
+            chosen_card_tile_type=None,
+            offered_cards=[{"type": "MoveX", "data": "[CardData: thenValue=2]"}],
+            was_correct=True,
+            tile_before_index=0,
+            tile_before_type=0,
+            tile_after_index=2,
+            place_before=1,
+            place_after=1,
+            bot_positions_before=[],
+            bot_positions_after=[],
+            card_decision_time_ms=2000,
+            offered_numbers=[],
+            chosen_number=None,
+            number_decision_time_ms=None,
+        )
+        Run.objects.filter(id=run.id).update(created_at=created_at, updated_at=created_at)
+        run.refresh_from_db()
+        return run
+
+    def test_incremental_matches_batch_for_dashboard_rollups(self):
+        from .rollup_incremental import apply_runs_to_dashboard_rollups
+
+        base_time = datetime(2026, 1, 5, 8, 0, tzinfo=dt_timezone.utc)
+        runs = []
+        for index in range(7):
+            runs.append(
+                self._create_run(
+                    student=self.student_a,
+                    level=3,
+                    created_at=base_time + timedelta(minutes=index * 2),
+                    correct=3 + (index % 2),
+                    wrong=1,
+                    score=110 + index * 4,
+                    elapsed=30000 + index * 500,
+                )
+            )
+        for index in range(4):
+            runs.append(
+                self._create_run(
+                    student=self.student_b,
+                    level=3,
+                    created_at=base_time + timedelta(minutes=20 + index),
+                    correct=2,
+                    wrong=2,
+                    score=90 + index * 3,
+                    elapsed=33000 + index * 400,
+                )
+            )
+
+        # Path A: incremental, simulating per-batch flusher behaviour. Split
+        # the runs into two batches so the second batch exercises the
+        # ON CONFLICT update path on rows the first batch inserted.
+        first_batch = runs[:6]
+        second_batch = runs[6:]
+        apply_runs_to_dashboard_rollups(first_batch)
+        apply_runs_to_dashboard_rollups(second_batch)
+
+        incremental_week_stats = {
+            (row.student_id, row.week_start): _row_to_dict(row, _WEEK_STATS_FIELDS)
+            for row in StudentWeekStats.objects.all()
+        }
+        incremental_level_stats = {
+            (row.student_id, row.week_start, row.level): _row_to_dict(
+                row, _WEEK_LEVEL_STATS_FIELDS
+            )
+            for row in StudentWeekLevelStats.objects.all()
+        }
+        incremental_classroom_stats = {
+            (row.classroom_id, row.week_start): _row_to_dict(row, _CLASSROOM_STATS_FIELDS)
+            for row in ClassroomWeekStats.objects.all()
+        }
+        incremental_buckets = sorted(
+            (
+                _row_to_dict(row, _BUCKET_TREND_FIELDS)
+                for row in StudentRunBucketTrend.objects.all()
+            ),
+            key=lambda r: (r["student_id"], r["level"], r["bucket_index"]),
+        )
+
+        # Sanity checks: if any code path silently no-op'd, both paths would
+        # produce empty dicts and the equality assertion below would be
+        # vacuous. These explicit anchors fail loudly instead.
+        week_start = week_start_for(base_time.date())
+        self.assertEqual(len(incremental_week_stats), 2, "expected one row per student")
+        self.assertEqual(
+            len(incremental_level_stats), 2, "expected one row per (student, level)"
+        )
+        self.assertEqual(len(incremental_classroom_stats), 1, "expected one classroom row")
+        self.assertEqual(
+            len(incremental_buckets),
+            3,  # student_a: 7 runs at level 3 -> 2 buckets; student_b: 4 -> 1 bucket
+            "expected three bucket rows total",
+        )
+        self.assertEqual(
+            incremental_week_stats[(self.student_a.id, week_start)]["runs"], 7
+        )
+        self.assertEqual(
+            incremental_week_stats[(self.student_b.id, week_start)]["runs"], 4
+        )
+        self.assertEqual(
+            incremental_classroom_stats[(self.classroom.id, week_start)]["runs"], 11
+        )
+
+        # Path B: clear and rebuild from raw via the canonical batch
+        # aggregator and the bucket trend rebuilder.
+        StudentWeekStats.objects.all().delete()
+        StudentWeekLevelStats.objects.all().delete()
+        ClassroomWeekStats.objects.all().delete()
+        StudentRunBucketTrend.objects.all().delete()
+
+        aggregate_weekly_rollups(base_time.date())
+        rebuild_run_bucket_trends(Run.objects.filter(id__in=[r.id for r in runs]))
+
+        batch_week_stats = {
+            (row.student_id, row.week_start): _row_to_dict(row, _WEEK_STATS_FIELDS)
+            for row in StudentWeekStats.objects.all()
+        }
+        batch_level_stats = {
+            (row.student_id, row.week_start, row.level): _row_to_dict(
+                row, _WEEK_LEVEL_STATS_FIELDS
+            )
+            for row in StudentWeekLevelStats.objects.all()
+        }
+        batch_classroom_stats = {
+            (row.classroom_id, row.week_start): _row_to_dict(row, _CLASSROOM_STATS_FIELDS)
+            for row in ClassroomWeekStats.objects.all()
+        }
+        batch_buckets = sorted(
+            (
+                _row_to_dict(row, _BUCKET_TREND_FIELDS)
+                for row in StudentRunBucketTrend.objects.all()
+            ),
+            key=lambda r: (r["student_id"], r["level"], r["bucket_index"]),
+        )
+
+        self.assertEqual(incremental_week_stats, batch_week_stats)
+        self.assertEqual(incremental_level_stats, batch_level_stats)
+        self.assertEqual(incremental_classroom_stats, batch_classroom_stats)
+        self.assertEqual(incremental_buckets, batch_buckets)
+
+
+_WEEK_STATS_FIELDS = (
+    "runs",
+    "wins",
+    "correct_moves",
+    "wrong_moves",
+    "score_sum",
+    "score_count",
+    "score_sum_sq",
+    "score_min",
+    "score_max",
+    "elapsed_sum_ms",
+    "elapsed_count",
+    "elapsed_sum_sq",
+    "elapsed_min_ms",
+    "elapsed_max_ms",
+    "latest_run_id",
+    "latest_run_created_at",
+    "first_run_created_at",
+)
+_WEEK_LEVEL_STATS_FIELDS = (
+    "runs",
+    "wins",
+    "correct_moves",
+    "wrong_moves",
+    "score_sum",
+    "score_count",
+    "score_sum_sq",
+    "score_min",
+    "score_max",
+    "elapsed_sum_ms",
+    "elapsed_count",
+    "elapsed_sum_sq",
+    "elapsed_min_ms",
+    "elapsed_max_ms",
+    "latest_run_id",
+    "latest_run_created_at",
+)
+_CLASSROOM_STATS_FIELDS = (
+    "student_count",
+    "runs",
+    "wins",
+    "correct_moves",
+    "wrong_moves",
+    "score_sum",
+    "score_count",
+    "score_sum_sq",
+    "elapsed_sum_ms",
+    "elapsed_count",
+    "elapsed_sum_sq",
+)
+_BUCKET_TREND_FIELDS = (
+    "student_id",
+    "level",
+    "bucket_index",
+    "bucket_size_runs",
+    "run_count",
+    "wins",
+    "correct_moves",
+    "wrong_moves",
+    "score_sum",
+    "score_count",
+    "score_sum_sq",
+    "elapsed_sum_ms",
+    "elapsed_count",
+    "elapsed_sum_sq",
+    "first_run_created_at",
+    "last_run_created_at",
+)
+
+
+def _row_to_dict(row, fields):
+    return {field: getattr(row, field) for field in fields}
 
 
 class BenchmarkToolingTests(TestCase):
