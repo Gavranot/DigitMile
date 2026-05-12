@@ -357,8 +357,7 @@ Each scenario report includes:
 - `pre_benchmark` — idle analytics baseline before traffic
 - `k6_summaries` — per-script results: highlights, checks, load_health, resource_summary
 - `resource_summary` — aggregated CPU/memory stats across all k6 scripts
-- `compaction_result` — compaction stdout and duration when configured
-- `verification_result` — rollup verification stdout when configured
+- `compaction_result` — compaction stdout and duration when configured (compact_weekly_runs runs verify_weekly_rollups internally before deleting raw rows, so a successful exit code is the verification verdict)
 - `post_benchmark` — idle analytics baseline after traffic and optional compaction
 
 ## Redis policy
