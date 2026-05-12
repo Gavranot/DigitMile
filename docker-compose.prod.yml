@@ -5,6 +5,7 @@ version: '3.8'
 
 services:
   # NGINX Reverse Proxy (production with Let's Encrypt)
+  # Reloads every 6h so renewed Let's Encrypt certs are picked up without a restart.
   nginx-proxy:
     image: ${DOCKERHUB_USERNAME:-your-username}/digitmile-nginx-proxy:${TARGET_ENV:-prod}-latest
     container_name: digitmile-nginx-proxy
@@ -16,6 +17,7 @@ services:
       - ./nginx-proxy/nginx.conf.production:/etc/nginx/conf.d/default.conf:rw
       - ./certbot/conf:/etc/letsencrypt:rw
       - ./certbot/www:/var/www/certbot:rw
+    command: /bin/sh -c "trap exit TERM; while :; do sleep 6h & wait $${!}; nginx -s reload 2>/dev/null || true; done & nginx -g 'daemon off;'"
     depends_on:
       - backend
       - frontend
@@ -23,13 +25,15 @@ services:
       - digitmile-network
 
   # Certbot for Let's Encrypt SSL
+  # Uses --webroot so renewal works while nginx-proxy holds port 80.
+  # nginx-proxy serves /.well-known/acme-challenge/ from /var/www/certbot.
   certbot:
     image: certbot/certbot:latest
     container_name: digitmile-certbot
     volumes:
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot; sleep 12h & wait $${!}; done;'"
     networks:
       - digitmile-network
 
