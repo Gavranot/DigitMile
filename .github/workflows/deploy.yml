@@ -46,7 +46,7 @@ jobs:
           strip_components: 1
 
   setup-ssl:
-    name: Initialize SSL Certificates (First Deploy Only)
+    name: Initialize or Recover SSL Certificate
     needs: deploy-configuration
     runs-on: ubuntu-latest
     if: inputs.TARGET_ENV == 'prod'
@@ -72,18 +72,26 @@ jobs:
             mkdir -p certbot/conf certbot/www
 
             CERT_FILE="certbot/conf/live/${{ env.DOMAIN }}/fullchain.pem"
-            
-            # Check if certificate exists using docker (avoids permission issues)
+
+            # Check if certificate exists using docker (avoids permission issues).
+            # Skip re-issue only if cert is Let's Encrypt AND has >30 days until expiry.
             if [ -d "certbot/conf/live/${{ env.DOMAIN }}" ]; then
-              # Use a container to check the cert (has access to the volume)
               ISSUER=$(docker run --rm -v "$(pwd)/certbot/conf:/etc/letsencrypt" \
                 alpine/openssl x509 -in "/etc/letsencrypt/live/${{ env.DOMAIN }}/fullchain.pem" -noout -issuer 2>/dev/null || echo "")
-              
-              if echo "$ISSUER" | grep -q "Let's Encrypt"; then
-                echo "✓ Valid Let's Encrypt certificate already exists for ${{ env.DOMAIN }}, skipping..."
+
+              # -checkend returns non-zero if cert expires within the given seconds (30 days).
+              if docker run --rm -v "$(pwd)/certbot/conf:/etc/letsencrypt" \
+                  alpine/openssl x509 -in "/etc/letsencrypt/live/${{ env.DOMAIN }}/fullchain.pem" -noout -checkend 2592000 >/dev/null 2>&1; then
+                NOT_EXPIRING=true
+              else
+                NOT_EXPIRING=false
+              fi
+
+              if echo "$ISSUER" | grep -q "Let's Encrypt" && [ "$NOT_EXPIRING" = "true" ]; then
+                echo "✓ Valid Let's Encrypt certificate for ${{ env.DOMAIN }} (>30 days remaining), skipping..."
                 exit 0
               else
-                echo "Found invalid/self-signed certificate (issuer: $ISSUER), will replace it..."
+                echo "Certificate needs (re)issue — issuer: $ISSUER, valid_for_30d: $NOT_EXPIRING"
               fi
             fi
 

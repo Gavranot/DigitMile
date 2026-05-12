@@ -1,0 +1,61 @@
+name: Renew SSL Certificate
+
+# Safety-net renewal: weekly cron + manual dispatch.
+# The in-server certbot container also tries every 12h, but this workflow
+# guarantees a renewal attempt + nginx reload from outside the server.
+
+on:
+  schedule:
+    # 03:17 UTC every Monday (off-peak, off-the-hour to avoid Let's Encrypt rate spikes)
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Force renewal even if not near expiry"
+        type: boolean
+        default: false
+
+jobs:
+  renew:
+    name: Renew Let's Encrypt certificate and reload nginx
+    runs-on: ubuntu-latest
+    env:
+      HOST: ${{ vars.PROD_HOST }}
+      USERNAME: ${{ vars.PROD_USERNAME }}
+      PORT: ${{ vars.PROD_PORT }}
+      DOMAIN: ${{ vars.DOMAIN }}
+      FORCE: ${{ inputs.force }}
+
+    steps:
+      - name: Renew certificate and reload nginx
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.HOST }}
+          username: ${{ env.USERNAME }}
+          port: ${{ env.PORT }}
+          key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            cd /var/www/digitmile
+
+            FORCE_FLAG=""
+            if [ "${{ env.FORCE }}" = "true" ]; then
+              FORCE_FLAG="--force-renewal"
+            fi
+
+            echo "Running certbot renew (webroot via running nginx-proxy)..."
+            # One-shot certbot container; uses the same volumes as the compose service.
+            # --webroot path matches nginx.conf.production location /.well-known/acme-challenge/
+            docker run --rm \
+              -v "$(pwd)/certbot/conf:/etc/letsencrypt" \
+              -v "$(pwd)/certbot/www:/var/www/certbot" \
+              certbot/certbot renew $FORCE_FLAG --webroot -w /var/www/certbot --non-interactive
+
+            echo "Reloading nginx-proxy to pick up any renewed certs..."
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+              exec -T nginx-proxy nginx -s reload
+
+            echo "Current certificate status:"
+            docker run --rm -v "$(pwd)/certbot/conf:/etc/letsencrypt" \
+              alpine/openssl x509 -in "/etc/letsencrypt/live/${{ env.DOMAIN }}/fullchain.pem" \
+              -noout -dates -issuer
