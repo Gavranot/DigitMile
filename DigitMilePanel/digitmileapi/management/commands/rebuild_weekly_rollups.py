@@ -72,6 +72,7 @@ class Command(BaseCommand):
         # dummy-cache overlay, where there is nothing to invalidate).
         if hasattr(cache, "delete_pattern"):
             cache.delete_pattern("teacher_stats_viz:*")
+            cache.delete_pattern("teacher_dashboard:*")
 
         logger.info(
             "weekly_rollup_rebuild_complete %s",
