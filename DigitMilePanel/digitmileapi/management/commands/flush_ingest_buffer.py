@@ -20,6 +20,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from digitmileapi.models import Run, SpecialTileTrigger, TurnEvent
+from digitmileapi.rollup_incremental import apply_runs_to_dashboard_rollups
 from digitmileapi.run_ingestion import unix_ms_to_datetime
 from digitmileapi.views import _extract_card_metadata, _normalize_cards_for_ingestion
 
@@ -189,6 +190,13 @@ class Command(BaseCommand):
 
                 if all_triggers:
                     SpecialTileTrigger.objects.bulk_create(all_triggers)
+
+                # Keep the dashboard's rollup tables current for the open
+                # week. Same transaction as the Run inserts so a partial
+                # failure rolls back both. The dashboard reads from rollup
+                # tables only — this is what makes that contract hold
+                # without waiting for weekly compaction.
+                apply_runs_to_dashboard_rollups(created_runs)
 
             logger.info(
                 "Flushed %d runs (%d turns, %d triggers)",
