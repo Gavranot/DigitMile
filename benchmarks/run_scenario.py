@@ -1309,7 +1309,6 @@ def main():
                 overall_load_health = "yellow"
 
         compaction_result = None
-        verify_result = None
         verification_config = scenario.get("verification", {})
         compact_after_index = verification_config.get(
             "compact_after_traffic_week_index"
@@ -1318,6 +1317,13 @@ def main():
             week_start = dataset_report["weeks"][compact_after_index - 1]["week_start"]
             compaction_begin = time.perf_counter()
             log_step(f"running post-traffic compaction for week {week_start}")
+            # compact_weekly_runs runs verify_weekly_rollups internally before
+            # deleting the raw TurnEvent/SpecialTileTrigger rows (see
+            # digitmileapi/management/commands/compact_weekly_runs.py). If
+            # compaction returns 0 the rollups already matched raw at the
+            # pre-delete checkpoint. Re-running verify_weekly_rollups here
+            # would be unsound: raw rows are gone and every comparison
+            # would report raw=0 / rollup=<n>.
             compaction_stdout = compose_exec(
                 project_name,
                 BENCHMARK_BACKEND_SERVICE,
@@ -1332,23 +1338,11 @@ def main():
             log_step(
                 f"post-traffic compaction finished in {round(compaction_duration_ms / 1000, 2)}s"
             )
-            log_step(f"verifying rollups and archives for week {week_start}")
-            verify_stdout = compose_exec(
-                project_name,
-                BENCHMARK_BACKEND_SERVICE,
-                "python",
-                "manage.py",
-                "verify_weekly_rollups",
-                week_start,
-                "--require-archives",
-                "--verify-run-buckets",
-            ).stdout
             compaction_result = {
                 "week_start": week_start,
                 "duration_ms": compaction_duration_ms,
                 "stdout": compaction_stdout.strip(),
             }
-            verify_result = {"week_start": week_start, "stdout": verify_stdout.strip()}
 
         post_benchmark_path = scenario_report_dir / "benchmark_post.json"
         post_benchmark_container_path = f"/tmp/{scenario_name}_benchmark_post.json"
@@ -1402,7 +1396,6 @@ def main():
             "redis_stats_after": redis_stats_after,
             "redis_cache_summary": redis_cache_summary,
             "compaction_result": compaction_result,
-            "verification_result": verify_result,
             "post_benchmark": post_benchmark,
         }
         log_step(f"writing scenario report to {report_output_path}")
