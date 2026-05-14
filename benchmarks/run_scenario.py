@@ -925,6 +925,76 @@ _BACKEND_ENV_TO_PROBE = (
 )
 
 
+def check_disk_safety(storage_walk_cfg, current_db_bytes, label=""):
+    """Fail loudly if disk is filling up faster than the scenario tolerates.
+
+    Two ceilings (both optional; either or both can be set in scenario JSON):
+      - min_host_free_bytes: aborts if shutil.disk_usage(repo).free < threshold
+      - max_pg_db_bytes:     aborts if last pg_database_size() > threshold
+    Default thresholds are generous — they catch runaway growth, not normal
+    growth.
+    """
+    import shutil
+    min_free = int(storage_walk_cfg.get("min_host_free_bytes", 2 * 1024**3))  # 2 GB
+    max_db = storage_walk_cfg.get("max_pg_db_bytes")  # None = no ceiling
+    usage = shutil.disk_usage(str(REPO_ROOT))
+    free_pct = usage.free / usage.total * 100
+    log_step(
+        f"  disk: host free {usage.free/1e9:.2f} GB ({free_pct:.1f}%), "
+        f"pg db {current_db_bytes/1e9:.2f} GB"
+        + (f" / ceiling {int(max_db)/1e9:.2f} GB" if max_db else "")
+    )
+    if usage.free < min_free:
+        raise RuntimeError(
+            f"DISK SAFETY ABORT{(' (' + label + ')') if label else ''}: "
+            f"host free {usage.free/1e9:.2f} GB below "
+            f"min_host_free_bytes={min_free/1e9:.2f} GB. "
+            f"Aborting storage walk to leave headroom for OS / logs / WAL."
+        )
+    if max_db is not None and current_db_bytes > int(max_db):
+        raise RuntimeError(
+            f"DISK SAFETY ABORT{(' (' + label + ')') if label else ''}: "
+            f"pg_database_size {current_db_bytes/1e9:.2f} GB exceeds "
+            f"max_pg_db_bytes={int(max_db)/1e9:.2f} GB ceiling. "
+            f"This is the NFR-6 failure signal: the configured budget has been "
+            f"reached before the year horizon."
+        )
+
+
+def capture_storage_state(project_name):
+    """Snapshot pg_database_size and hot-table row counts.
+
+    Used by the storage_walk path (NFR-6). Returns a flat dict so each
+    snapshot serializes cleanly into the scenario report.
+    """
+    db_user = os.getenv("BENCHMARK_DB_USER", "digitmile")
+    db_name = os.getenv("BENCHMARK_DB_NAME", "digitmile_benchmark")
+    query = (
+        "SELECT "
+        "pg_database_size(current_database())::bigint, "
+        "(SELECT count(*) FROM digitmileapi_turnevent)::bigint, "
+        "(SELECT count(*) FROM digitmileapi_specialtiletrigger)::bigint, "
+        "(SELECT count(*) FROM digitmileapi_run)::bigint, "
+        "pg_total_relation_size('digitmileapi_turnevent')::bigint, "
+        "pg_total_relation_size('digitmileapi_specialtiletrigger')::bigint, "
+        "pg_total_relation_size('digitmileapi_run')::bigint;"
+    )
+    result = compose_exec(
+        project_name, BENCHMARK_DB_SERVICE,
+        "psql", "-U", db_user, "-d", db_name, "-tA", "-c", query,
+    )
+    parts = [p.strip() for p in result.stdout.strip().split("|")]
+    return {
+        "db_bytes": int(parts[0]),
+        "turnevent_rows": int(parts[1]),
+        "specialtiletrigger_rows": int(parts[2]),
+        "run_rows": int(parts[3]),
+        "turnevent_total_bytes": int(parts[4]),
+        "specialtiletrigger_total_bytes": int(parts[5]),
+        "run_total_bytes": int(parts[6]),
+    }
+
+
 def verify_stack_state(project_name):
     """Probe the running stack for the settings the overlays target.
 
@@ -1091,34 +1161,50 @@ def main():
 
         dataset = scenario["dataset"]
         dataset_container_path = f"/tmp/{scenario_name}_dataset.json"
-        dataset_args = [
-            "prepare_benchmark_dataset",
-            "--teachers",
-            str(dataset["teachers"]),
-            "--classrooms-per-teacher",
-            str(dataset["classrooms_per_teacher"]),
-            "--students-per-classroom",
-            str(dataset["students_per_classroom"]),
-            "--weeks",
-            str(dataset["weeks"]),
-            "--runs-per-student-per-week",
-            str(dataset["runs_per_student_per_week"]),
-            "--avg-turns-per-run",
-            str(dataset["avg_turns_per_run"]),
-            "--card-mix-profile",
-            dataset["card_mix_profile"],
-            "--bag-level-ratio",
-            str(dataset["bag_level_ratio"]),
-            "--hot-weeks",
-            str(dataset["hot_weeks"]),
-            "--output",
-            dataset_container_path,
-            "--clear",
-        ]
-        if dataset.get("compact_weeks"):
-            dataset_args.extend(["--compact-weeks", str(dataset["compact_weeks"])])
-        if dataset.get("anchor_week_start"):
-            dataset_args.extend(["--anchor-week-start", dataset["anchor_week_start"]])
+        # storage_walk needs the verification block read EARLY so we can
+        # switch dataset prep into population_only mode before the seeder
+        # spends an hour seeding 36 hot weeks all at once.
+        _early_verification = scenario.get("verification", {})
+        _storage_walk_cfg_early = _early_verification.get("storage_walk")
+        if _storage_walk_cfg_early:
+            dataset_args = [
+                "prepare_benchmark_dataset",
+                "--population-only",
+                "--teachers", str(dataset["teachers"]),
+                "--classrooms-per-teacher", str(dataset["classrooms_per_teacher"]),
+                "--students-per-classroom", str(dataset["students_per_classroom"]),
+                "--output", dataset_container_path,
+                "--clear",
+            ]
+        else:
+            dataset_args = [
+                "prepare_benchmark_dataset",
+                "--teachers",
+                str(dataset["teachers"]),
+                "--classrooms-per-teacher",
+                str(dataset["classrooms_per_teacher"]),
+                "--students-per-classroom",
+                str(dataset["students_per_classroom"]),
+                "--weeks",
+                str(dataset["weeks"]),
+                "--runs-per-student-per-week",
+                str(dataset["runs_per_student_per_week"]),
+                "--avg-turns-per-run",
+                str(dataset["avg_turns_per_run"]),
+                "--card-mix-profile",
+                dataset["card_mix_profile"],
+                "--bag-level-ratio",
+                str(dataset["bag_level_ratio"]),
+                "--hot-weeks",
+                str(dataset["hot_weeks"]),
+                "--output",
+                dataset_container_path,
+                "--clear",
+            ]
+            if dataset.get("compact_weeks"):
+                dataset_args.extend(["--compact-weeks", str(dataset["compact_weeks"])])
+            if dataset.get("anchor_week_start"):
+                dataset_args.extend(["--anchor-week-start", dataset["anchor_week_start"]])
 
         dataset_begin = time.perf_counter()
         log_step("preparing benchmark dataset")
@@ -1137,34 +1223,42 @@ def main():
         dataset_report = load_json(dataset_report_path)
         first_teacher = dataset_report["teachers"][0]
 
-        benchmark_iterations = str(
-            scenario.get("verification", {}).get("benchmark_iterations", 5)
-        )
-        pre_benchmark_path = scenario_report_dir / "benchmark_pre.json"
-        pre_benchmark_container_path = f"/tmp/{scenario_name}_benchmark_pre.json"
-        pre_benchmark_begin = time.perf_counter()
-        log_step("running pre-traffic analytics benchmark")
-        compose_exec(
-            project_name,
-            BENCHMARK_BACKEND_SERVICE,
-            "python",
-            "manage.py",
-            "benchmark_teacher_analytics",
-            str(first_teacher["teacher_id"]),
-            "--iterations",
-            benchmark_iterations,
-            "--scenario-name",
-            f"{scenario_name}_pre",
-            "--output",
-            pre_benchmark_container_path,
-        )
-        log_step(
-            f"pre-traffic analytics benchmark done in {round((time.perf_counter() - pre_benchmark_begin), 2)}s"
-        )
-        container_cp_from(
-            backend_container_id, pre_benchmark_container_path, pre_benchmark_path
-        )
-        pre_benchmark = load_json(pre_benchmark_path)
+        verification_config = scenario.get("verification", {})
+        storage_walk_cfg = verification_config.get("storage_walk")
+        storage_walk_active = bool(storage_walk_cfg)
+
+        benchmark_iterations = str(verification_config.get("benchmark_iterations", 5))
+        pre_benchmark = None
+        if storage_walk_active:
+            log_step(
+                "storage_walk mode: skipping pre-traffic analytics benchmark"
+            )
+        else:
+            pre_benchmark_path = scenario_report_dir / "benchmark_pre.json"
+            pre_benchmark_container_path = f"/tmp/{scenario_name}_benchmark_pre.json"
+            pre_benchmark_begin = time.perf_counter()
+            log_step("running pre-traffic analytics benchmark")
+            compose_exec(
+                project_name,
+                BENCHMARK_BACKEND_SERVICE,
+                "python",
+                "manage.py",
+                "benchmark_teacher_analytics",
+                str(first_teacher["teacher_id"]),
+                "--iterations",
+                benchmark_iterations,
+                "--scenario-name",
+                f"{scenario_name}_pre",
+                "--output",
+                pre_benchmark_container_path,
+            )
+            log_step(
+                f"pre-traffic analytics benchmark done in {round((time.perf_counter() - pre_benchmark_begin), 2)}s"
+            )
+            container_cp_from(
+                backend_container_id, pre_benchmark_container_path, pre_benchmark_path
+            )
+            pre_benchmark = load_json(pre_benchmark_path)
 
         traffic = scenario.get("traffic", {})
         env_map = {
@@ -1309,11 +1403,181 @@ def main():
                 overall_load_health = "yellow"
 
         compaction_result = None
-        verification_config = scenario.get("verification", {})
+        storage_trajectory = None
+        storage_trajectory_summary = None
         compact_after_index = verification_config.get(
             "compact_after_traffic_week_index"
         )
-        if compact_after_index:
+        if storage_walk_active:
+            total_weeks = int(storage_walk_cfg.get("total_weeks", 36))
+            compact_through = int(
+                storage_walk_cfg.get("compact_through_week_index", total_weeks - 1)
+            )
+            anchor_str = dataset.get("anchor_week_start")
+            if not anchor_str:
+                raise RuntimeError(
+                    "storage_walk requires dataset.anchor_week_start in scenario JSON"
+                )
+            from datetime import date, datetime as _dt, timedelta as _td
+            anchor_date = _dt.strptime(anchor_str, "%Y-%m-%d").date()
+            week_dates = [
+                (anchor_date + _td(weeks=i - 1)).isoformat()
+                for i in range(1, total_weeks + 1)
+            ]
+            runs_per_student = int(dataset["runs_per_student_per_week"])
+            avg_turns = int(dataset["avg_turns_per_run"])
+
+            log_step(
+                f"storage walk: {total_weeks} weeks, compacting weeks 1..{compact_through} "
+                f"(week {total_weeks} stays hot to mirror production 'current week')"
+            )
+
+            baseline = capture_storage_state(project_name)
+            log_step(
+                f"  baseline (population seeded, no runs): "
+                f"db={baseline['db_bytes']/1e6:.1f} MB, "
+                f"runs={baseline['run_rows']}, "
+                f"students seeded ok"
+            )
+            check_disk_safety(storage_walk_cfg, baseline["db_bytes"], label="baseline")
+            storage_trajectory = [
+                {
+                    "step": 0,
+                    "week_index": 0,
+                    "label": "baseline_post_population_seed",
+                    "snapshot": baseline,
+                }
+            ]
+
+            for week_index in range(1, total_weeks + 1):
+                week_start = week_dates[week_index - 1]
+                will_compact = week_index <= compact_through
+
+                # --- SEED one week of runs ---
+                seed_begin = time.perf_counter()
+                log_step(
+                    f"  [{week_index}/{total_weeks}] seeding week {week_start}"
+                    + ("" if will_compact else " (final hot week, will not compact)")
+                )
+                compose_exec_stream(
+                    project_name,
+                    BENCHMARK_BACKEND_SERVICE,
+                    "python",
+                    "manage.py",
+                    "prepare_benchmark_dataset",
+                    "--append-week-start", week_start,
+                    "--runs-per-student-per-week", str(runs_per_student),
+                    "--avg-turns-per-run", str(avg_turns),
+                    "--card-mix-profile", dataset.get("card_mix_profile", "balanced"),
+                    "--bag-level-ratio", str(dataset.get("bag_level_ratio", 0.35)),
+                    "--seed", str(20260312 + week_index),
+                )
+                seed_duration_ms = round(
+                    (time.perf_counter() - seed_begin) * 1000, 2
+                )
+                post_seed = capture_storage_state(project_name)
+                check_disk_safety(
+                    storage_walk_cfg,
+                    post_seed["db_bytes"],
+                    label=f"week {week_index} post-seed",
+                )
+                log_step(
+                    f"     seed: {seed_duration_ms/1000:.1f}s, "
+                    f"db {baseline['db_bytes']/1e6:.1f} → "
+                    f"{post_seed['db_bytes']/1e6:.1f} MB "
+                    f"(+{(post_seed['db_bytes']-baseline['db_bytes'])/1e6:.1f} MB)"
+                )
+
+                # --- COMPACT this week (except the final hot week) ---
+                compact_duration_ms = None
+                compact_stdout = None
+                post_compact = post_seed
+                if will_compact:
+                    compact_begin = time.perf_counter()
+                    compact_stdout = compose_exec(
+                        project_name,
+                        BENCHMARK_BACKEND_SERVICE,
+                        "python",
+                        "manage.py",
+                        "compact_weekly_runs",
+                        week_start,
+                    ).stdout
+                    compact_duration_ms = round(
+                        (time.perf_counter() - compact_begin) * 1000, 2
+                    )
+                    post_compact = capture_storage_state(project_name)
+                    reclaimed = post_seed["db_bytes"] - post_compact["db_bytes"]
+                    log_step(
+                        f"     compact: {compact_duration_ms/1000:.1f}s, "
+                        f"reclaimed {reclaimed/1e6:+.1f} MB "
+                        f"(db {post_seed['db_bytes']/1e6:.1f} → "
+                        f"{post_compact['db_bytes']/1e6:.1f} MB)"
+                    )
+                    check_disk_safety(
+                        storage_walk_cfg,
+                        post_compact["db_bytes"],
+                        label=f"week {week_index} post-compact",
+                    )
+
+                storage_trajectory.append(
+                    {
+                        "step": week_index,
+                        "week_index": week_index,
+                        "week_start": week_start,
+                        "post_seed": post_seed,
+                        "post_compact": post_compact,
+                        "compacted": will_compact,
+                        "seed_duration_ms": seed_duration_ms,
+                        "compact_duration_ms": compact_duration_ms,
+                        "reclaimed_bytes": (
+                            post_seed["db_bytes"] - post_compact["db_bytes"]
+                            if will_compact else 0
+                        ),
+                        "compaction_stdout": (
+                            compact_stdout.strip() if compact_stdout else None
+                        ),
+                    }
+                )
+
+            final_snapshot = storage_trajectory[-1].get("post_compact") or storage_trajectory[-1].get("post_seed")
+            total_reclaimed = sum(
+                s.get("reclaimed_bytes", 0) for s in storage_trajectory[1:]
+            )
+            compact_durations = [
+                s["compact_duration_ms"] for s in storage_trajectory[1:]
+                if s.get("compact_duration_ms") is not None
+            ]
+            seed_durations = [
+                s["seed_duration_ms"] for s in storage_trajectory[1:]
+                if s.get("seed_duration_ms") is not None
+            ]
+            storage_trajectory_summary = {
+                "weeks_seeded": total_weeks,
+                "weeks_compacted": compact_through,
+                "baseline_db_bytes": baseline["db_bytes"],
+                "final_db_bytes": final_snapshot["db_bytes"],
+                "net_growth_bytes": final_snapshot["db_bytes"] - baseline["db_bytes"],
+                "total_reclaimed_bytes": total_reclaimed,
+                "avg_seed_duration_ms": (
+                    round(sum(seed_durations) / len(seed_durations), 2)
+                    if seed_durations else 0
+                ),
+                "avg_compaction_duration_ms": (
+                    round(sum(compact_durations) / len(compact_durations), 2)
+                    if compact_durations else 0
+                ),
+                "max_compaction_duration_ms": (
+                    round(max(compact_durations), 2) if compact_durations else 0
+                ),
+            }
+            log_step("-" * 64)
+            log_step(
+                f"storage walk complete: baseline {baseline['db_bytes']/1e6:.1f} MB → "
+                f"final {final_snapshot['db_bytes']/1e6:.1f} MB "
+                f"(net {(final_snapshot['db_bytes']-baseline['db_bytes'])/1e6:+.1f} MB, "
+                f"total reclaimed {total_reclaimed/1e6:.1f} MB)"
+            )
+        elif compact_after_index:
             week_start = dataset_report["weeks"][compact_after_index - 1]["week_start"]
             compaction_begin = time.perf_counter()
             log_step(f"running post-traffic compaction for week {week_start}")
@@ -1344,31 +1608,37 @@ def main():
                 "stdout": compaction_stdout.strip(),
             }
 
-        post_benchmark_path = scenario_report_dir / "benchmark_post.json"
-        post_benchmark_container_path = f"/tmp/{scenario_name}_benchmark_post.json"
-        post_benchmark_begin = time.perf_counter()
-        log_step("running post-traffic analytics benchmark")
-        compose_exec(
-            project_name,
-            BENCHMARK_BACKEND_SERVICE,
-            "python",
-            "manage.py",
-            "benchmark_teacher_analytics",
-            str(first_teacher["teacher_id"]),
-            "--iterations",
-            benchmark_iterations,
-            "--scenario-name",
-            f"{scenario_name}_post",
-            "--output",
-            post_benchmark_container_path,
-        )
-        log_step(
-            f"post-traffic analytics benchmark done in {round((time.perf_counter() - post_benchmark_begin), 2)}s"
-        )
-        container_cp_from(
-            backend_container_id, post_benchmark_container_path, post_benchmark_path
-        )
-        post_benchmark = load_json(post_benchmark_path)
+        post_benchmark = None
+        if storage_walk_active:
+            log_step(
+                "storage_walk mode: skipping post-traffic analytics benchmark"
+            )
+        else:
+            post_benchmark_path = scenario_report_dir / "benchmark_post.json"
+            post_benchmark_container_path = f"/tmp/{scenario_name}_benchmark_post.json"
+            post_benchmark_begin = time.perf_counter()
+            log_step("running post-traffic analytics benchmark")
+            compose_exec(
+                project_name,
+                BENCHMARK_BACKEND_SERVICE,
+                "python",
+                "manage.py",
+                "benchmark_teacher_analytics",
+                str(first_teacher["teacher_id"]),
+                "--iterations",
+                benchmark_iterations,
+                "--scenario-name",
+                f"{scenario_name}_post",
+                "--output",
+                post_benchmark_container_path,
+            )
+            log_step(
+                f"post-traffic analytics benchmark done in {round((time.perf_counter() - post_benchmark_begin), 2)}s"
+            )
+            container_cp_from(
+                backend_container_id, post_benchmark_container_path, post_benchmark_path
+            )
+            post_benchmark = load_json(post_benchmark_path)
 
         scenario_report = {
             "scenario_name": scenario_name,
@@ -1396,6 +1666,8 @@ def main():
             "redis_stats_after": redis_stats_after,
             "redis_cache_summary": redis_cache_summary,
             "compaction_result": compaction_result,
+            "storage_trajectory": storage_trajectory,
+            "storage_trajectory_summary": storage_trajectory_summary,
             "post_benchmark": post_benchmark,
         }
         log_step(f"writing scenario report to {report_output_path}")

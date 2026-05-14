@@ -1,0 +1,66 @@
+{
+  "name": "storage_year_simulation",
+  "_purpose": "NFR-6 — storage longevity across a full academic year (36 weeks) at national medium adoption.",
+  "dataset": {
+    "teachers": 280,
+    "classrooms_per_teacher": 4,
+    "students_per_classroom": 25,
+    "weeks": 0,
+    "runs_per_student_per_week": 5,
+    "avg_turns_per_run": 20,
+    "card_mix_profile": "balanced",
+    "bag_level_ratio": 0.35,
+    "hot_weeks": 0,
+    "anchor_week_start": "2025-09-08"
+  },
+  "_dataset_notes": [
+    "Full national medium-adoption sizing: 280 teachers × 4 classrooms × 25",
+    "students = 28,000 students (≈27,900 per the capacity model adoption ×",
+    "attendance figure in docs/research/ingest-capacity-model.md §2.1).",
+    "weeks/hot_weeks are 0 because storage_walk mode short-circuits the",
+    "standard dataset prep into --population-only (only school/teachers/",
+    "classrooms/students are created up-front; runs are appended week by",
+    "week by the storage walk loop).",
+    "runs_per_student_per_week=5 matches r_week = f × r_session = 2 × 2.5",
+    "from the capacity model §2.3.",
+    "anchor_week_start = 2025-09-08 = first Monday of September 2025 (start",
+    "of the Macedonian primary-school year)."
+  ],
+  "_nfr": "Closes NFR-6 — storage longevity. Pass: final pg_database_size < 10 GB after 36 weeks at full national medium adoption.",
+  "traffic": {
+    "duration": "0s",
+    "scripts": []
+  },
+  "_traffic_notes": [
+    "No k6 traffic. NFR-6 measures the cumulative storage trajectory of the",
+    "weekly compaction job over a 36-week horizon, not HTTP latency. The",
+    "run_scenario.py storage_walk branch skips pre/post analytics and the",
+    "k6 loop."
+  ],
+  "verification": {
+    "storage_walk": {
+      "total_weeks": 36,
+      "compact_through_week_index": 35,
+      "min_host_free_bytes": 4000000000,
+      "max_pg_db_bytes": 15000000000
+    }
+  },
+  "_verification_notes": [
+    "total_weeks=36 simulates one full academic year (September → mid-June).",
+    "compact_through_week_index=35 mirrors production behaviour: week 36 is",
+    "the 'current hot week' and is never compacted until it rolls over. The",
+    "scenario seeds 36 weeks but compacts only 35.",
+    "min_host_free_bytes=4 GB: storage walk aborts with a clear error if host",
+    "free disk drops below 4 GB at any iteration (leaves room for OS, WAL,",
+    "logs, Docker overhead).",
+    "max_pg_db_bytes=15 GB: storage walk aborts if pg_database_size exceeds",
+    "15 GB at any iteration. This is HIGHER than the NFR-6 target of 10 GB —",
+    "it's a hard-stop ceiling, not the pass/fail criterion. The 10 GB target",
+    "is evaluated post-run from the storage_trajectory_summary.final_db_bytes.",
+    "Expected runtime: ~2–3 hours (seeding dominates; one week ≈ 4–6 min for",
+    "28K students × 5 runs × 20 turns = 2.8M turn events per week).",
+    "If aborted by max_pg_db_bytes, that IS a thesis finding: the year-horizon",
+    "budget on this VPS would be breached at week N."
+  ],
+  "report_output": "benchmarks/reports/storage_year_simulation.json"
+}

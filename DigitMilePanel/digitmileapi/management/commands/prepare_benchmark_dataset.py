@@ -136,12 +136,25 @@ class Command(BaseCommand):
         logger.info("%s %s", event, context or {})
 
     def add_arguments(self, parser):
-        parser.add_argument("--teachers", type=int, required=True)
-        parser.add_argument("--classrooms-per-teacher", type=int, required=True)
-        parser.add_argument("--students-per-classroom", type=int, required=True)
-        parser.add_argument("--weeks", type=int, required=True)
-        parser.add_argument("--runs-per-student-per-week", type=int, required=True)
-        parser.add_argument("--avg-turns-per-run", type=int, required=True)
+        parser.add_argument("--teachers", type=int, default=None)
+        parser.add_argument("--classrooms-per-teacher", type=int, default=None)
+        parser.add_argument("--students-per-classroom", type=int, default=None)
+        parser.add_argument("--weeks", type=int, default=None)
+        parser.add_argument("--runs-per-student-per-week", type=int, default=None)
+        parser.add_argument("--avg-turns-per-run", type=int, default=None)
+        parser.add_argument(
+            "--population-only",
+            action="store_true",
+            help="Create school/teachers/classrooms/students only; skip run generation. "
+            "Pairs with --append-week-start for iterative storage benchmarks (NFR-6).",
+        )
+        parser.add_argument(
+            "--append-week-start",
+            default="",
+            help="YYYY-MM-DD. When set, switches to APPEND MODE: finds the existing benchmark "
+            "population and generates ONE week of runs for the given week_start. Skips "
+            "population creation and bulk compaction. Used by run_scenario.py storage_walk.",
+        )
         parser.add_argument(
             "--card-mix-profile",
             choices=sorted(CARD_MIX_PROFILES.keys()),
@@ -164,6 +177,32 @@ class Command(BaseCommand):
         parser.add_argument("--output", default="")
 
     def handle(self, *args, **options):
+        # Three modes: full (legacy, default), population_only, append_week.
+        # --append-week-start trumps --population-only if both are set.
+        mode = "full"
+        if options.get("append_week_start"):
+            mode = "append_week"
+        elif options.get("population_only"):
+            mode = "population_only"
+
+        if mode == "append_week":
+            self._handle_append_week(options)
+            return
+        if mode == "population_only":
+            self._handle_population_only(options)
+            return
+
+        # Legacy "full" mode requires the original positional-ish args.
+        required = [
+            "teachers", "classrooms_per_teacher", "students_per_classroom",
+            "weeks", "runs_per_student_per_week", "avg_turns_per_run",
+        ]
+        missing = [name for name in required if options.get(name) is None]
+        if missing:
+            raise CommandError(
+                "full mode requires: " + ", ".join("--" + n.replace("_", "-") for n in missing)
+            )
+
         self._log_progress(
             "benchmark_dataset_preparation_start",
             teachers=options["teachers"],
@@ -352,6 +391,201 @@ class Command(BaseCommand):
             hot_week_start=report["hot_week_start"],
             synthetic_now=report["synthetic_now"],
             compacted_weeks=[value.isoformat() for value in compact_week_starts],
+            output=options["output"],
+        )
+        self.stdout.write(report_text)
+
+    def _handle_population_only(self, options):
+        """Create school/teachers/classrooms/students; no runs, no compaction.
+
+        Used as the first step of an iterative storage benchmark (NFR-6).
+        Subsequent append-week calls fill the population in week by week.
+        """
+        for name in ("teachers", "classrooms_per_teacher", "students_per_classroom"):
+            if options.get(name) is None:
+                raise CommandError(
+                    "--population-only requires --" + name.replace("_", "-")
+                )
+        self._log_progress(
+            "benchmark_dataset_population_only_start",
+            teachers=options["teachers"],
+            classrooms_per_teacher=options["classrooms_per_teacher"],
+            students_per_classroom=options["students_per_classroom"],
+        )
+        if options["clear"]:
+            self._log_progress("benchmark_dataset_clear_start")
+            self._clear_existing_benchmark_data()
+            self._log_progress("benchmark_dataset_clear_complete")
+
+        school = self._create_school()
+        teachers = self._create_teachers(school, options["teachers"])
+        classrooms = self._create_classrooms(
+            school, teachers, options["classrooms_per_teacher"]
+        )
+        students = self._create_students(classrooms, options["students_per_classroom"])
+
+        classroom_ids_by_teacher = {}
+        for classroom in classrooms:
+            classroom_ids_by_teacher.setdefault(classroom.teacher_id, []).append(
+                classroom.id
+            )
+
+        report = {
+            "mode": "population_only",
+            "teacher_password": BENCHMARK_PASSWORD,
+            "teachers": [
+                {
+                    "teacher_id": t.id,
+                    "username": t.user.username if t.user else "",
+                    "email": t.email,
+                    "classroom_ids": classroom_ids_by_teacher.get(t.id, []),
+                }
+                for t in teachers
+            ],
+            "counts": {
+                "schools": 1,
+                "teachers": len(teachers),
+                "classrooms": len(classrooms),
+                "students": len(students),
+                "runs": 0,
+                "turns": 0,
+                "triggers": 0,
+            },
+            "weeks": [],
+            "classrooms": [
+                {
+                    "classroom_id": c.id,
+                    "classroom_key": c.classroom_key,
+                    "teacher_id": c.teacher_id,
+                    "grade": c.grade,
+                }
+                for c in classrooms
+            ],
+        }
+        report_text = json.dumps(report, indent=2, default=str)
+        if options["output"]:
+            output_path = Path(options["output"])
+            if not output_path.is_absolute():
+                output_path = Path.cwd() / output_path
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(report_text + "\n", encoding="utf-8")
+
+        self._log_progress(
+            "benchmark_dataset_population_only_complete",
+            teachers=len(teachers),
+            classrooms=len(classrooms),
+            students=len(students),
+            output=options["output"],
+        )
+        self.stdout.write(report_text)
+
+    def _handle_append_week(self, options):
+        """Append exactly one week of runs to an existing benchmark population.
+
+        Reuses _generate_runs for parity with full-mode output (same RNG-driven
+        card mix, turn-count distribution, dataset_report shape). Skips
+        population creation, --clear, and bulk compaction. The caller
+        (run_scenario.py storage_walk) is responsible for compacting weeks
+        after they have been appended.
+        """
+        for name in ("runs_per_student_per_week", "avg_turns_per_run"):
+            if options.get(name) is None:
+                raise CommandError(
+                    "--append-week-start requires --" + name.replace("_", "-")
+                )
+        if not 0 <= options["bag_level_ratio"] <= 1:
+            raise CommandError("--bag-level-ratio must be between 0 and 1")
+
+        try:
+            append_date = datetime.strptime(
+                options["append_week_start"], "%Y-%m-%d"
+            ).date()
+        except ValueError as exc:
+            raise CommandError(
+                "--append-week-start must be in YYYY-MM-DD format"
+            ) from exc
+        week_start = week_start_for(append_date)
+
+        self.rng = random.Random(options["seed"])
+        self.card_mix_profile = options["card_mix_profile"]
+        self.avg_turns_per_run = max(1, options["avg_turns_per_run"])
+        self.turn_scale = self.avg_turns_per_run / LEVEL_TURN_BASELINE_MEAN
+        self.bag_level_ratio = options["bag_level_ratio"]
+        self.game_map = self._build_game_map()
+        self.tile_type_by_index = {
+            tile["tileMapIndex"]: tile["tileType"] for tile in self.game_map
+        }
+        self.anchor_week_start = week_start
+
+        existing = (
+            Student.objects.filter(full_name__startswith="Benchmark Student")
+            .select_related("classroom", "classroom__teacher", "classroom__teacher__user")
+            .order_by("id")
+        )
+        students = list(existing)
+        if not students:
+            raise CommandError(
+                "no benchmark students found — run with --population-only first"
+            )
+
+        # Refuse to double-append the same week.
+        existing_run_count = Run.objects.filter(
+            student__in=students,
+            created_at__date__gte=week_start,
+            created_at__date__lt=week_start + timedelta(days=7),
+        ).count()
+        if existing_run_count > 0:
+            raise CommandError(
+                f"refusing to append: week {week_start.isoformat()} already has "
+                f"{existing_run_count} Run rows for the benchmark population"
+            )
+
+        self._log_progress(
+            "benchmark_dataset_append_week_start",
+            week_start=week_start.isoformat(),
+            student_count=len(students),
+            runs_per_student=options["runs_per_student_per_week"],
+        )
+
+        dataset_report = self._generate_runs(
+            students=students,
+            week_starts=[week_start],
+            hot_week_starts={week_start},
+            runs_per_student_per_week=options["runs_per_student_per_week"],
+        )
+
+        report = {
+            "mode": "append_week",
+            "week_start": week_start.isoformat(),
+            "counts": {
+                "students": len(students),
+                "runs": dataset_report["run_count"],
+                "turns": dataset_report["turn_count"],
+                "triggers": dataset_report["trigger_count"],
+            },
+            "weeks": [
+                {
+                    "index": 1,
+                    "week_start": week_start.isoformat(),
+                    "compacted": False,
+                    "hot": True,
+                }
+            ],
+            "ingest_targets": dataset_report["ingest_targets"],
+        }
+        report_text = json.dumps(report, indent=2, default=str)
+        if options["output"]:
+            output_path = Path(options["output"])
+            if not output_path.is_absolute():
+                output_path = Path.cwd() / output_path
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(report_text + "\n", encoding="utf-8")
+
+        self._log_progress(
+            "benchmark_dataset_append_week_complete",
+            week_start=week_start.isoformat(),
+            runs=dataset_report["run_count"],
+            turns=dataset_report["turn_count"],
             output=options["output"],
         )
         self.stdout.write(report_text)
