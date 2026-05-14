@@ -14,6 +14,7 @@ import random
 from datetime import date, timedelta, timezone as dt_timezone
 
 from django.contrib.auth.models import Group, User
+from django.core.management import call_command
 from django.db import transaction
 from django.test import TransactionTestCase
 from django.utils import timezone as dj_timezone
@@ -52,7 +53,9 @@ from digitmileapi.weekly_aggregation import aggregate_weekly_rollups
 from digitmileapi.weekly_rollups import week_end_for, week_start_for
 
 
-NUM_STUDENTS = 5
+NUM_TEACHERS = 3
+NUM_CLASSROOMS_PER_TEACHER = 2
+NUM_STUDENTS_PER_CLASSROOM = 5
 NUM_WEEKS = 3
 RUNS_PER_STUDENT_PER_WEEK = 4
 RANDOM_SEED = 42
@@ -76,40 +79,50 @@ class RollupAccuracyTest(TransactionTestCase):
             status="APPROVED",
         )
 
-        user = User.objects.create_user(
-            username="test_teacher",
-            email="test_teacher@test.com",
-            password="password123",
-            is_staff=True,
-        )
         teachers_group, _ = Group.objects.get_or_create(name="Teachers")
-        user.groups.add(teachers_group)
 
-        teacher = Teacher.objects.create(
-            user=user,
-            full_name="Test Teacher",
-            email="test_teacher@test.com",
-            status="APPROVED",
-        )
-        TeacherSchoolAssignment.objects.create(teacher=teacher, school=school)
-
-        classroom = Classroom.objects.create(
-            classroom_key="TST-0001",
-            classroom_name="3-a",
-            grade=3,
-            teacher=teacher,
-            school=school,
-        )
-
+        # Multi-teacher / multi-classroom topology guards against bugs
+        # where a chunked aggregation pass would mis-attribute runs to
+        # the wrong (student, classroom, teacher) key tuple. With one
+        # teacher every key tuple collapses to identical values and
+        # such a bug would be invisible.
         self.students = []
-        for i in range(NUM_STUDENTS):
-            student = Student.objects.create(
-                full_name=f"Student {i + 1}",
-                date_of_birth=date(2016, 1, 1),
-                grade=3,
-                classroom=classroom,
+        classroom_counter = 0
+        for t_idx in range(NUM_TEACHERS):
+            user = User.objects.create_user(
+                username=f"test_teacher_{t_idx}",
+                email=f"test_teacher_{t_idx}@test.com",
+                password="password123",
+                is_staff=True,
             )
-            self.students.append(student)
+            user.groups.add(teachers_group)
+            teacher = Teacher.objects.create(
+                user=user,
+                full_name=f"Test Teacher {t_idx}",
+                email=f"test_teacher_{t_idx}@test.com",
+                status="APPROVED",
+            )
+            TeacherSchoolAssignment.objects.create(teacher=teacher, school=school)
+
+            for c_idx in range(NUM_CLASSROOMS_PER_TEACHER):
+                classroom_counter += 1
+                classroom = Classroom.objects.create(
+                    classroom_key=f"TST-{classroom_counter:04d}",
+                    classroom_name=f"3-{chr(ord('a') + c_idx)}",
+                    grade=3,
+                    teacher=teacher,
+                    school=school,
+                )
+                for s_idx in range(NUM_STUDENTS_PER_CLASSROOM):
+                    student = Student.objects.create(
+                        full_name=(
+                            f"Teacher {t_idx} Classroom {c_idx} Student {s_idx}"
+                        ),
+                        date_of_birth=date(2016, 1, 1),
+                        grade=3,
+                        classroom=classroom,
+                    )
+                    self.students.append(student)
 
         # Compute week boundaries: 3 weeks ending with this week.
         anchor = week_start_for(date.today())
@@ -289,3 +302,24 @@ class RollupAccuracyTest(TransactionTestCase):
                 f"  all_hot = {hot}\n"
                 f"  mixed   = {mixed}",
             )
+
+    def test_streaming_aggregation_matches_raw_data_verifier(self):
+        """
+        Direct oracle test for the chunked streaming refactor of
+        aggregate_weekly_rollups: run the aggregation with a tiny
+        chunk_size (forcing several chunk boundaries against the seeded
+        runs), then invoke the production `verify_weekly_rollups`
+        management command which compares rollup row counts and sums
+        against the raw rows. CommandError on any mismatch.
+        """
+        # setUp's _generate_run_data does not set created_at (the model
+        # has auto_now_add=True; the production seeder backdates via a
+        # follow-up SQL UPDATE that setUp skips). So all ~60 seeded runs
+        # land in this week — aggregate that one.
+        target_week_start, _ = self.weeks[-1]
+        # chunk_size=7 forces ~9 chunks across the 60 runs, exercising
+        # the chunk-boundary flush path multiple times (the default 500
+        # would put everything in a single trailing flush against this
+        # dataset and skip the boundary path entirely).
+        aggregate_weekly_rollups(target_week_start, chunk_size=7)
+        call_command("verify_weekly_rollups", target_week_start.isoformat())

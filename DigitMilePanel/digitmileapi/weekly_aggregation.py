@@ -158,35 +158,9 @@ def _update_decision_time_stats(target, decision_time, include_clipped=False):
             target["outlier_count"] += 1
 
 
-def aggregate_weekly_rollups(week_start):
+def aggregate_weekly_rollups(week_start, chunk_size=500):
     week_start = week_start_for(week_start)
     week_end = week_end_for(week_start)
-    ordered_turns = Prefetch(
-        "turn_events",
-        queryset=TurnEvent.objects.order_by("turn_index").prefetch_related(
-            Prefetch(
-                "special_tile_triggers",
-                queryset=SpecialTileTrigger.objects.order_by("chain_index"),
-            )
-        ),
-    )
-
-    runs = list(
-        Run.objects.filter(
-            created_at__date__gte=week_start, created_at__date__lte=week_end
-        )
-        .select_related("student__classroom__teacher")
-        .prefetch_related(ordered_turns)
-        .order_by("student_id", "created_at", "id")
-    )
-
-    classroom_ids = {run.student.classroom_id for run in runs}
-    classroom_student_counts = {
-        entry["classroom_id"]: entry["student_count"]
-        for entry in Student.objects.filter(classroom_id__in=classroom_ids)
-        .values("classroom_id")
-        .annotate(student_count=Count("id"))
-    }
 
     student_week = defaultdict(_default_student_week_summary)
     student_level = defaultdict(_default_student_week_level_summary)
@@ -251,7 +225,54 @@ def aggregate_weekly_rollups(week_start):
         }
     )
 
-    for run in runs:
+    runs_qs = (
+        Run.objects.filter(
+            created_at__date__gte=week_start, created_at__date__lte=week_end
+        )
+        .select_related("student__classroom__teacher")
+        .order_by("student_id", "created_at", "id")
+    )
+
+    triggers_prefetch = Prefetch(
+        "special_tile_triggers",
+        queryset=SpecialTileTrigger.objects.order_by("chain_index"),
+    )
+
+    classroom_ids = set()
+    run_count = 0
+
+    def _iter_runs_with_turns():
+        # Stream runs in chunk_size batches, issuing one extra query per
+        # batch to fetch that batch's TurnEvents (with prefetched
+        # triggers). Peak memory is ~chunk_size runs plus their turns
+        # rather than the entire week. At national-medium adoption a week
+        # is ~140k runs / ~2.8M turns, whose eager prefetch consumed
+        # ~5 GB of Python heap and OOM-killed the 3.8 GiB host.
+        buffer = []
+
+        def _flush():
+            chunk_run_ids = [r.id for r in buffer]
+            turns_by_run = defaultdict(list)
+            for te in (
+                TurnEvent.objects.filter(run_id__in=chunk_run_ids)
+                .order_by("turn_index")
+                .prefetch_related(triggers_prefetch)
+            ):
+                turns_by_run[te.run_id].append(te)
+            for buffered_run in buffer:
+                yield buffered_run, turns_by_run[buffered_run.id]
+
+        for streamed_run in runs_qs.iterator(chunk_size=chunk_size):
+            buffer.append(streamed_run)
+            if len(buffer) >= chunk_size:
+                yield from _flush()
+                buffer.clear()
+        if buffer:
+            yield from _flush()
+
+    for run, run_turns in _iter_runs_with_turns():
+        classroom_ids.add(run.student.classroom_id)
+        run_count += 1
         student = run.student
         classroom = student.classroom
         teacher = classroom.teacher
@@ -286,7 +307,7 @@ def aggregate_weekly_rollups(week_start):
         bag_number = 1
         map_lookup = _map_lookup(run.game_map)
 
-        for turn in run.turn_events.all():
+        for turn in run_turns:
             family = _card_family_for_turn(turn)
             card_type = _card_type_for_turn(turn)
             tile_type = _card_tile_type_for_turn(turn)
@@ -437,6 +458,13 @@ def aggregate_weekly_rollups(week_start):
                     else max(choice_stats["decision_time_max_ms"], number_decision_time)
                 )
                 bag_number = turn.chosen_number
+
+    classroom_student_counts = {
+        entry["classroom_id"]: entry["student_count"]
+        for entry in Student.objects.filter(classroom_id__in=classroom_ids)
+        .values("classroom_id")
+        .annotate(student_count=Count("id"))
+    }
 
     with transaction.atomic():
         _delete_existing_week_rollups(week_start)
@@ -748,7 +776,7 @@ def aggregate_weekly_rollups(week_start):
     return {
         "week_start": week_start,
         "week_end": week_end,
-        "run_count": len(runs),
+        "run_count": run_count,
         "student_week_rows": len(student_week),
         "student_week_level_rows": len(student_level),
         "student_week_card_type_rows": len(student_card_types),
