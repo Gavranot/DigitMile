@@ -1506,14 +1506,28 @@ def main():
                 post_compact = post_seed
                 if will_compact:
                     compact_begin = time.perf_counter()
-                    compact_stdout = compose_exec(
-                        project_name,
-                        BENCHMARK_BACKEND_SERVICE,
+                    compact_args = [
                         "python",
                         "manage.py",
                         "compact_weekly_runs",
                         week_start,
-                    ).stdout
+                    ]
+                    # Per-teacher mode bounds per-call memory and PG insert
+                    # pressure to ~one teacher's slice (~100 students). At
+                    # national-medium scale a monolithic call OOM-kills PG on
+                    # the 3.8 GiB host; per-teacher iteration is the only
+                    # invocation pattern that fits.
+                    if storage_walk_cfg.get("compaction_per_teacher"):
+                        compact_args.append("--per-teacher")
+                    # Stream so per-teacher progress lines show in real time
+                    # rather than buffering for the whole 30–60 min run.
+                    # stream_command returns the captured combined output,
+                    # which we still want for the trajectory report.
+                    compact_stdout = compose_exec_stream(
+                        project_name,
+                        BENCHMARK_BACKEND_SERVICE,
+                        *compact_args,
+                    )
                     compact_duration_ms = round(
                         (time.perf_counter() - compact_begin) * 1000, 2
                     )
