@@ -51,8 +51,42 @@ class Command(BaseCommand):
             action="store_true",
             help="Clear Run.game_map after archive verification succeeds",
         )
+        parser.add_argument(
+            "--teacher-id",
+            type=int,
+            default=None,
+            help=(
+                "Compact only the slice of the week belonging to one teacher. "
+                "Skips verify_weekly_rollups and final week-level status "
+                "updates — caller is responsible for orchestration."
+            ),
+        )
+        parser.add_argument(
+            "--per-teacher",
+            action="store_true",
+            help=(
+                "Discover all teachers with runs in this week and compact each "
+                "teacher's slice sequentially. Bounds Python heap and PG "
+                "bulk-insert pressure per slice to ~hundreds of MB even at "
+                "national-medium scale. verify_weekly_rollups runs once after "
+                "all slices complete."
+            ),
+        )
+        parser.add_argument(
+            "--skip-verification",
+            action="store_true",
+            help=(
+                "Skip the verify_weekly_rollups call after compaction. "
+                "Use when the operator runs verification out-of-band."
+            ),
+        )
 
     def handle(self, *args, **options):
+        if options["per_teacher"] and options["teacher_id"] is not None:
+            raise CommandError(
+                "--per-teacher and --teacher-id are mutually exclusive"
+            )
+
         try:
             requested_week_start = date.fromisoformat(options["week_start"])
         except ValueError as exc:
@@ -67,71 +101,272 @@ class Command(BaseCommand):
             dry_run=options["dry_run"],
             overwrite_archives=options["overwrite_archives"],
             clear_game_map=options["clear_game_map"],
+            teacher_id=options["teacher_id"],
+            per_teacher=options["per_teacher"],
         )
-        compaction, _ = WeeklyCompactionRun.objects.get_or_create(
-            week_start=week_start,
-            defaults={"week_end": week_end},
-        )
-        previous_status = compaction.status
-        if (
-            previous_status == WeeklyCompactionRun.Status.COMPACTED
-            and not options["dry_run"]
-        ):
-            self.stdout.write(self.style.WARNING("Week is already compacted"))
+
+        ensure_archive_root()
+
+        if options["per_teacher"]:
+            self._handle_per_teacher(week_start, week_end, options)
             return
 
-        compaction.week_end = week_end
-        compaction.started_at = timezone.now()
-        compaction.status = WeeklyCompactionRun.Status.PENDING
-        compaction.notes = ""
-        compaction.save()
+        # Single-slice mode: either whole-week (teacher_id=None) or one
+        # teacher's slice. We only own the week-level WeeklyCompactionRun
+        # row when teacher_id is None — for an explicit --teacher-id call
+        # the caller is orchestrating the week and we leave bookkeeping
+        # to them.
+        compaction = None
+        if options["teacher_id"] is None:
+            compaction = self._open_week_compaction_record(week_start, week_end)
+            if compaction is None:  # Already COMPACTED
+                return
 
-        # Stream over runs rather than materialise list(runs). At national
-        # medium adoption a single week is ~140k Run rows whose game_map
-        # JSONField alone would consume hundreds of MB if loaded eagerly,
-        # tipping the 3.8 GiB host into OOM during the archive-write loop.
-        # Iterator + per-iteration build of run_ids/student_level_pairs
-        # holds chunk_size rows at a time instead.
-        runs_qs = (
-            Run.objects.filter(
-                created_at__date__gte=week_start, created_at__date__lte=week_end
-            )
-            .select_related("student__classroom")
-            .order_by("created_at", "id")
+        slice_result = self._compact_slice(
+            week_start,
+            week_end,
+            teacher_id=options["teacher_id"],
+            options=options,
+            week_record=compaction,
         )
 
-        run_count_total = runs_qs.count()
-        if run_count_total == 0:
-            compaction.notes = "No runs found for requested week"
-            compaction.completed_at = timezone.now()
-            compaction.save(update_fields=["notes", "completed_at", "updated_at"])
+        if options["teacher_id"] is None and not options["skip_verification"] and not options["dry_run"]:
+            call_command(
+                "verify_weekly_rollups",
+                week_start.isoformat(),
+                "--require-archives",
+                "--verify-run-buckets",
+            )
+
+        if compaction is not None:
+            self._finalize_week_record(
+                compaction, [slice_result], week_start, week_end, options
+            )
+
+        if options["teacher_id"] is None:
+            self._invalidate_dashboard_cache()
+
+        self.stdout.write(
+            self.style.SUCCESS(
+                self._format_summary(slice_result, scope=(
+                    f"teacher={options['teacher_id']}"
+                    if options["teacher_id"] is not None
+                    else "week"
+                ))
+            )
+        )
+
+    # --------------------------------------------------------------
+    # Per-teacher orchestrator
+    # --------------------------------------------------------------
+
+    def _handle_per_teacher(self, week_start, week_end, options):
+        teacher_ids = list(
+            Run.objects.filter(
+                created_at__date__gte=week_start,
+                created_at__date__lte=week_end,
+            )
+            .values_list("student__classroom__teacher_id", flat=True)
+            .distinct()
+            .order_by("student__classroom__teacher_id")
+        )
+
+        if not teacher_ids:
             self.stdout.write(
                 self.style.WARNING("No runs found for the requested week")
             )
             return
 
-        ensure_archive_root()
-        rollup_result = aggregate_weekly_rollups(week_start)
+        compaction = self._open_week_compaction_record(week_start, week_end)
+        if compaction is None:  # Already COMPACTED
+            return
+
+        self.stdout.write(
+            f"Per-teacher compaction: {len(teacher_ids)} teachers"
+        )
+        slice_results = []
+        for index, teacher_id in enumerate(teacher_ids, start=1):
+            self.stdout.write(
+                f"  [{index}/{len(teacher_ids)}] teacher_id={teacher_id}"
+            )
+            slice_results.append(
+                self._compact_slice(
+                    week_start,
+                    week_end,
+                    teacher_id=teacher_id,
+                    options=options,
+                    week_record=compaction,
+                )
+            )
+
+        if not options["skip_verification"] and not options["dry_run"]:
+            call_command(
+                "verify_weekly_rollups",
+                week_start.isoformat(),
+                "--require-archives",
+                "--verify-run-buckets",
+            )
+
+        self._finalize_week_record(
+            compaction, slice_results, week_start, week_end, options
+        )
+        self._invalidate_dashboard_cache()
+
+        totals = self._sum_slice_results(slice_results)
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Per-teacher compaction complete: teachers={len(teacher_ids)}, "
+                f"runs={totals['run_count']}, "
+                f"archives_verified={totals['archive_runs_verified']}, "
+                f"turns_deleted={totals['turn_rows_deleted']}, "
+                f"triggers_deleted={totals['trigger_rows_deleted']}"
+            )
+        )
+
+    # --------------------------------------------------------------
+    # WeeklyCompactionRun bookkeeping
+    # --------------------------------------------------------------
+
+    def _open_week_compaction_record(self, week_start, week_end):
+        compaction, _ = WeeklyCompactionRun.objects.get_or_create(
+            week_start=week_start,
+            defaults={"week_end": week_end},
+        )
+        if compaction.status == WeeklyCompactionRun.Status.COMPACTED:
+            self.stdout.write(self.style.WARNING("Week is already compacted"))
+            return None
+        compaction.week_end = week_end
+        compaction.started_at = timezone.now()
+        compaction.status = WeeklyCompactionRun.Status.PENDING
+        compaction.notes = ""
+        compaction.save()
+        return compaction
+
+    def _finalize_week_record(
+        self, compaction, slice_results, week_start, week_end, options
+    ):
+        totals = self._sum_slice_results(slice_results)
+        compaction.run_count = totals["run_count"]
+        compaction.turn_count = totals["turn_count"]
+        compaction.trigger_count = totals["trigger_count"]
+        compaction.archive_runs_written = totals["archive_runs_written"]
+        compaction.archive_runs_verified = totals["archive_runs_verified"]
+        compaction.archive_bytes_written = totals["archive_bytes_written"]
+        compaction.turn_rows_deleted = totals["turn_rows_deleted"]
+        compaction.trigger_rows_deleted = totals["trigger_rows_deleted"]
+        compaction.completed_at = timezone.now()
+        if options["dry_run"]:
+            compaction.notes = (
+                f"Dry run complete. runs={totals['run_count']}, "
+                f"verified_archives={totals['archive_runs_verified']}"
+            )
+        else:
+            compaction.status = WeeklyCompactionRun.Status.COMPACTED
+            compaction.notes = (
+                f"Compaction complete for {week_start} through {week_end}"
+            )
+        compaction.save()
+
+    @staticmethod
+    def _sum_slice_results(slice_results):
+        keys = [
+            "run_count", "turn_count", "trigger_count",
+            "archive_runs_written", "archive_runs_verified",
+            "archive_bytes_written", "turn_rows_deleted",
+            "trigger_rows_deleted",
+        ]
+        totals = {key: 0 for key in keys}
+        for slice_result in slice_results:
+            for key in keys:
+                totals[key] += slice_result.get(key, 0) or 0
+        return totals
+
+    @staticmethod
+    def _format_summary(slice_result, scope):
+        return (
+            f"Compaction complete ({scope}): "
+            f"runs={slice_result.get('run_count', 0)}, "
+            f"archives_verified={slice_result.get('archive_runs_verified', 0)}, "
+            f"turns_deleted={slice_result.get('turn_rows_deleted', 0)}, "
+            f"triggers_deleted={slice_result.get('trigger_rows_deleted', 0)}"
+        )
+
+    @staticmethod
+    def _invalidate_dashboard_cache():
+        # delete_pattern is a django-redis extension; skip when the cache
+        # backend doesn't provide it (e.g. DummyCache under the benchmark
+        # dummy-cache overlay, where there is nothing to invalidate).
+        if hasattr(cache, "delete_pattern"):
+            cache.delete_pattern("teacher_stats_viz:*")
+            cache.delete_pattern("teacher_dashboard:*")
+
+    # --------------------------------------------------------------
+    # Slice work — does aggregation + archive write + run-bucket rebuild
+    # + raw-row delete for one (week, teacher_id) pair. teacher_id=None
+    # means "the whole week as one slice", preserving the original
+    # invocation shape for callers that don't opt into per-teacher mode.
+    # --------------------------------------------------------------
+
+    def _compact_slice(
+        self, week_start, week_end, teacher_id, options, week_record
+    ):
+        runs_qs = (
+            Run.objects.filter(
+                created_at__date__gte=week_start,
+                created_at__date__lte=week_end,
+            )
+            .select_related("student__classroom")
+            .order_by("created_at", "id")
+        )
+        if teacher_id is not None:
+            runs_qs = runs_qs.filter(
+                student__classroom__teacher_id=teacher_id
+            )
+
+        run_count_total = runs_qs.count()
+        if run_count_total == 0:
+            self.stdout.write(
+                self.style.WARNING(
+                    "No runs to compact for this slice"
+                    + (f" (teacher_id={teacher_id})" if teacher_id else "")
+                )
+            )
+            return self._empty_slice_result()
+
+        rollup_result = aggregate_weekly_rollups(
+            week_start, teacher_id=teacher_id
+        )
         _log_compaction_event(
             "weekly_compaction_aggregation_result",
             week_start=str(week_start),
+            teacher_id=teacher_id,
             result=rollup_result,
         )
-        compaction.status = WeeklyCompactionRun.Status.AGGREGATED
-        compaction.run_count = run_count_total
-        # Use a date-range subquery filter instead of run__in=<list>. PG can
-        # plan this efficiently with the existing created_at index; no Python
-        # materialisation of run IDs needed for counts.
-        runs_in_week = Run.objects.filter(
-            created_at__date__gte=week_start, created_at__date__lte=week_end
+
+        # Subquery-shaped filter so we don't pass tens of thousands of IDs
+        # to PG in one IN clause. The created_at index covers it.
+        runs_in_slice = Run.objects.filter(
+            created_at__date__gte=week_start,
+            created_at__date__lte=week_end,
         )
-        compaction.turn_count = TurnEvent.objects.filter(
-            run__in=runs_in_week
+        if teacher_id is not None:
+            runs_in_slice = runs_in_slice.filter(
+                student__classroom__teacher_id=teacher_id
+            )
+
+        slice_turn_count = TurnEvent.objects.filter(run__in=runs_in_slice).count()
+        slice_trigger_count = SpecialTileTrigger.objects.filter(
+            turn__run__in=runs_in_slice
         ).count()
-        compaction.trigger_count = SpecialTileTrigger.objects.filter(
-            turn__run__in=runs_in_week
-        ).count()
-        compaction.save()
+
+        if week_record is not None and teacher_id is None:
+            # Single-slice whole-week mode: surface the aggregation
+            # checkpoint on the week record so observers see progress.
+            week_record.status = WeeklyCompactionRun.Status.AGGREGATED
+            week_record.run_count = run_count_total
+            week_record.turn_count = slice_turn_count
+            week_record.trigger_count = slice_trigger_count
+            week_record.save()
 
         archive_bytes_written = 0
         archive_runs_written = 0
@@ -158,6 +393,7 @@ class Command(BaseCommand):
                 _log_compaction_event(
                     "weekly_compaction_archive_write_result",
                     week_start=str(week_start),
+                    teacher_id=teacher_id,
                     run_id=run.id,
                     storage_path=archive.storage_path,
                     checksum_sha256=archive.checksum_sha256,
@@ -168,6 +404,7 @@ class Command(BaseCommand):
             _log_compaction_event(
                 "weekly_compaction_archive_verification_result",
                 week_start=str(week_start),
+                teacher_id=teacher_id,
                 run_id=run.id,
                 verified=archive_is_valid,
                 archive_status=archive.archive_status,
@@ -176,20 +413,17 @@ class Command(BaseCommand):
             if archive_is_valid:
                 archive_runs_verified += 1
             else:
-                compaction.status = WeeklyCompactionRun.Status.FAILED
-                compaction.notes = f"Archive verification failed for run {run.id}"
-                compaction.completed_at = timezone.now()
-                compaction.archive_runs_written = archive_runs_written
-                compaction.archive_runs_verified = archive_runs_verified
-                compaction.archive_bytes_written = archive_bytes_written
-                compaction.save()
-                raise CommandError(compaction.notes)
-
-        compaction.status = WeeklyCompactionRun.Status.VERIFIED
-        compaction.archive_runs_written = archive_runs_written
-        compaction.archive_runs_verified = archive_runs_verified
-        compaction.archive_bytes_written = archive_bytes_written
-        compaction.save()
+                if week_record is not None:
+                    week_record.status = WeeklyCompactionRun.Status.FAILED
+                    week_record.notes = (
+                        f"Archive verification failed for run {run.id}"
+                        + (f" (teacher_id={teacher_id})" if teacher_id else "")
+                    )
+                    week_record.completed_at = timezone.now()
+                    week_record.save()
+                raise CommandError(
+                    f"Archive verification failed for run {run.id}"
+                )
 
         run_bucket_result = rebuild_historical_run_bucket_trends(
             student_level_pairs,
@@ -198,63 +432,63 @@ class Command(BaseCommand):
         _log_compaction_event(
             "weekly_compaction_run_bucket_result",
             week_start=str(week_start),
+            teacher_id=teacher_id,
             result=run_bucket_result,
         )
 
-        call_command(
-            "verify_weekly_rollups",
-            week_start.isoformat(),
-            "--require-archives",
-            "--verify-run-buckets",
-        )
-
         if options["dry_run"]:
-            compaction.notes = f"Dry run complete. rollups={rollup_result}, verified_archives={archive_runs_verified}"
-            compaction.completed_at = timezone.now()
-            compaction.save(update_fields=["notes", "completed_at", "updated_at"])
-            self.stdout.write(self.style.SUCCESS(compaction.notes))
-            return
+            return {
+                "run_count": run_count_total,
+                "turn_count": slice_turn_count,
+                "trigger_count": slice_trigger_count,
+                "archive_runs_written": archive_runs_written,
+                "archive_runs_verified": archive_runs_verified,
+                "archive_bytes_written": archive_bytes_written,
+                "turn_rows_deleted": 0,
+                "trigger_rows_deleted": 0,
+            }
 
         with transaction.atomic():
-            # Use the date-range subquery filter again here so we don't pass
-            # 140k IDs to PG in a single IN clause. The created_at index
-            # makes this efficient.
             trigger_rows_deleted, _ = SpecialTileTrigger.objects.filter(
-                turn__run__in=runs_in_week
+                turn__run__in=runs_in_slice
             ).delete()
             turn_rows_deleted, _ = TurnEvent.objects.filter(
-                run__in=runs_in_week
+                run__in=runs_in_slice
             ).delete()
-
             update_values = {"raw_data_compacted_at": timezone.now()}
             if options["clear_game_map"]:
                 update_values["game_map"] = []
-            runs_in_week.update(**update_values)
+            runs_in_slice.update(**update_values)
 
         _log_compaction_event(
             "weekly_compaction_delete_result",
             week_start=str(week_start),
+            teacher_id=teacher_id,
             trigger_rows_deleted=trigger_rows_deleted,
             turn_rows_deleted=turn_rows_deleted,
             cleared_game_map=options["clear_game_map"],
         )
 
-        compaction.status = WeeklyCompactionRun.Status.COMPACTED
-        compaction.turn_rows_deleted = turn_rows_deleted
-        compaction.trigger_rows_deleted = trigger_rows_deleted
-        compaction.completed_at = timezone.now()
-        compaction.notes = f"Compaction complete for {week_start} through {week_end}"
-        compaction.save()
+        return {
+            "run_count": run_count_total,
+            "turn_count": slice_turn_count,
+            "trigger_count": slice_trigger_count,
+            "archive_runs_written": archive_runs_written,
+            "archive_runs_verified": archive_runs_verified,
+            "archive_bytes_written": archive_bytes_written,
+            "turn_rows_deleted": turn_rows_deleted,
+            "trigger_rows_deleted": trigger_rows_deleted,
+        }
 
-        # delete_pattern is a django-redis extension; skip when the cache
-        # backend doesn't provide it (e.g. DummyCache under the benchmark
-        # dummy-cache overlay, where there is nothing to invalidate).
-        if hasattr(cache, "delete_pattern"):
-            cache.delete_pattern("teacher_stats_viz:*")
-            cache.delete_pattern("teacher_dashboard:*")
-
-        self.stdout.write(
-            self.style.SUCCESS(
-                f"Compaction complete: runs={run_count_total}, archives_verified={archive_runs_verified}, turns_deleted={turn_rows_deleted}, triggers_deleted={trigger_rows_deleted}"
-            )
-        )
+    @staticmethod
+    def _empty_slice_result():
+        return {
+            "run_count": 0,
+            "turn_count": 0,
+            "trigger_count": 0,
+            "archive_runs_written": 0,
+            "archive_runs_verified": 0,
+            "archive_bytes_written": 0,
+            "turn_rows_deleted": 0,
+            "trigger_rows_deleted": 0,
+        }

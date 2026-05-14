@@ -47,7 +47,8 @@
       "total_weeks": 36,
       "compact_through_week_index": 35,
       "min_host_free_bytes": 4000000000,
-      "max_pg_db_bytes": 15000000000
+      "max_pg_db_bytes": 15000000000,
+      "compaction_per_teacher": true
     }
   },
   "_verification_notes": [
@@ -62,8 +63,16 @@
     "15 GB at any iteration. This is HIGHER than the NFR-6 target of 10 GB —",
     "it's a hard-stop ceiling, not the pass/fail criterion. The 10 GB target",
     "is evaluated post-run from the storage_trajectory_summary.final_db_bytes.",
-    "Expected runtime: ~2–3 hours (seeding dominates; one week ≈ 4–6 min for",
-    "28K students × 5 runs × 20 turns = 2.8M turn events per week).",
+    "compaction_per_teacher=true invokes compact_weekly_runs --per-teacher,",
+    "which loops over the 280 teachers sequentially and bounds per-call",
+    "Python heap + PG bulk-insert pressure to one teacher's ~100 students.",
+    "Without this, a monolithic compaction call OOM-kills PG on the 3.8 GiB",
+    "host during the StudentWeekCardFamilyStats bulk_create (the accumulator",
+    "dicts alone reach ~3 GB at national-medium scale). See section 9 of the",
+    "thesis evaluation chapter — this is the production-realistic invocation",
+    "pattern and the storage trajectory is invariant to it.",
+    "Expected runtime: ~2–3 hours seeding + ~30–60 min/week compaction with",
+    "per-teacher invocation (vs. unbounded with monolithic).",
     "If aborted by max_pg_db_bytes, that IS a thesis finding: the year-horizon",
     "budget on this VPS would be breached at week N."
   ],

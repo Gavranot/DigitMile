@@ -117,7 +117,11 @@ def _map_lookup(game_map):
     return lookup
 
 
-def _delete_existing_week_rollups(week_start):
+def _delete_existing_week_rollups(week_start, teacher_id=None):
+    # When teacher_id is given, scope deletes to that teacher's rows so a
+    # per-teacher compaction pass does not wipe the rollups other teachers
+    # already produced for the same week. All rollup tables carry teacher_id
+    # directly (ClassroomWeekStats included).
     for model in [
         StudentWeekBackCardUsageStats,
         StudentWeekCardFamilyStats,
@@ -132,7 +136,10 @@ def _delete_existing_week_rollups(week_start):
         StudentWeekStats,
         ClassroomWeekStats,
     ]:
-        model.objects.filter(week_start=week_start).delete()
+        qs = model.objects.filter(week_start=week_start)
+        if teacher_id is not None:
+            qs = qs.filter(teacher_id=teacher_id)
+        qs.delete()
 
 
 def _update_decision_time_stats(target, decision_time, include_clipped=False):
@@ -158,7 +165,13 @@ def _update_decision_time_stats(target, decision_time, include_clipped=False):
             target["outlier_count"] += 1
 
 
-def aggregate_weekly_rollups(week_start, chunk_size=500):
+def aggregate_weekly_rollups(week_start, chunk_size=500, teacher_id=None):
+    # teacher_id, when provided, scopes the entire aggregation to one
+    # teacher's slice of the week. This is the production-realistic
+    # invocation pattern at national-medium scale: ~100 students/teacher
+    # bounds every accumulator dict to ~thousands of entries, keeping
+    # Python heap and PG bulk-insert pressure within the 3.8 GiB host
+    # budget. Passing None preserves the original whole-week behaviour.
     week_start = week_start_for(week_start)
     week_end = week_end_for(week_start)
 
@@ -232,6 +245,8 @@ def aggregate_weekly_rollups(week_start, chunk_size=500):
         .select_related("student__classroom__teacher")
         .order_by("student_id", "created_at", "id")
     )
+    if teacher_id is not None:
+        runs_qs = runs_qs.filter(student__classroom__teacher_id=teacher_id)
 
     triggers_prefetch = Prefetch(
         "special_tile_triggers",
@@ -467,7 +482,7 @@ def aggregate_weekly_rollups(week_start, chunk_size=500):
     }
 
     with transaction.atomic():
-        _delete_existing_week_rollups(week_start)
+        _delete_existing_week_rollups(week_start, teacher_id=teacher_id)
 
         StudentWeekStats.objects.bulk_create(
             [

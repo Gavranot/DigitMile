@@ -16,6 +16,7 @@ from datetime import date, timedelta, timezone as dt_timezone
 from django.contrib.auth.models import Group, User
 from django.core.management import call_command
 from django.db import transaction
+from django.db.models import Sum
 from django.test import TransactionTestCase
 from django.utils import timezone as dj_timezone
 
@@ -323,3 +324,94 @@ class RollupAccuracyTest(TransactionTestCase):
         # dataset and skip the boundary path entirely).
         aggregate_weekly_rollups(target_week_start, chunk_size=7)
         call_command("verify_weekly_rollups", target_week_start.isoformat())
+
+    def test_per_teacher_aggregation_matches_raw_data_verifier(self):
+        """
+        Run aggregate_weekly_rollups per-teacher (the production-realistic
+        invocation pattern at national scale) and confirm the assembled
+        week-level rollups still satisfy verify_weekly_rollups.
+
+        Catches three classes of bugs the whole-week path would not:
+          1. A per-teacher pass wiping another teacher's rollups during
+             its _delete_existing_week_rollups call (would surface as
+             undercount in the verifier).
+          2. classroom_student_counts being computed only against the
+             current teacher's classrooms, leading to wrong student_count
+             on ClassroomWeekStats for the other teachers.
+          3. Any accumulator that aliases on a key not including
+             teacher_id (would conflate rows across teachers).
+        """
+        target_week_start, _ = self.weeks[-1]
+        teacher_ids = list(
+            Run.objects.filter(
+                created_at__date__gte=target_week_start,
+                created_at__date__lte=week_end_for(target_week_start),
+            )
+            .values_list("student__classroom__teacher_id", flat=True)
+            .distinct()
+            .order_by("student__classroom__teacher_id")
+        )
+        self.assertEqual(
+            len(teacher_ids),
+            NUM_TEACHERS,
+            "Sanity: all seeded teachers should have runs this week",
+        )
+
+        for teacher_id in teacher_ids:
+            aggregate_weekly_rollups(
+                target_week_start, chunk_size=7, teacher_id=teacher_id
+            )
+
+        call_command("verify_weekly_rollups", target_week_start.isoformat())
+
+    def test_per_teacher_pass_does_not_wipe_other_teachers_rollups(self):
+        """
+        Tighter assertion than the verifier-based test: after compacting
+        teacher A and then teacher B, teacher A's specific rollup rows
+        must still be present unchanged. Guards against a regression
+        where _delete_existing_week_rollups stops scoping by teacher_id
+        and wipes prior slices.
+        """
+        from digitmileapi.models import StudentWeekStats
+
+        target_week_start, _ = self.weeks[-1]
+        teacher_ids = list(
+            Run.objects.filter(
+                created_at__date__gte=target_week_start,
+                created_at__date__lte=week_end_for(target_week_start),
+            )
+            .values_list("student__classroom__teacher_id", flat=True)
+            .distinct()
+            .order_by("student__classroom__teacher_id")
+        )
+        self.assertGreaterEqual(len(teacher_ids), 2, "Need >=2 teachers")
+        teacher_a, teacher_b = teacher_ids[0], teacher_ids[1]
+
+        aggregate_weekly_rollups(target_week_start, teacher_id=teacher_a)
+        teacher_a_runs_before = StudentWeekStats.objects.filter(
+            week_start=target_week_start, teacher_id=teacher_a
+        ).aggregate(total=Sum("runs"))["total"] or 0
+        teacher_a_rows_before = StudentWeekStats.objects.filter(
+            week_start=target_week_start, teacher_id=teacher_a
+        ).count()
+        self.assertGreater(
+            teacher_a_runs_before, 0,
+            "Sanity: teacher A should have aggregated rollups",
+        )
+
+        aggregate_weekly_rollups(target_week_start, teacher_id=teacher_b)
+        teacher_a_runs_after = StudentWeekStats.objects.filter(
+            week_start=target_week_start, teacher_id=teacher_a
+        ).aggregate(total=Sum("runs"))["total"] or 0
+        teacher_a_rows_after = StudentWeekStats.objects.filter(
+            week_start=target_week_start, teacher_id=teacher_a
+        ).count()
+
+        self.assertEqual(
+            teacher_a_runs_before, teacher_a_runs_after,
+            "Teacher A's rollup totals were modified by teacher B's pass",
+        )
+        self.assertEqual(
+            teacher_a_rows_before, teacher_a_rows_after,
+            "Teacher A's rollup row count changed during teacher B's pass",
+        )
