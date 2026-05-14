@@ -1166,6 +1166,7 @@ def main():
         # spends an hour seeding 36 hot weeks all at once.
         _early_verification = scenario.get("verification", {})
         _storage_walk_cfg_early = _early_verification.get("storage_walk")
+        _fast_bulk_insert = bool(dataset.get("fast_bulk_insert"))
         if _storage_walk_cfg_early:
             dataset_args = [
                 "prepare_benchmark_dataset",
@@ -1176,6 +1177,10 @@ def main():
                 "--output", dataset_container_path,
                 "--clear",
             ]
+            # --fast-bulk-insert is irrelevant for --population-only (no runs
+            # generated), but pass it through anyway so the flag is consistent.
+            if _fast_bulk_insert:
+                dataset_args.append("--fast-bulk-insert")
         else:
             dataset_args = [
                 "prepare_benchmark_dataset",
@@ -1205,6 +1210,8 @@ def main():
                 dataset_args.extend(["--compact-weeks", str(dataset["compact_weeks"])])
             if dataset.get("anchor_week_start"):
                 dataset_args.extend(["--anchor-week-start", dataset["anchor_week_start"]])
+            if _fast_bulk_insert:
+                dataset_args.append("--fast-bulk-insert")
 
         dataset_begin = time.perf_counter()
         log_step("preparing benchmark dataset")
@@ -1459,11 +1466,7 @@ def main():
                     f"  [{week_index}/{total_weeks}] seeding week {week_start}"
                     + ("" if will_compact else " (final hot week, will not compact)")
                 )
-                compose_exec_stream(
-                    project_name,
-                    BENCHMARK_BACKEND_SERVICE,
-                    "python",
-                    "manage.py",
+                append_args = [
                     "prepare_benchmark_dataset",
                     "--append-week-start", week_start,
                     "--runs-per-student-per-week", str(runs_per_student),
@@ -1471,6 +1474,15 @@ def main():
                     "--card-mix-profile", dataset.get("card_mix_profile", "balanced"),
                     "--bag-level-ratio", str(dataset.get("bag_level_ratio", 0.35)),
                     "--seed", str(20260312 + week_index),
+                ]
+                if _fast_bulk_insert:
+                    append_args.append("--fast-bulk-insert")
+                compose_exec_stream(
+                    project_name,
+                    BENCHMARK_BACKEND_SERVICE,
+                    "python",
+                    "manage.py",
+                    *append_args,
                 )
                 seed_duration_ms = round(
                     (time.perf_counter() - seed_begin) * 1000, 2

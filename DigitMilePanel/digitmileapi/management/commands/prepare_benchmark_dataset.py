@@ -63,6 +63,35 @@ from digitmileapi.weekly_rollups import week_start_for
 logger = logging.getLogger(__name__)
 
 
+# --- COPY helpers (used only when --fast-bulk-insert is passed) ---------------
+# PG default TEXT format escape rules: backslash, tab, newline, carriage return.
+# NULL is encoded as the two-character sequence \N. Booleans as t / f.
+def _copy_escape(value):
+    """Format one cell for COPY TEXT format. Returns a string, never bytes."""
+    if value is None:
+        return "\\N"
+    if isinstance(value, bool):
+        return "t" if value else "f"
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, (dict, list, tuple)):
+        value = json.dumps(value, separators=(",", ":"))
+    elif not isinstance(value, str):
+        value = str(value)
+    return (
+        value
+        .replace("\\", "\\\\")
+        .replace("\t", "\\t")
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+    )
+
+
+def _copy_row(values):
+    return "\t".join(_copy_escape(v) for v in values) + "\n"
+# ------------------------------------------------------------------------------
+
+
 BENCHMARK_PASSWORD = "benchmark_password_123"
 BENCHMARK_PREFIX = "Benchmark"
 CARD_FAMILY_BY_TYPE = {
@@ -156,6 +185,16 @@ class Command(BaseCommand):
             "population creation and bulk compaction. Used by run_scenario.py storage_walk.",
         )
         parser.add_argument(
+            "--fast-bulk-insert",
+            action="store_true",
+            help="Use PostgreSQL COPY for TurnEvent and SpecialTileTrigger inserts "
+            "instead of Django bulk_create. Roughly 3-5x faster for the synthetic "
+            "data-fill workload. Default behaviour (bulk_create) is unchanged. "
+            "Used by storage_year_simulation.json to keep the year-horizon walk "
+            "tractable; safe to use on any scenario but only meaningful when "
+            "generating large volumes.",
+        )
+        parser.add_argument(
             "--card-mix-profile",
             choices=sorted(CARD_MIX_PROFILES.keys()),
             default="balanced",
@@ -229,6 +268,7 @@ class Command(BaseCommand):
         self.avg_turns_per_run = max(1, options["avg_turns_per_run"])
         self.turn_scale = self.avg_turns_per_run / LEVEL_TURN_BASELINE_MEAN
         self.bag_level_ratio = options["bag_level_ratio"]
+        self.fast_bulk_insert = bool(options.get("fast_bulk_insert"))
         self.game_map = self._build_game_map()
         self.tile_type_by_index = {
             tile["tileMapIndex"]: tile["tileType"] for tile in self.game_map
@@ -511,6 +551,7 @@ class Command(BaseCommand):
         self.avg_turns_per_run = max(1, options["avg_turns_per_run"])
         self.turn_scale = self.avg_turns_per_run / LEVEL_TURN_BASELINE_MEAN
         self.bag_level_ratio = options["bag_level_ratio"]
+        self.fast_bulk_insert = bool(options.get("fast_bulk_insert"))
         self.game_map = self._build_game_map()
         self.tile_type_by_index = {
             tile["tileMapIndex"]: tile["tileType"] for tile in self.game_map
@@ -968,19 +1009,115 @@ class Command(BaseCommand):
         def flush():
             if not run_buffer:
                 return
+            # Run table stays on bulk_create either way — it's small (500-ish
+            # rows per flush) and Run has timestamp fields whose auto_now/_add
+            # handling is already plumbed through bulk_create. Not worth the
+            # COPY refactor here.
             with _ignore_auto_timestamps(
                 run_created_at_field, run_updated_at_field
             ):
                 Run.objects.bulk_create(run_buffer, batch_size=run_flush_size)
-            if turn_buffer:
-                TurnEvent.objects.bulk_create(turn_buffer, batch_size=1000)
-            if trigger_buffer:
-                SpecialTileTrigger.objects.bulk_create(
-                    trigger_buffer, batch_size=1000
-                )
+            if self.fast_bulk_insert:
+                if turn_buffer:
+                    _fast_copy_turn_events(turn_buffer)
+                if trigger_buffer:
+                    _fast_copy_special_tile_triggers(trigger_buffer)
+            else:
+                if turn_buffer:
+                    TurnEvent.objects.bulk_create(turn_buffer, batch_size=1000)
+                if trigger_buffer:
+                    SpecialTileTrigger.objects.bulk_create(
+                        trigger_buffer, batch_size=1000
+                    )
             run_buffer.clear()
             turn_buffer.clear()
             trigger_buffer.clear()
+
+        # Local helpers — defined inside _generate_runs so they close over the
+        # buffers, but importable only via the fast path. Keep them here (not
+        # methods on Command) to minimise the surface area of the switch.
+        def _fast_copy_turn_events(rows):
+            from django.db import connection
+            from io import StringIO
+            columns = (
+                "id", "run_id", "turn_index", "timestamp_played",
+                "chosen_card", "chosen_card_type", "chosen_card_family",
+                "chosen_card_tile_type", "offered_cards", "was_correct",
+                "tile_before_index", "tile_before_type", "tile_after_index",
+                "place_before", "place_after",
+                "bot_positions_before", "bot_positions_after",
+                "card_decision_time_ms", "offered_numbers",
+                "chosen_number", "number_decision_time_ms",
+            )
+            buf = StringIO()
+            for t in rows:
+                buf.write(_copy_row([
+                    t.id,
+                    t.run_id,
+                    t.turn_index,
+                    t.timestamp_played.isoformat(),
+                    t.chosen_card,
+                    t.chosen_card_type,
+                    t.chosen_card_family,
+                    t.chosen_card_tile_type,
+                    t.offered_cards,
+                    t.was_correct,
+                    t.tile_before_index,
+                    t.tile_before_type,
+                    t.tile_after_index,
+                    t.place_before,
+                    t.place_after,
+                    t.bot_positions_before,
+                    t.bot_positions_after,
+                    t.card_decision_time_ms,
+                    t.offered_numbers,
+                    t.chosen_number,
+                    t.number_decision_time_ms,
+                ]))
+            buf.seek(0)
+            with connection.cursor() as cursor:
+                cursor.copy_expert(
+                    "COPY digitmileapi_turnevent ("
+                    + ", ".join(columns)
+                    + ") FROM STDIN",
+                    buf,
+                )
+
+        def _fast_copy_special_tile_triggers(rows):
+            from django.db import connection
+            from io import StringIO
+            columns = (
+                "id", "turn_id", "chain_index",
+                "special_tile_index", "special_tile_type",
+                "effect_delta_tiles",
+                "target_tile_index", "target_tile_type",
+                "place_before", "place_after",
+            )
+            buf = StringIO()
+            for s in rows:
+                # SpecialTileTrigger.turn is an in-memory ref to a TurnEvent
+                # instance whose .id was set by the model default before the
+                # COPY of TurnEvent. So s.turn_id is populated.
+                buf.write(_copy_row([
+                    s.id,
+                    s.turn_id if s.turn_id else s.turn.id,
+                    s.chain_index,
+                    s.special_tile_index,
+                    s.special_tile_type,
+                    s.effect_delta_tiles,
+                    s.target_tile_index,
+                    s.target_tile_type,
+                    s.place_before,
+                    s.place_after,
+                ]))
+            buf.seek(0)
+            with connection.cursor() as cursor:
+                cursor.copy_expert(
+                    "COPY digitmileapi_specialtiletrigger ("
+                    + ", ".join(columns)
+                    + ") FROM STDIN",
+                    buf,
+                )
 
         self._log_progress(
             "benchmark_dataset_run_generation_start",

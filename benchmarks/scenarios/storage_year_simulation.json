@@ -11,7 +11,8 @@
     "card_mix_profile": "balanced",
     "bag_level_ratio": 0.35,
     "hot_weeks": 0,
-    "anchor_week_start": "2025-09-08"
+    "anchor_week_start": "2025-09-08",
+    "fast_bulk_insert": true
   },
   "_dataset_notes": [
     "Full national medium-adoption sizing: 280 teachers × 4 classrooms × 25",
@@ -24,7 +25,11 @@
     "runs_per_student_per_week=5 matches r_week = f × r_session = 2 × 2.5",
     "from the capacity model §2.3.",
     "anchor_week_start = 2025-09-08 = first Monday of September 2025 (start",
-    "of the Macedonian primary-school year)."
+    "of the Macedonian primary-school year).",
+    "fast_bulk_insert=true opts into the COPY-based insert path in",
+    "prepare_benchmark_dataset (3-5x faster bulk insert for TurnEvent and",
+    "SpecialTileTrigger). Default behaviour (bulk_create) preserved for all",
+    "other scenarios."
   ],
   "_nfr": "Closes NFR-6 — storage longevity. Pass: final pg_database_size < 10 GB after 36 weeks at full national medium adoption.",
   "traffic": {
