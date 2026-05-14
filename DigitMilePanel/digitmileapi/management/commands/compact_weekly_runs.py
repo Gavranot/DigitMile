@@ -86,14 +86,22 @@ class Command(BaseCommand):
         compaction.notes = ""
         compaction.save()
 
-        runs = list(
+        # Stream over runs rather than materialise list(runs). At national
+        # medium adoption a single week is ~140k Run rows whose game_map
+        # JSONField alone would consume hundreds of MB if loaded eagerly,
+        # tipping the 3.8 GiB host into OOM during the archive-write loop.
+        # Iterator + per-iteration build of run_ids/student_level_pairs
+        # holds chunk_size rows at a time instead.
+        runs_qs = (
             Run.objects.filter(
                 created_at__date__gte=week_start, created_at__date__lte=week_end
             )
             .select_related("student__classroom")
             .order_by("created_at", "id")
         )
-        if not runs:
+
+        run_count_total = runs_qs.count()
+        if run_count_total == 0:
             compaction.notes = "No runs found for requested week"
             compaction.completed_at = timezone.now()
             compaction.save(update_fields=["notes", "completed_at", "updated_at"])
@@ -110,18 +118,31 @@ class Command(BaseCommand):
             result=rollup_result,
         )
         compaction.status = WeeklyCompactionRun.Status.AGGREGATED
-        compaction.run_count = len(runs)
-        compaction.turn_count = TurnEvent.objects.filter(run__in=runs).count()
+        compaction.run_count = run_count_total
+        # Use a date-range subquery filter instead of run__in=<list>. PG can
+        # plan this efficiently with the existing created_at index; no Python
+        # materialisation of run IDs needed for counts.
+        runs_in_week = Run.objects.filter(
+            created_at__date__gte=week_start, created_at__date__lte=week_end
+        )
+        compaction.turn_count = TurnEvent.objects.filter(
+            run__in=runs_in_week
+        ).count()
         compaction.trigger_count = SpecialTileTrigger.objects.filter(
-            turn__run__in=runs
+            turn__run__in=runs_in_week
         ).count()
         compaction.save()
 
         archive_bytes_written = 0
         archive_runs_written = 0
         archive_runs_verified = 0
+        student_level_pairs = set()
+        run_ids = []
 
-        for run in runs:
+        for run in runs_qs.iterator(chunk_size=500):
+            run_ids.append(run.id)
+            student_level_pairs.add((run.student_id, run.level))
+
             existing_archive = getattr(run, "replay_archive", None)
             if (
                 existing_archive
@@ -170,10 +191,9 @@ class Command(BaseCommand):
         compaction.archive_bytes_written = archive_bytes_written
         compaction.save()
 
-        student_level_pairs = {(run.student_id, run.level) for run in runs}
         run_bucket_result = rebuild_historical_run_bucket_trends(
             student_level_pairs,
-            include_run_ids=[run.id for run in runs],
+            include_run_ids=run_ids,
         )
         _log_compaction_event(
             "weekly_compaction_run_bucket_result",
@@ -196,15 +216,20 @@ class Command(BaseCommand):
             return
 
         with transaction.atomic():
+            # Use the date-range subquery filter again here so we don't pass
+            # 140k IDs to PG in a single IN clause. The created_at index
+            # makes this efficient.
             trigger_rows_deleted, _ = SpecialTileTrigger.objects.filter(
-                turn__run__in=runs
+                turn__run__in=runs_in_week
             ).delete()
-            turn_rows_deleted, _ = TurnEvent.objects.filter(run__in=runs).delete()
+            turn_rows_deleted, _ = TurnEvent.objects.filter(
+                run__in=runs_in_week
+            ).delete()
 
             update_values = {"raw_data_compacted_at": timezone.now()}
             if options["clear_game_map"]:
                 update_values["game_map"] = []
-            Run.objects.filter(id__in=[run.id for run in runs]).update(**update_values)
+            runs_in_week.update(**update_values)
 
         _log_compaction_event(
             "weekly_compaction_delete_result",
@@ -230,6 +255,6 @@ class Command(BaseCommand):
 
         self.stdout.write(
             self.style.SUCCESS(
-                f"Compaction complete: runs={len(runs)}, archives_verified={archive_runs_verified}, turns_deleted={turn_rows_deleted}, triggers_deleted={trigger_rows_deleted}"
+                f"Compaction complete: runs={run_count_total}, archives_verified={archive_runs_verified}, turns_deleted={turn_rows_deleted}, triggers_deleted={trigger_rows_deleted}"
             )
         )
