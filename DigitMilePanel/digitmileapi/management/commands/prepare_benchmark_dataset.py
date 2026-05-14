@@ -979,6 +979,19 @@ class Command(BaseCommand):
     def _generate_runs(
         self, students, week_starts, hot_week_starts, runs_per_student_per_week
     ):
+        # Birthday-paradox guard: generate_turn_event_id / generate_special_tile_trigger_id
+        # truncate uuid4 to 12 hex chars (48 bits). At synthetic-fill volumes
+        # (millions of rows per week) random collisions become likely. We
+        # override the model defaults with a monotonic counter seeded from
+        # epoch ms + small random jitter — guarantees within-process
+        # uniqueness, and the numeric-heavy pattern stays effectively
+        # disjoint from production-style random hex IDs.
+        import time as _time
+        _id_base = int(_time.time() * 1000) + self.rng.randint(0, 1_000_000)
+        next_turn_pk = _id_base
+        next_trigger_pk = _id_base + 50_000_000  # offset so trigger counter
+                                                 # can't overlap turn counter
+
         run_count = 0
         turn_count = 0
         trigger_count = 0
@@ -1249,6 +1262,11 @@ class Command(BaseCommand):
                                 chosen_number=chosen_number,
                                 number_decision_time_ms=number_decision_time_ms,
                             )
+                            # Override the model's truncated-uuid default with
+                            # a monotonic counter to avoid birthday-paradox
+                            # collisions at synthetic-fill volume.
+                            turn.id = f"trn_{next_turn_pk:012x}"
+                            next_turn_pk += 1
                             turn_buffer.append(turn)
                             turn_count += 1
                             correct_moves += 1 if was_correct else 0
@@ -1262,25 +1280,27 @@ class Command(BaseCommand):
                                 target_tile_index = max(
                                     0, min(11, tile_after_index + special_delta)
                                 )
-                                trigger_buffer.append(
-                                    SpecialTileTrigger(
-                                        turn=turn,
-                                        chain_index=0,
-                                        special_tile_index=tile_after_index,
-                                        special_tile_type=tile_after_type,
-                                        effect_delta_tiles=special_delta,
-                                        target_tile_index=target_tile_index,
-                                        target_tile_type=self.tile_type_by_index.get(
-                                            target_tile_index, 0
-                                        ),
-                                        place_before=place_after,
-                                        place_after=1
-                                        + sum(
-                                            value > target_tile_index
-                                            for value in bot_positions
-                                        ),
-                                    )
+                                trigger = SpecialTileTrigger(
+                                    turn=turn,
+                                    chain_index=0,
+                                    special_tile_index=tile_after_index,
+                                    special_tile_type=tile_after_type,
+                                    effect_delta_tiles=special_delta,
+                                    target_tile_index=target_tile_index,
+                                    target_tile_type=self.tile_type_by_index.get(
+                                        target_tile_index, 0
+                                    ),
+                                    place_before=place_after,
+                                    place_after=1
+                                    + sum(
+                                        value > target_tile_index
+                                        for value in bot_positions
+                                    ),
                                 )
+                                # Same birthday-paradox guard as TurnEvent.
+                                trigger.id = f"stt_{next_trigger_pk:012x}"
+                                next_trigger_pk += 1
+                                trigger_buffer.append(trigger)
                                 trigger_count += 1
                                 player_position = target_tile_index
                             else:
