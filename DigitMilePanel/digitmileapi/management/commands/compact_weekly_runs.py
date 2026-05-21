@@ -59,7 +59,7 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             "--teacher-id",
-            type=int,
+            type=str,
             default=None,
             help=(
                 "Compact only the slice of the week belonging to one teacher. "
@@ -171,13 +171,9 @@ class Command(BaseCommand):
             week_record=compaction,
         )
 
-        if options["teacher_id"] is None and not options["skip_verification"] and not options["dry_run"]:
-            call_command(
-                "verify_weekly_rollups",
-                week_start.isoformat(),
-                "--require-archives",
-                "--verify-run-buckets",
-            )
+        # verify_weekly_rollups is now invoked INSIDE _compact_slice before
+        # the raw-row delete (otherwise raw counts come back zero and every
+        # rollup field looks like a mismatch). Nothing to do here.
 
         if compaction is not None:
             self._finalize_week_record(
@@ -248,13 +244,12 @@ class Command(BaseCommand):
                 teacher_ids, week_start, effective_workers, options
             )
 
-        if not options["skip_verification"] and not options["dry_run"]:
-            call_command(
-                "verify_weekly_rollups",
-                week_start.isoformat(),
-                "--require-archives",
-                "--verify-run-buckets",
-            )
+        # Per-slice verification (now inside _compact_slice) runs before each
+        # teacher's raw rows are deleted, scoped to that teacher's data via
+        # verify_weekly_rollups --teacher-id. The whole-week assembly is
+        # implicitly correct iff each per-teacher slice verified; running a
+        # post-delete whole-week verify here would just see raw=0 because
+        # every slice has already deleted its turns/triggers.
 
         self._finalize_week_record(
             compaction, slice_results, week_start, week_end, options
@@ -630,6 +625,24 @@ class Command(BaseCommand):
                 "turn_rows_deleted": 0,
                 "trigger_rows_deleted": 0,
             }
+
+        # Verify rollups against the still-present raw rows BEFORE deleting.
+        # The verifier computes "raw" totals by querying TurnEvent /
+        # SpecialTileTrigger; running it post-delete reports raw=0 for every
+        # field and flags the rollups (correctly populated) as mismatched.
+        # When this slice is one teacher in per-teacher mode, scope the
+        # verifier to that teacher so the other teachers' un-yet-aggregated
+        # rollups don't get counted as missing.
+        if not options["skip_verification"]:
+            verify_argv = [
+                "verify_weekly_rollups",
+                week_start.isoformat(),
+                "--require-archives",
+                "--verify-run-buckets",
+            ]
+            if teacher_id is not None:
+                verify_argv.extend(["--teacher-id", str(teacher_id)])
+            call_command(*verify_argv)
 
         with transaction.atomic():
             trigger_rows_deleted, _ = SpecialTileTrigger.objects.filter(

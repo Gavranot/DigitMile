@@ -85,17 +85,30 @@ class Command(BaseCommand):
             action="store_true",
             help="Verify historical run-bucket trend coverage for affected student-level pairs",
         )
+        parser.add_argument(
+            "--teacher-id",
+            type=str,
+            default=None,
+            help=(
+                "Scope verification to one teacher's slice. Filters both the "
+                "raw runs queryset and the rollup-side queries by teacher_id "
+                "so the verifier can be invoked per-slice in per-teacher "
+                "compaction (before that slice's raw rows are deleted) "
+                "without seeing the other teachers' un-yet-aggregated data."
+            ),
+        )
 
-    def _verify_summary_rollups(self, runs, week_start):
+    def _verify_summary_rollups(self, runs, week_start, teacher_id=None):
         raw_summary = runs.aggregate(
             runs=Count("id"),
             wins=Count("id", filter=Q(player_won=True)),
             correct_moves=Sum("correct_moves"),
             wrong_moves=Sum("wrong_moves"),
         )
-        rollup_summary = StudentWeekStats.objects.filter(
-            week_start=week_start
-        ).aggregate(
+        student_week_qs = StudentWeekStats.objects.filter(week_start=week_start)
+        if teacher_id is not None:
+            student_week_qs = student_week_qs.filter(teacher_id=teacher_id)
+        rollup_summary = student_week_qs.aggregate(
             runs=Sum("runs"),
             wins=Sum("wins"),
             correct_moves=Sum("correct_moves"),
@@ -113,29 +126,22 @@ class Command(BaseCommand):
         raw_trigger_count = SpecialTileTrigger.objects.filter(
             turn__run__in=runs
         ).count()
-        chain_rollup_count = (
-            StudentWeekChainLengthStats.objects.filter(week_start=week_start).aggregate(
-                total=Sum("turn_count")
-            )["total"]
-            or 0
-        )
+        chain_qs = StudentWeekChainLengthStats.objects.filter(week_start=week_start)
+        trigger_qs = StudentWeekSpecialTileStats.objects.filter(week_start=week_start)
+        level_qs = StudentWeekLevelStats.objects.filter(week_start=week_start)
+        classroom_qs = ClassroomWeekStats.objects.filter(week_start=week_start)
+        if teacher_id is not None:
+            chain_qs = chain_qs.filter(teacher_id=teacher_id)
+            trigger_qs = trigger_qs.filter(teacher_id=teacher_id)
+            level_qs = level_qs.filter(teacher_id=teacher_id)
+            classroom_qs = classroom_qs.filter(teacher_id=teacher_id)
+        chain_rollup_count = chain_qs.aggregate(total=Sum("turn_count"))["total"] or 0
         trigger_rollup_count = (
-            StudentWeekSpecialTileStats.objects.filter(week_start=week_start).aggregate(
-                total=Sum("trigger_count")
-            )["total"]
-            or 0
+            trigger_qs.aggregate(total=Sum("trigger_count"))["total"] or 0
         )
-        level_rollup_count = (
-            StudentWeekLevelStats.objects.filter(week_start=week_start).aggregate(
-                total=Sum("runs")
-            )["total"]
-            or 0
-        )
+        level_rollup_count = level_qs.aggregate(total=Sum("runs"))["total"] or 0
         classroom_rollup_count = (
-            ClassroomWeekStats.objects.filter(week_start=week_start).aggregate(
-                total=Sum("runs")
-            )["total"]
-            or 0
+            classroom_qs.aggregate(total=Sum("runs"))["total"] or 0
         )
 
         if raw_turn_count != chain_rollup_count:
@@ -157,7 +163,7 @@ class Command(BaseCommand):
 
         return failures
 
-    def _verify_card_family_rollups(self, runs, week_start):
+    def _verify_card_family_rollups(self, runs, week_start, teacher_id=None):
         raw = defaultdict(lambda: {"offered": 0, "chosen": 0, "correct": 0, "wrong": 0})
         for turn in TurnEvent.objects.filter(run__in=runs).values(
             "run__level",
@@ -175,9 +181,13 @@ class Command(BaseCommand):
                 offered_family = parse_card(offered_card).get("family", "unknown")
                 raw[(turn["run__level"], offered_family)]["offered"] += 1
 
+        family_qs = StudentWeekCardFamilyStats.objects.filter(week_start=week_start)
+        if teacher_id is not None:
+            family_qs = family_qs.filter(teacher_id=teacher_id)
+
         rollup = {}
         for row in (
-            StudentWeekCardFamilyStats.objects.filter(week_start=week_start)
+            family_qs
             .values("level", "card_family")
             .annotate(
                 offered=Sum("offered_count"),
@@ -197,7 +207,7 @@ class Command(BaseCommand):
             raw, rollup, "card family", ["offered", "chosen", "correct", "wrong"]
         )
 
-    def _verify_card_type_rollups(self, runs, week_start):
+    def _verify_card_type_rollups(self, runs, week_start, teacher_id=None):
         raw = defaultdict(
             lambda: {
                 "chosen_count": 0,
@@ -223,9 +233,13 @@ class Command(BaseCommand):
             raw[key]["clipped_decision_time_sum_ms"] += clipped_value
             raw[key]["outlier_count"] += 1 if was_clipped else 0
 
+        type_qs = StudentWeekCardTypeStats.objects.filter(week_start=week_start)
+        if teacher_id is not None:
+            type_qs = type_qs.filter(teacher_id=teacher_id)
+
         rollup = {}
         for row in (
-            StudentWeekCardTypeStats.objects.filter(week_start=week_start)
+            type_qs
             .values("level", "card_type")
             .annotate(
                 chosen_count=Sum("chosen_count"),
@@ -257,7 +271,7 @@ class Command(BaseCommand):
             ],
         )
 
-    def _verify_number_choice_rollups(self, runs, week_start):
+    def _verify_number_choice_rollups(self, runs, week_start, teacher_id=None):
         raw = defaultdict(
             lambda: {
                 "choice_count": 0,
@@ -274,9 +288,13 @@ class Command(BaseCommand):
             raw[key]["decision_time_sum_ms"] += turn["number_decision_time_ms"] or 0
             raw[key]["decision_time_count"] += 1
 
+        number_qs = StudentWeekNumberChoiceStats.objects.filter(week_start=week_start)
+        if teacher_id is not None:
+            number_qs = number_qs.filter(teacher_id=teacher_id)
+
         rollup = {}
         for row in (
-            StudentWeekNumberChoiceStats.objects.filter(week_start=week_start)
+            number_qs
             .values("level", "chosen_number")
             .annotate(
                 choice_count=Sum("choice_count"),
@@ -297,7 +315,7 @@ class Command(BaseCommand):
             ["choice_count", "decision_time_sum_ms", "decision_time_count"],
         )
 
-    def _verify_conditional_rollups(self, runs, week_start):
+    def _verify_conditional_rollups(self, runs, week_start, teacher_id=None):
         raw = defaultdict(
             lambda: {"total_count": 0, "correct_count": 0, "else_count": 0}
         )
@@ -366,9 +384,13 @@ class Command(BaseCommand):
                 condition_met = bag_number > threshold
             raw[key]["else_count"] += 0 if condition_met else 1
 
+        conditional_qs = StudentWeekConditionalStats.objects.filter(week_start=week_start)
+        if teacher_id is not None:
+            conditional_qs = conditional_qs.filter(teacher_id=teacher_id)
+
         rollup = {}
         for row in (
-            StudentWeekConditionalStats.objects.filter(week_start=week_start)
+            conditional_qs
             .values("level", "conditional_kind", "bucket_key")
             .annotate(
                 total_count=Sum("total_count"),
@@ -468,19 +490,22 @@ class Command(BaseCommand):
 
         week_start = week_start_for(requested_week_start)
         week_end = week_end_for(week_start)
+        teacher_id = options.get("teacher_id")
         runs = Run.objects.filter(
             created_at__date__gte=week_start,
             created_at__date__lte=week_end,
         ).select_related("replay_archive")
+        if teacher_id is not None:
+            runs = runs.filter(student__classroom__teacher_id=teacher_id)
         if not runs.exists():
             raise CommandError("No runs found for requested week")
 
         failures = []
-        failures.extend(self._verify_summary_rollups(runs, week_start))
-        failures.extend(self._verify_card_family_rollups(runs, week_start))
-        failures.extend(self._verify_card_type_rollups(runs, week_start))
-        failures.extend(self._verify_conditional_rollups(runs, week_start))
-        failures.extend(self._verify_number_choice_rollups(runs, week_start))
+        failures.extend(self._verify_summary_rollups(runs, week_start, teacher_id))
+        failures.extend(self._verify_card_family_rollups(runs, week_start, teacher_id))
+        failures.extend(self._verify_card_type_rollups(runs, week_start, teacher_id))
+        failures.extend(self._verify_conditional_rollups(runs, week_start, teacher_id))
+        failures.extend(self._verify_number_choice_rollups(runs, week_start, teacher_id))
 
         if options["require_archives"]:
             failures.extend(self._verify_archives(runs))
@@ -493,6 +518,7 @@ class Command(BaseCommand):
                 {
                     "week_start": str(week_start),
                     "week_end": str(week_end),
+                    "teacher_id": teacher_id,
                     "failures": failures,
                 },
             )
@@ -503,6 +529,7 @@ class Command(BaseCommand):
             {
                 "week_start": str(week_start),
                 "week_end": str(week_end),
+                "teacher_id": teacher_id,
                 "require_archives": options["require_archives"],
                 "verify_run_buckets": options["verify_run_buckets"],
             },

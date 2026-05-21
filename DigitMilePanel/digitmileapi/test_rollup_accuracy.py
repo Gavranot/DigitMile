@@ -12,12 +12,13 @@ Approach:
 
 import random
 from datetime import date, timedelta, timezone as dt_timezone
+from tempfile import TemporaryDirectory
 
 from django.contrib.auth.models import Group, User
 from django.core.management import call_command
 from django.db import transaction
 from django.db.models import Sum
-from django.test import TransactionTestCase
+from django.test import TransactionTestCase, override_settings
 from django.utils import timezone as dj_timezone
 
 from digitmileapi.management.commands.seed_database import Command as SeedCommand
@@ -414,4 +415,88 @@ class RollupAccuracyTest(TransactionTestCase):
         self.assertEqual(
             teacher_a_rows_before, teacher_a_rows_after,
             "Teacher A's rollup row count changed during teacher B's pass",
+        )
+
+    def test_compact_weekly_runs_end_to_end_whole_week(self):
+        """
+        Regression test for the bug where verify_weekly_rollups was called
+        AFTER the atomic delete block in _compact_slice. Post-delete,
+        TurnEvent / SpecialTileTrigger are empty and the verifier reports
+        raw=0 vs rollup=N for every field — a structural false positive that
+        would fail every compaction in production.
+
+        Exercises the full management command: aggregate → archive → buckets
+        → verify → delete. Asserts the run completes (verify must pass
+        against the still-present raw rows) and the post-state is what
+        compaction promises: rollups populated, raw rows gone,
+        WeeklyCompactionRun in COMPACTED.
+        """
+        target_week_start, target_week_end = self.weeks[-1]
+        week_runs = Run.objects.filter(
+            created_at__date__gte=target_week_start,
+            created_at__date__lte=target_week_end,
+        )
+        run_count_before = week_runs.count()
+        turn_count_before = TurnEvent.objects.filter(run__in=week_runs).count()
+        self.assertGreater(run_count_before, 0, "Sanity: seeded runs present")
+        self.assertGreater(turn_count_before, 0, "Sanity: seeded turns present")
+
+        with TemporaryDirectory() as archive_root:
+            with override_settings(REPLAY_ARCHIVE_ROOT=archive_root):
+                call_command(
+                    "compact_weekly_runs", target_week_start.isoformat()
+                )
+
+        compaction = WeeklyCompactionRun.objects.get(week_start=target_week_start)
+        self.assertEqual(
+            compaction.status,
+            WeeklyCompactionRun.Status.COMPACTED,
+            f"Expected COMPACTED, got {compaction.status}",
+        )
+        self.assertEqual(compaction.run_count, run_count_before)
+        self.assertEqual(compaction.turn_rows_deleted, turn_count_before)
+        self.assertEqual(
+            TurnEvent.objects.filter(run__in=week_runs).count(),
+            0,
+            "Turn rows should be deleted post-compaction",
+        )
+        self.assertEqual(
+            week_runs.filter(raw_data_compacted_at__isnull=True).count(),
+            0,
+            "All week runs should be marked raw_data_compacted_at",
+        )
+
+    def test_compact_weekly_runs_end_to_end_per_teacher(self):
+        """
+        Same regression guard as test_compact_weekly_runs_end_to_end_whole_week,
+        but for --per-teacher mode where the verifier must be scoped to each
+        teacher's slice. Catches the parallel-orchestrator variant of the
+        verify-after-delete bug.
+        """
+        target_week_start, target_week_end = self.weeks[-1]
+        week_runs = Run.objects.filter(
+            created_at__date__gte=target_week_start,
+            created_at__date__lte=target_week_end,
+        )
+        run_count_before = week_runs.count()
+        self.assertGreater(run_count_before, 0)
+
+        with TemporaryDirectory() as archive_root:
+            with override_settings(REPLAY_ARCHIVE_ROOT=archive_root):
+                call_command(
+                    "compact_weekly_runs",
+                    target_week_start.isoformat(),
+                    "--per-teacher",
+                )
+
+        compaction = WeeklyCompactionRun.objects.get(week_start=target_week_start)
+        self.assertEqual(compaction.status, WeeklyCompactionRun.Status.COMPACTED)
+        self.assertEqual(
+            TurnEvent.objects.filter(run__in=week_runs).count(),
+            0,
+            "Turn rows should be deleted across all per-teacher slices",
+        )
+        self.assertEqual(
+            week_runs.filter(raw_data_compacted_at__isnull=True).count(),
+            0,
         )
