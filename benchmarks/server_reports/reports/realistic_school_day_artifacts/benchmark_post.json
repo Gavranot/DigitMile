@@ -1,0 +1,61 @@
+{
+  "scenario_name": "realistic_school_day_post",
+  "teacher_id": "tch_357e32ac42f2",
+  "iterations": 5,
+  "student_count": 60,
+  "classroom_count": 3,
+  "measurements_ms": {
+    "analytics_payload": {
+      "count": 5,
+      "avg": 37.88,
+      "p50": 37.38,
+      "p95": 50.71,
+      "p99": 52.25,
+      "min": 33.03,
+      "max": 46.19
+    },
+    "turn_insights_payload": {
+      "count": 5,
+      "avg": 44.53,
+      "p50": 44.86,
+      "p95": 45.54,
+      "p99": 45.61,
+      "min": 43.62,
+      "max": 45.33
+    },
+    "student_dashboard_summaries": {
+      "count": 5,
+      "avg": 594.54,
+      "p50": 593.24,
+      "p95": 628.83,
+      "p99": 633.36,
+      "min": 579.39,
+      "max": 615.64
+    },
+    "classroom_dashboard_summaries": {
+      "count": 5,
+      "avg": 8.58,
+      "p50": 8.53,
+      "p95": 10.33,
+      "p99": 10.56,
+      "min": 7.99,
+      "max": 9.66
+    }
+  },
+  "table_sizes_bytes": {
+    "digitmileapi_run": 5070848,
+    "digitmileapi_turnevent": 39272448,
+    "digitmileapi_specialtiletrigger": 1261568,
+    "digitmileapi_studentweekstats": 491520,
+    "digitmileapi_studentweeklevelstats": 802816,
+    "digitmileapi_studentweekcardtypestats": 2539520,
+    "digitmileapi_studentrunbuckettrend": 581632,
+    "digitmileapi_classroomweekstats": 155648,
+    "digitmileapi_replayarchive": 1064960
+  },
+  "archive_directory_size_bytes": 1809851,
+  "archive_totals": {
+    "compressed_size_bytes": 1809851,
+    "uncompressed_size_bytes": 21903973
+  }
+}

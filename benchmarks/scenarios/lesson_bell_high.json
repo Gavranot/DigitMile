@@ -1,0 +1,54 @@
+{
+  "name": "lesson_bell_high",
+  "dataset": {
+    "teachers": 15,
+    "classrooms_per_teacher": 4,
+    "students_per_classroom": 25,
+    "weeks": 4,
+    "runs_per_student_per_week": 3,
+    "avg_turns_per_run": 20,
+    "card_mix_profile": "balanced",
+    "bag_level_ratio": 0.35,
+    "compact_weeks": "1-2",
+    "hot_weeks": 2,
+    "anchor_week_start": "2026-03-09"
+  },
+  "_dataset_notes": [
+    "15 teachers × 4 classrooms × 25 students = 1,500 students total (matches national_high).",
+    "Dataset is sized so ingest_targets_hot_week has ample variety at the higher peak rate; the load test does not exercise analytics.",
+    "Hot data: 1,500 students × 2 hot weeks × 3 runs × ~20 turns ≈ 180,000 hot turn events (T=20 per docs/research/ingest-capacity-model.md).",
+    "High-adoption variant of the lesson-bell burst regime; the medium-adoption variant lives in lesson_bell_medium.json."
+  ],
+  "traffic": {
+    "base_url": "http://benchmark-backend:8000",
+    "request_host_header": "localhost",
+    "duration": "100s",
+    "ingest_rate_per_sec": 44,
+    "bell_ramp_seconds": 10,
+    "bell_hold_seconds": 60,
+    "bell_drain_seconds": 30,
+    "dashboard_rate_per_sec": 0,
+    "analytics_rate_per_sec": 0,
+    "turn_insights_rate_per_sec": 0,
+    "replay_rate_per_sec": 0,
+    "ingest_pre_allocated_vus": 90,
+    "ingest_max_vus": 220,
+    "resource_sample_interval_seconds": 2,
+    "ingest_expected_mode": "accepted",
+    "scripts": ["lesson_bell.js"]
+  },
+  "_traffic_notes": [
+    "Models the lesson-bell burst regime from docs/research/ingest-capacity-model.md §5 at the high-adoption peak (~75% of grade 4-6 pupils nationally).",
+    "Target peak: ~44 ingest/s, the high-adoption burst rate (60s drain window).",
+    "Stage profile: 10s ramp 0→44 + 60s hold at 44 + 30s drain 44→0 = 100s total.",
+    "VUs pre=90 ≈ 2× peak × 200ms p95 latency, with maxVUs=220 absorbing any worker-stall queueing. Scaled proportionally from lesson_bell_medium (peak 29, pre 60, max 150).",
+    "resource_sample_interval_seconds dropped to 2s so docker stats captures sub-minute dynamics of the burst.",
+    "Other traffic classes are zero — this scenario isolates the burst path on the ingest endpoint.",
+    "Pass condition (thesis context): no 5xx during the hold, post-burst Redis ingest_buffer depth drains within ~10s of drain end.",
+    "Expected outcome: tests whether the Redis-buffered ingest still absorbs the burst at 1.5× the medium-variant peak rate without 5xx, on the same 2 vCPU hardware."
+  ],
+  "verification": {
+    "benchmark_iterations": 3
+  },
+  "report_output": "benchmarks/reports/lesson_bell_high.json"
+}

@@ -108,16 +108,28 @@ SUITE: list[SuiteEntry] = [
         purpose="NFR-1 endurance @ 11 RPS for 15 min",
     ),
     SuiteEntry(
-        scenario="lesson_bell",
+        scenario="lesson_bell_medium",
         disable_pgbouncer=True,
-        output_name="lesson_bell",
+        output_name="lesson_bell_medium",
         expected=Expected(
             pgbouncer_bypassed=True,
             pg_synchronous_commit="off",
             django_cache_backend="django_redis.cache.RedisCache",
             flusher_running=True,
         ),
-        purpose="NFR-2 lesson-bell burst absorption",
+        purpose="NFR-2 lesson-bell burst absorption (medium adoption, ~29 RPS peak)",
+    ),
+    SuiteEntry(
+        scenario="lesson_bell_high",
+        disable_pgbouncer=True,
+        output_name="lesson_bell_high",
+        expected=Expected(
+            pgbouncer_bypassed=True,
+            pg_synchronous_commit="off",
+            django_cache_backend="django_redis.cache.RedisCache",
+            flusher_running=True,
+        ),
+        purpose="NFR-2 lesson-bell burst absorption (high adoption, ~44 RPS peak)",
     ),
     SuiteEntry(
         scenario="mixed_steady",
@@ -283,7 +295,8 @@ SUITE: list[SuiteEntry] = [
 # -----------------------------------------------------------------------------
 #
 # Only declared pairs are compared. Standalone NFR scenarios (endurance_steady,
-# lesson_bell, mixed_steady, overload_recovery) intentionally do not appear
+# lesson_bell_medium, lesson_bell_high, mixed_steady, overload_recovery)
+# intentionally do not appear
 # here — they have no "before" counterpart and the chapter cites them
 # directly from their JSON. Each pair writes to
 # ``benchmarks/server_reports/comparison_<name>.md``.

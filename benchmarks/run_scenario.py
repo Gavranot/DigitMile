@@ -1519,6 +1519,23 @@ def main():
                     # invocation pattern that fits.
                     if storage_walk_cfg.get("compaction_per_teacher"):
                         compact_args.append("--per-teacher")
+                        # Optional parallel-worker count. Default 1
+                        # (sequential) preserves NFR-6 canonical behaviour;
+                        # set higher in the scenario JSON to shorten weekly
+                        # compaction wall time at the cost of more PG
+                        # connections in-flight. DIGITMILE_COMPACTION_MAX_WORKERS
+                        # env var overrides the scenario JSON for per-run
+                        # tuning without editing config.
+                        max_workers = int(
+                            os.environ.get(
+                                "DIGITMILE_COMPACTION_MAX_WORKERS",
+                                storage_walk_cfg.get("compaction_max_workers", 1),
+                            )
+                        )
+                        if max_workers > 1:
+                            compact_args.extend(
+                                ["--max-workers", str(max_workers)]
+                            )
                     # Stream so per-teacher progress lines show in real time
                     # rather than buffering for the whole 30–60 min run.
                     # stream_command returns the captured combined output,

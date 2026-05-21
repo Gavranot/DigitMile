@@ -138,7 +138,7 @@ The evaluation chapter must declare which type each result table reports.
 |---|---|---|
 | Does each optimization help marginally? | `before_*` × 4 + reference | ✅ Covered (need to re-frame per §4) |
 | Where's the throughput ceiling? | `ingest_isolation`, `stress_ramp` | ✅ Covered |
-| Does it handle the burst regime? | `lesson_bell` | ✅ Covered |
+| Does it handle the burst regime? | `lesson_bell_medium`, `lesson_bell_high` | ✅ Covered |
 | Sustained target load over **time** (NFR-1)? | — | ❌ No endurance test |
 | Recovery from overload (NFR-5)? | — | ❌ Missing |
 | **Cumulative** effect of all opts stacked? | — | ❌ Missing (headline chart) |

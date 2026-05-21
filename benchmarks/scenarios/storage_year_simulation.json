@@ -48,7 +48,8 @@
       "compact_through_week_index": 35,
       "min_host_free_bytes": 4000000000,
       "max_pg_db_bytes": 15000000000,
-      "compaction_per_teacher": true
+      "compaction_per_teacher": true,
+      "compaction_max_workers": 1
     }
   },
   "_verification_notes": [
@@ -71,6 +72,13 @@
     "dicts alone reach ~3 GB at national-medium scale). See section 9 of the",
     "thesis evaluation chapter — this is the production-realistic invocation",
     "pattern and the storage trajectory is invariant to it.",
+    "compaction_max_workers=1 keeps the per-teacher loop sequential (default).",
+    "Set higher (e.g. 3) to parallelize: each worker is a subprocess that runs",
+    "compact_weekly_runs --teacher-id N --skip-verification with its own",
+    "Python heap and PG connection. Cap at ~3-4 to avoid exhausting PG's",
+    "connection ceiling against Gunicorn + flusher. NFR-6's storage trajectory",
+    "is invariant to worker count, so leave at 1 for the canonical NFR-6 run",
+    "and only raise it if compaction wall time becomes the bottleneck.",
     "Expected runtime: ~2–3 hours seeding + ~30–60 min/week compaction with",
     "per-teacher invocation (vs. unbounded with monolithic).",
     "If aborted by max_pg_db_bytes, that IS a thesis finding: the year-horizon",

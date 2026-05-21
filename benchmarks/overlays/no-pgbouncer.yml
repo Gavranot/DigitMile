@@ -9,7 +9,13 @@
 # busybox container so PgBouncer itself never runs.
 #
 # Apply via scenario JSON: "compose_overlays": ["no-pgbouncer.yml"]
-# DOES NOT affect production — only the benchmark stack uses this file.
+#
+# HISTORICAL NOTE: as of the PgBouncer-removal change, this overlay's
+# configuration (direct PG + CONN_MAX_AGE=60 + server-side cursors) IS what
+# production uses. The benchmark stack's base still has benchmark-pgbouncer
+# enabled by default so the historical "with-PgBouncer" comparison from the
+# thesis benchmarks remains reproducible without overlay edits. Future thesis
+# runs that want to match production should apply this overlay.
 
 services:
   benchmark-pgbouncer:
