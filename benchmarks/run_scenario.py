@@ -961,6 +961,120 @@ def check_disk_safety(storage_walk_cfg, current_db_bytes, label=""):
         )
 
 
+def compute_pipeline_integrity(
+    pre_counts, post_counts, k6_summaries, redis_queue_residual=0
+):
+    """
+    Sanity-check that k6 traffic actually moved through Redis → flusher → PG.
+
+    The ingest endpoint returns 202 right after LPUSH-ing to the Redis buffer
+    — the response says nothing about whether the flusher later succeeded in
+    bulk-inserting the rows. Even with 0% http_req_failed, real failure
+    modes the HTTP layer can't see:
+      - flusher crashes / silently drops items it pops from Redis
+      - bulk_create raises and the error path consumes the item anyway
+      - ingest 200 dedup path (duplicate run_id) — request counts but no row
+      - flusher pointed at a different DB than the one we're inspecting
+
+    The check is non-invasive and never fails the scenario: it emits a
+    `pipeline_integrity` section in the report so the operator can see
+    whether their throughput numbers reflect real work or just Redis
+    enqueues. A healthy ingest-only scenario should have
+    `run_delta` ≈ `k6_total_http_reqs - k6_failed_reqs`. Scenarios with
+    mixed read+write traffic have `run_delta < k6_total_http_reqs` by
+    design — the metric is most useful in ingest-isolated scenarios.
+
+    pre_counts / post_counts: dicts from capture_storage_state().
+    Returns a dict suitable for JSON inclusion.
+    """
+    run_delta = post_counts["run_rows"] - pre_counts["run_rows"]
+    turn_delta = post_counts["turnevent_rows"] - pre_counts["turnevent_rows"]
+    trigger_delta = (
+        post_counts["specialtiletrigger_rows"]
+        - pre_counts["specialtiletrigger_rows"]
+    )
+
+    k6_total_http_reqs = 0
+    k6_failed_reqs_count = 0
+    k6_ingest_check_passes = 0
+    k6_ingest_check_fails = 0
+    for summary in k6_summaries:
+        highlights = summary.get("highlights") or {}
+        http_reqs = (highlights.get("http_reqs") or {}).get("count", 0) or 0
+        http_failed = highlights.get("http_req_failed") or {}
+        # http_req_failed is a rate metric: {"rate": float, "passes": int (failed), "fails": int (succeeded)}.
+        # The k6 conventions are confusing — `passes` here means the predicate
+        # `http_req_failed=true` passed, i.e. the request failed. Sum that.
+        failed_count = (
+            http_failed.get("passes", 0) or 0
+        )
+        k6_total_http_reqs += int(http_reqs)
+        k6_failed_reqs_count += int(failed_count)
+        # Look for any check whose name suggests an ingest-accepted predicate.
+        for check_name, counts in (summary.get("checks") or {}).get(
+            "by_check", {}
+        ).items():
+            if "ingest" in check_name.lower() and "accept" in check_name.lower():
+                k6_ingest_check_passes += int(counts.get("passes", 0) or 0)
+                k6_ingest_check_fails += int(counts.get("fails", 0) or 0)
+
+    expected_runs = max(0, k6_total_http_reqs - k6_failed_reqs_count)
+    if expected_runs > 0:
+        # Account for any items still sitting in Redis when we sampled — those
+        # would have landed in PG eventually, so they're not a leak. Floor at
+        # 0 in case the residual estimate overshoots (e.g. duplicate-run-id
+        # entries that the flusher will skip).
+        adjusted_delta = run_delta + max(0, redis_queue_residual)
+        integrity_ratio = round(min(adjusted_delta, expected_runs) / expected_runs, 4)
+    else:
+        integrity_ratio = None
+
+    # Classify so the operator gets a quick green/yellow/red signal in addition
+    # to the raw numbers. Generous bands so mixed-traffic scenarios don't
+    # spuriously flag — the operator should read the note before reacting.
+    if integrity_ratio is None:
+        verdict = "no_ingest_traffic"
+    elif integrity_ratio >= 0.95:
+        verdict = "green"
+    elif integrity_ratio >= 0.50:
+        verdict = "yellow"
+    else:
+        verdict = "red"
+
+    return {
+        "pre_traffic_row_counts": {
+            "run": pre_counts["run_rows"],
+            "turnevent": pre_counts["turnevent_rows"],
+            "specialtiletrigger": pre_counts["specialtiletrigger_rows"],
+        },
+        "post_traffic_row_counts": {
+            "run": post_counts["run_rows"],
+            "turnevent": post_counts["turnevent_rows"],
+            "specialtiletrigger": post_counts["specialtiletrigger_rows"],
+        },
+        "deltas": {
+            "run": run_delta,
+            "turnevent": turn_delta,
+            "specialtiletrigger": trigger_delta,
+        },
+        "k6_total_http_reqs": k6_total_http_reqs,
+        "k6_failed_reqs": k6_failed_reqs_count,
+        "k6_ingest_check_passes": k6_ingest_check_passes,
+        "k6_ingest_check_fails": k6_ingest_check_fails,
+        "redis_queue_residual": redis_queue_residual,
+        "expected_new_runs_if_ingest_only": expected_runs,
+        "integrity_ratio": integrity_ratio,
+        "verdict": verdict,
+        "note": (
+            "Compares actual rows landed in PG against k6's HTTP request count. "
+            "Most useful for ingest-isolated scenarios. Mixed read+write "
+            "scenarios will naturally show ratio < 1.0 since dashboard/replay "
+            "traffic does not produce new Run rows. A green verdict on an "
+            "ingest-only scenario confirms the pipeline is doing real work."
+        ),
+    }
+
+
 def capture_storage_state(project_name):
     """Snapshot pg_database_size and hot-table row counts.
 
@@ -1321,6 +1435,14 @@ def main():
         docker_stats_before = docker_stats(runtime_container_ids)
         log_step("capturing baseline Redis cache stats")
         redis_stats_before = redis_stats(project_name)
+        # Pre-traffic PG row snapshot — paired with the post-drain snapshot
+        # below to compute pipeline integrity (do k6's HTTP requests actually
+        # turn into PG rows, or are they being lost in the Redis→flusher hop?).
+        # storage_walk_active scenarios manage their own per-week pre/post
+        # snapshots and don't need this top-level pair.
+        pre_traffic_storage_state = (
+            None if storage_walk_active else capture_storage_state(project_name)
+        )
         k6_summaries = []
         all_runtime_samples = []
         for script_name in traffic.get("scripts", []):
@@ -1365,10 +1487,13 @@ def main():
                 }
             )
 
-        # Wait for the Redis ingest buffer to drain before collecting final metrics
+        # Wait for the Redis ingest buffer to drain before collecting final
+        # metrics. Generous timeout (up to 60s) so the pipeline integrity
+        # check below is reading a settled steady state, not catching the
+        # flusher mid-batch — exits early as soon as the queue hits 0.
         log_step("waiting for ingest buffer to drain")
         queue_len = -1
-        for _ in range(60):  # up to 6 seconds
+        for _ in range(600):  # up to 60 seconds
             result = compose_exec(
                 project_name, BENCHMARK_REDIS_SERVICE,
                 "redis-cli", "llen", "ingest_buffer",
@@ -1378,6 +1503,30 @@ def main():
                 break
             time.sleep(0.1)
         log_step(f"ingest buffer drained (queue length: {queue_len})")
+
+        # Post-traffic PG row snapshot (paired with pre_traffic_storage_state)
+        # → pipeline integrity check. Captured AFTER the Redis drain so the
+        # flusher has had its chance to land everything in PG.
+        pipeline_integrity = None
+        if pre_traffic_storage_state is not None:
+            log_step("capturing post-traffic row counts for pipeline integrity check")
+            post_traffic_storage_state = capture_storage_state(project_name)
+            pipeline_integrity = compute_pipeline_integrity(
+                pre_traffic_storage_state,
+                post_traffic_storage_state,
+                k6_summaries,
+                redis_queue_residual=queue_len,
+            )
+            ratio = pipeline_integrity["integrity_ratio"]
+            ratio_display = "n/a" if ratio is None else f"{ratio:.4f}"
+            log_step(
+                f"pipeline integrity: {pipeline_integrity['verdict']} "
+                f"(ratio={ratio_display}, "
+                f"Δrun={pipeline_integrity['deltas']['run']}, "
+                f"Δturn={pipeline_integrity['deltas']['turnevent']}, "
+                f"k6_http_reqs={pipeline_integrity['k6_total_http_reqs']}, "
+                f"k6_failed={pipeline_integrity['k6_failed_reqs']})"
+            )
 
         log_step("capturing post-traffic container stats")
         docker_stats_after = docker_stats(runtime_container_ids)
@@ -1708,6 +1857,7 @@ def main():
             "redis_stats_before": redis_stats_before,
             "redis_stats_after": redis_stats_after,
             "redis_cache_summary": redis_cache_summary,
+            "pipeline_integrity": pipeline_integrity,
             "compaction_result": compaction_result,
             "storage_trajectory": storage_trajectory,
             "storage_trajectory_summary": storage_trajectory_summary,

@@ -33,6 +33,7 @@ jobs:
           cp docker-compose.prod.yml deploy/
           cp -r nginx-proxy deploy/
           cp -r benchmarks deploy/
+          cp -r compactor deploy/
 
       - name: Upload files to server
         uses: appleboy/scp-action@v0.1.7
