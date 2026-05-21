@@ -39,33 +39,14 @@ services:
       timeout: 5s
       retries: 5
 
-  # PgBouncer connection pooler — sits between Django and PostgreSQL.
-  # Transaction pooling mode: Django connections are released back to the pool
-  # after each COMMIT, so 5 Gunicorn workers share only ~5-10 real PG connections.
-  pgbouncer:
-    image: edoburu/pgbouncer:latest
-    container_name: digitmile-pgbouncer
-    restart: always
-    environment:
-      DB_HOST: db
-      DB_PORT: 5432
-      DB_NAME: ${DB_NAME:-digitmile}
-      DB_USER: ${DB_USER:-digitmile}
-      DB_PASSWORD: ${DB_PASS:-changeme}
-      POOL_MODE: transaction
-      DEFAULT_POOL_SIZE: 10
-      MIN_POOL_SIZE: 3
-      MAX_CLIENT_CONN: 100
-      # Must match PostgreSQL 16's default auth method (scram-sha-256).
-      # Without this, PgBouncer defaults to md5 and PostgreSQL rejects it.
-      AUTH_TYPE: scram-sha-256
-      # Ignore SET commands that Django sends (timezone, etc.) — safe in transaction mode
-      IGNORE_STARTUP_PARAMETERS: extra_float_digits
-    depends_on:
-      db:
-        condition: service_healthy
-    networks:
-      - digitmile-network
+  # NOTE: PgBouncer was removed from the production stack after benchmarking
+  # showed its transaction-pool overhead exceeded its benefit on the
+  # 2 vCPU / 3.8 GiB VPS (~5 Gunicorn workers + 1 flusher is a small enough
+  # connection footprint that PG handles it natively, and the extra hop +
+  # serialization dominated savings). Django now connects directly to `db`
+  # with persistent connections (CONN_MAX_AGE=60) and server-side cursors
+  # re-enabled. The historical comparison is preserved in
+  # benchmarks/overlays/no-pgbouncer.yml + benchmarks/scenarios/before_pgbouncer_*.
 
   # Django Backend (DigitMilePanel)
   backend:
@@ -87,8 +68,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      pgbouncer:
-        condition: service_started
       redis:
         condition: service_healthy
     networks:
@@ -114,8 +93,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      pgbouncer:
-        condition: service_started
       redis:
         condition: service_healthy
     networks:

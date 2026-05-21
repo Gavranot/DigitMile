@@ -1,5 +1,5 @@
 {
-  "name": "lesson_bell",
+  "name": "lesson_bell_medium",
   "dataset": {
     "teachers": 10,
     "classrooms_per_teacher": 4,
@@ -16,7 +16,8 @@
   "_dataset_notes": [
     "10 teachers × 4 classrooms × 25 students = 1,000 students total (matches national_medium).",
     "Dataset is sized so ingest_targets_hot_week has ample variety; the load test does not exercise analytics.",
-    "Hot data: 1,000 students × 2 hot weeks × 3 runs × ~20 turns ≈ 120,000 hot turn events (T=20 per docs/research/ingest-capacity-model.md)."
+    "Hot data: 1,000 students × 2 hot weeks × 3 runs × ~20 turns ≈ 120,000 hot turn events (T=20 per docs/research/ingest-capacity-model.md).",
+    "Medium-adoption variant of the lesson-bell burst regime; the high-adoption variant lives in lesson_bell_high.json."
   ],
   "traffic": {
     "base_url": "http://benchmark-backend:8000",
@@ -40,7 +41,7 @@
     "Models the lesson-bell burst regime from docs/research/ingest-capacity-model.md §5.",
     "Target peak: ~29 ingest/s, the medium-adoption burst rate (60s drain window).",
     "Stage profile: 10s ramp 0→29 + 60s hold at 29 + 30s drain 29→0 = 100s total.",
-    "For high-adoption burst (~44 RPS) bump ingest_rate_per_sec to 44 and re-run.",
+    "For the high-adoption burst (~44 RPS) use the lesson_bell_high scenario.",
     "For tight-bell modelling (30s drain → ~59 RPS) lower bell_hold_seconds to 30 and bump ingest_rate_per_sec to 59.",
     "VUs pre=60 ≈ 2× peak × 200ms p95 latency, with maxVUs=150 absorbing any worker-stall queueing.",
     "resource_sample_interval_seconds dropped to 2s so docker stats captures sub-minute dynamics of the burst.",
@@ -50,5 +51,5 @@
   "verification": {
     "benchmark_iterations": 3
   },
-  "report_output": "benchmarks/reports/lesson_bell.json"
+  "report_output": "benchmarks/reports/lesson_bell_medium.json"
 }

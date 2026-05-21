@@ -16,6 +16,7 @@ from .views import (
     TeacherSchoolView,
     TeacherRunStatisticsListView
 )
+from .views_internal import trigger_weekly_compaction
 
 # Create a router and register our viewsets with it.
 router = DefaultRouter()
@@ -37,6 +38,14 @@ urlpatterns = [
     path('teacher/classrooms/', TeacherClassroomListView.as_view(), name='teacher-classrooms-list'),
     path('teacher/school/', TeacherSchoolView.as_view(), name='teacher-school-detail'),
     path('teacher/run-statistics/', TeacherRunStatisticsListView.as_view(), name='teacher-run-statistics-list'), # New URL for teacher's run statistics
+
+    # Internal service-to-service endpoints (X-Internal-Token auth, NOT
+    # session/cookie). Called by the compactor cron container.
+    path(
+        'internal/compaction/run-weekly/',
+        trigger_weekly_compaction,
+        name='internal-trigger-weekly-compaction',
+    ),
 
     # Router URLs for ViewSets
     path('', include(router.urls)),

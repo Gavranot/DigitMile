@@ -133,15 +133,17 @@ elif not db_port_env:
 # If DB_PORT is set but is not a simple number (e.g., an empty string from .env, or non-numeric),
 # processed_db_port remains '', which is fine for Django's database wrapper.
 
-# PgBouncer transaction pooling requires CONN_MAX_AGE=0 (Django must not hold
-# persistent connections — PgBouncer owns the pool) and
-# DISABLE_SERVER_SIDE_CURSORS=True (PgBouncer can't forward prepared statements
-# across transaction boundaries). Defaults match prod exactly; the benchmark
-# "no-pgbouncer" overlay flips these to test the pre-PgBouncer baseline.
-# Production .env does not set DB_CONN_MAX_AGE / DB_DISABLE_SERVER_SIDE_CURSORS.
+# Direct-to-PostgreSQL connection defaults. Production now connects to `db`
+# directly (PgBouncer was empirically slower than direct PG on the
+# 2 vCPU / 3.8 GiB VPS — its transaction-pool serialization + extra network
+# hop exceeded any savings from connection reuse, given Django's small
+# Gunicorn-worker footprint). Persistent connections (CONN_MAX_AGE=60) and
+# server-side cursors are re-enabled by default. The env vars remain so the
+# benchmark "with-pgbouncer" comparison can still flip them; production .env
+# does not set them.
 _conn_max_age_env = os.getenv("DB_CONN_MAX_AGE")
-_conn_max_age = int(_conn_max_age_env) if _conn_max_age_env and _conn_max_age_env.strip().isdigit() else 0
-_disable_ssc = os.getenv("DB_DISABLE_SERVER_SIDE_CURSORS", "True") == "True"
+_conn_max_age = int(_conn_max_age_env) if _conn_max_age_env and _conn_max_age_env.strip().isdigit() else 60
+_disable_ssc = os.getenv("DB_DISABLE_SERVER_SIDE_CURSORS", "False") == "True"
 
 DATABASES = {
     "default": {
@@ -164,6 +166,13 @@ DATABASES = {
 # DummyCache via the benchmark overlay) doesn't accidentally break the
 # ingest buffer connection.
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/1")
+
+# Shared secret for internal service-to-service endpoints (e.g. the weekly
+# compaction trigger called by the compactor cron container). Empty string
+# means the internal endpoints are effectively disabled — any request would
+# fail the constant-time comparison. Production .env must set this to a
+# strong random value; the compactor container must hold the same value.
+INTERNAL_API_TOKEN = os.getenv("INTERNAL_API_TOKEN", "")
 
 # Cache backend is env-selectable so the benchmark "dummy-cache" overlay can
 # disable query caching to measure the pre-cache baseline. Production .env

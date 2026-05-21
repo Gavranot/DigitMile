@@ -66,7 +66,8 @@ This is the most important scenario for production readiness. Run it first.
 | `mixed_semester_medium/heavy` | Full-semester scale tests; use after Tier 1 and 2 are understood |
 | `retry_storm_ingest` | Ingest retry and idempotency validation |
 | `ingest_isolation` | Find the ingest throughput ceiling before running national scenarios |
-| `lesson_bell` | Burst-regime scenario: 10s ramp + 60s hold at peak + 30s drain; models classroom synchronisation at end of IT period |
+| `lesson_bell_medium` | Burst-regime scenario at medium adoption (~29 RPS peak): 10s ramp + 60s hold + 30s drain; models classroom synchronisation at end of IT period |
+| `lesson_bell_high` | Same burst shape at high adoption (~44 RPS peak); uses the national_high dataset (1,500 students) |
 
 ## National-scale scenarios
 
@@ -92,7 +93,7 @@ DigitMile has an asymmetric traffic profile:
 Two distinct load regimes matter:
 
 1. **Steady-state** (`national_medium` / `national_high`) — sustained ~11–16 RPS over the busy 10–15 min window. Each ingest carries a full Run payload (~15.5 KB with `T=20`), so per-request CPU is the binding cost, not RPS.
-2. **Lesson-bell burst** (`lesson_bell`) — ~29–44 RPS for ~60 s as classrooms finish their final Run before the bell. The Redis write buffer absorbs the spike; PG never sees the peak directly. Stage profile is 10 s ramp + 60 s hold + 30 s drain; bump `ingest_rate_per_sec` from 29 → 44 for the high-adoption variant.
+2. **Lesson-bell burst** (`lesson_bell_medium` / `lesson_bell_high`) — ~29–44 RPS for ~60 s as classrooms finish their final Run before the bell. The Redis write buffer absorbs the spike; PG never sees the peak directly. Stage profile is 10 s ramp + 60 s hold + 30 s drain; the medium variant peaks at ~29 RPS on the 1,000-student dataset, the high variant at ~44 RPS on the 1,500-student dataset.
 
 Run `ingest_isolation` before either set to find the raw ingest ceiling on the current hardware.
 

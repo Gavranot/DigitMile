@@ -83,5 +83,33 @@ services:
     # Remove port exposure - use reverse proxy
     ports: !override []
 
+  # Weekly compaction cron. Posts to the backend's internal trigger
+  # endpoint on the schedule defined by CRON_SCHEDULE (Friday 20:00
+  # Europe/Skopje by default). Compacts the previous Mon-Sun week, which
+  # ended five days earlier — gives a comfortable buffer before teachers
+  # arrive Monday morning. Holds the shared INTERNAL_API_TOKEN; no database
+  # credentials and no application code. The backend handles the actual
+  # compaction out-of-band, so this container's curl call is short
+  # (seconds), not a long-lived job.
+  compactor:
+    build:
+      context: ./compactor
+      dockerfile: Dockerfile
+    image: ${DOCKERHUB_USERNAME:-your-username}/digitmile-compactor:${TARGET_ENV:-prod}-latest
+    container_name: digitmile-compactor
+    restart: always
+    env_file:
+      - .env
+    environment:
+      CRON_SCHEDULE: "0 20 * * 5"
+      BACKEND_URL: http://backend:8000
+      TRIGGER_PATH: /panel/api/internal/compaction/run-weekly/
+      MAX_WORKERS: "2"
+      TZ: Europe/Skopje
+    depends_on:
+      - backend
+    networks:
+      - digitmile-network
+
 volumes:
   replay_archives_data:

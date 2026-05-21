@@ -1,0 +1,5060 @@
+{
+  "scenario_name": "realistic_school_day",
+  "load_health": "green",
+  "scenario_config": {
+    "name": "realistic_school_day",
+    "dataset": {
+      "teachers": 1,
+      "classrooms_per_teacher": 3,
+      "students_per_classroom": 20,
+      "weeks": 8,
+      "runs_per_student_per_week": 3,
+      "avg_turns_per_run": 20,
+      "card_mix_profile": "balanced",
+      "bag_level_ratio": 0.35,
+      "compact_weeks": "1-6",
+      "hot_weeks": 2,
+      "anchor_week_start": "2026-03-09"
+    },
+    "_dataset_notes": [
+      "1 teacher, 3 classrooms, 20 students = 60 students total.",
+      "8 weeks history: 6 cold (compacted to rollup tables), 2 hot (raw rows in Run/TurnEvent).",
+      "Hot data volume: 60 students x 2 weeks x 3 runs x ~20 turns \u2248 7,200 hot turns (T=20 per docs/research/ingest-capacity-model.md).",
+      "This is deliberately modest and representative of one teacher at a school with ~1000 runs/week total.",
+      "Cold rollup tables hold 6 weeks of compacted history per student."
+    ],
+    "traffic": {
+      "base_url": "http://benchmark-backend:8000",
+      "request_host_header": "localhost",
+      "duration": "3m",
+      "hot_replay_ratio": 0.6,
+      "grade_filter_ratio": 0.4,
+      "classroom_filter_ratio": 0.4,
+      "ingest_rate_per_sec": 1,
+      "dashboard_rate_per_sec": 1,
+      "analytics_rate_per_sec": 1,
+      "turn_insights_rate_per_sec": 1,
+      "replay_rate_per_sec": 1,
+      "ingest_pre_allocated_vus": 2,
+      "ingest_max_vus": 6,
+      "dashboard_pre_allocated_vus": 3,
+      "dashboard_max_vus": 8,
+      "analytics_pre_allocated_vus": 3,
+      "analytics_max_vus": 8,
+      "turn_insights_pre_allocated_vus": 4,
+      "turn_insights_max_vus": 12,
+      "replay_pre_allocated_vus": 2,
+      "replay_max_vus": 6,
+      "resource_sample_interval_seconds": 10,
+      "ingest_expected_mode": "accepted",
+      "scripts": [
+        "mixed_weekly_cycle.js"
+      ]
+    },
+    "_traffic_notes": [
+      "1 req/sec per traffic class = 5 req/sec total.",
+      "VUs are sized by Little's Law: rate x expected_response_time x headroom.",
+      "turn_insights gets more VUs because it is the slowest endpoint (2-10s depending on server).",
+      "If dropped_iterations > 0 for any class, reduce that class rate before drawing conclusions.",
+      "A green load_health on this scenario means the server can handle realistic school-day traffic."
+    ],
+    "verification": {
+      "benchmark_iterations": 5
+    },
+    "report_output": "benchmarks/reports/realistic_school_day.json"
+  },
+  "scenario_summary": {
+    "compose_project": "digitmile-bench-realistic-school-day",
+    "scripts": [
+      "mixed_weekly_cycle.js"
+    ],
+    "duration": "3m",
+    "base_url": "http://benchmark-backend:8000",
+    "request_host_header": "localhost",
+    "benchmark_reference_time": "2026-03-13T19:00:00+00:00",
+    "image_info": {
+      "image": "gashmurble/digitmile-backend:prod-latest",
+      "image_digest": "sha256:4fe76f07c35a496936c19ce2f9e1ace58f890b731c4232679082cfc7da256677",
+      "container_id": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+      "mode": "tree-HEAD",
+      "requested_benchmark_image_ref": null,
+      "explicit_benchmark_image": null,
+      "resolved_sha": null
+    },
+    "compose_overlays": [
+      "/var/www/digitmile/benchmarks/overlays/no-pgbouncer.yml"
+    ],
+    "stack_state": {
+      "postgres_settings": {
+        "checkpoint_completion_target": "0.9",
+        "effective_cache_size": "65536",
+        "maintenance_work_mem": "65536",
+        "random_page_cost": "1.1",
+        "shared_buffers": "16384",
+        "synchronous_commit": "off",
+        "wal_buffers": "2048",
+        "work_mem": "8192"
+      },
+      "backend_env": {
+        "DB_HOST": "benchmark-db",
+        "DB_CONN_MAX_AGE": "60",
+        "DB_DISABLE_SERVER_SIDE_CURSORS": "False",
+        "DJANGO_CACHE_BACKEND": "",
+        "REDIS_URL": "redis://benchmark-redis:6379/1"
+      },
+      "django_cache_backend": "django_redis.cache.RedisCache",
+      "flusher_image": "gashmurble/digitmile-backend:prod-latest"
+    }
+  },
+  "dataset_report": {
+    "seed": 20260312,
+    "anchor_week_start": "2026-03-09",
+    "hot_week_start": "2026-03-09",
+    "hot_week_end": "2026-03-15",
+    "synthetic_now": "2026-03-13T19:00:00+00:00",
+    "synthetic_week_close_at": "2026-03-13T20:00:00+00:00",
+    "teacher_password": "benchmark_password_123",
+    "teachers": [
+      {
+        "teacher_id": "tch_8a899523422d",
+        "username": "benchmark_teacher_1",
+        "email": "benchmark-teacher-1@example.com",
+        "classroom_ids": [
+          "cls_f157cbd6e638",
+          "cls_4730f81fbf98",
+          "cls_a81df9e17264"
+        ]
+      }
+    ],
+    "counts": {
+      "schools": 1,
+      "teachers": 1,
+      "classrooms": 3,
+      "students": 60,
+      "runs": 1440,
+      "turns": 28961,
+      "triggers": 2268
+    },
+    "weeks": [
+      {
+        "index": 1,
+        "week_start": "2026-01-19",
+        "compacted": true,
+        "hot": false
+      },
+      {
+        "index": 2,
+        "week_start": "2026-01-26",
+        "compacted": true,
+        "hot": false
+      },
+      {
+        "index": 3,
+        "week_start": "2026-02-02",
+        "compacted": true,
+        "hot": false
+      },
+      {
+        "index": 4,
+        "week_start": "2026-02-09",
+        "compacted": true,
+        "hot": false
+      },
+      {
+        "index": 5,
+        "week_start": "2026-02-16",
+        "compacted": true,
+        "hot": false
+      },
+      {
+        "index": 6,
+        "week_start": "2026-02-23",
+        "compacted": true,
+        "hot": false
+      },
+      {
+        "index": 7,
+        "week_start": "2026-03-02",
+        "compacted": false,
+        "hot": true
+      },
+      {
+        "index": 8,
+        "week_start": "2026-03-09",
+        "compacted": false,
+        "hot": true
+      }
+    ],
+    "compactions": [
+      {
+        "week_start": "2026-01-19",
+        "duration_ms": 7821.35,
+        "status": "COMPACTED",
+        "archive_runs_verified": 180,
+        "turn_rows_deleted": 3614,
+        "trigger_rows_deleted": 264,
+        "stdout": "Compaction complete: runs=180, archives_verified=180, turns_deleted=3614, triggers_deleted=264"
+      },
+      {
+        "week_start": "2026-01-26",
+        "duration_ms": 8040.25,
+        "status": "COMPACTED",
+        "archive_runs_verified": 180,
+        "turn_rows_deleted": 3596,
+        "trigger_rows_deleted": 307,
+        "stdout": "Compaction complete: runs=180, archives_verified=180, turns_deleted=3596, triggers_deleted=307"
+      },
+      {
+        "week_start": "2026-02-02",
+        "duration_ms": 8201.98,
+        "status": "COMPACTED",
+        "archive_runs_verified": 180,
+        "turn_rows_deleted": 3555,
+        "trigger_rows_deleted": 268,
+        "stdout": "Compaction complete: runs=180, archives_verified=180, turns_deleted=3555, triggers_deleted=268"
+      },
+      {
+        "week_start": "2026-02-09",
+        "duration_ms": 8234.32,
+        "status": "COMPACTED",
+        "archive_runs_verified": 180,
+        "turn_rows_deleted": 3643,
+        "trigger_rows_deleted": 296,
+        "stdout": "Compaction complete: runs=180, archives_verified=180, turns_deleted=3643, triggers_deleted=296"
+      },
+      {
+        "week_start": "2026-02-16",
+        "duration_ms": 7920.81,
+        "status": "COMPACTED",
+        "archive_runs_verified": 180,
+        "turn_rows_deleted": 3590,
+        "trigger_rows_deleted": 277,
+        "stdout": "Compaction complete: runs=180, archives_verified=180, turns_deleted=3590, triggers_deleted=277"
+      },
+      {
+        "week_start": "2026-02-23",
+        "duration_ms": 8030.08,
+        "status": "COMPACTED",
+        "archive_runs_verified": 180,
+        "turn_rows_deleted": 3675,
+        "trigger_rows_deleted": 283,
+        "stdout": "Compaction complete: runs=180, archives_verified=180, turns_deleted=3675, triggers_deleted=283"
+      }
+    ],
+    "archive": {
+      "compressed_size_bytes": 1810219,
+      "uncompressed_size_bytes": 21903973
+    },
+    "ingest_targets": [
+      {
+        "student_id": "stu_f8929ebb007f",
+        "student_name": "Benchmark Student 2-A 1",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_85e563e9c9a2",
+        "student_name": "Benchmark Student 2-A 2",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_8a0d7dbd48d5",
+        "student_name": "Benchmark Student 2-A 3",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_e71cf7e59178",
+        "student_name": "Benchmark Student 2-A 4",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_ab5040c64106",
+        "student_name": "Benchmark Student 2-A 5",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_711a95f060b5",
+        "student_name": "Benchmark Student 2-A 6",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_6ffcad0805c2",
+        "student_name": "Benchmark Student 2-A 7",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_6cde2a3df6d4",
+        "student_name": "Benchmark Student 2-A 8",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_04856be75999",
+        "student_name": "Benchmark Student 2-A 9",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_7ba8089652b4",
+        "student_name": "Benchmark Student 2-A 10",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_9907236c4c80",
+        "student_name": "Benchmark Student 2-A 11",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_fca48f9686f1",
+        "student_name": "Benchmark Student 2-A 12",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_05c8c87eddbf",
+        "student_name": "Benchmark Student 2-A 13",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_e4f9f6b71a16",
+        "student_name": "Benchmark Student 2-A 14",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_efd240ad5f5e",
+        "student_name": "Benchmark Student 2-A 15",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_6faf58db911a",
+        "student_name": "Benchmark Student 2-A 16",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_e22c644161a6",
+        "student_name": "Benchmark Student 2-A 17",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_4e2e49923ef0",
+        "student_name": "Benchmark Student 2-A 18",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_ca1750a71b04",
+        "student_name": "Benchmark Student 2-A 19",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_6409096704f5",
+        "student_name": "Benchmark Student 2-A 20",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_e3b92908dc55",
+        "student_name": "Benchmark Student 3-B 1",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_140a61e2a960",
+        "student_name": "Benchmark Student 3-B 2",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_d30d697e8b7f",
+        "student_name": "Benchmark Student 3-B 3",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_741fd2c34f70",
+        "student_name": "Benchmark Student 3-B 4",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_d18cb330501c",
+        "student_name": "Benchmark Student 3-B 5",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_87ecf006f391",
+        "student_name": "Benchmark Student 3-B 6",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_886e1ad4265b",
+        "student_name": "Benchmark Student 3-B 7",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_9007f1c641a0",
+        "student_name": "Benchmark Student 3-B 8",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_dab6dca1986c",
+        "student_name": "Benchmark Student 3-B 9",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_6b2e3e341526",
+        "student_name": "Benchmark Student 3-B 10",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_458ece15d7c5",
+        "student_name": "Benchmark Student 3-B 11",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_ae33e96e0efc",
+        "student_name": "Benchmark Student 3-B 12",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_cab16330fd30",
+        "student_name": "Benchmark Student 3-B 13",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_85c99d09c3f8",
+        "student_name": "Benchmark Student 3-B 14",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_9380b2c2f27b",
+        "student_name": "Benchmark Student 3-B 15",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_e6cc71a7d36d",
+        "student_name": "Benchmark Student 3-B 16",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_a5c786548074",
+        "student_name": "Benchmark Student 3-B 17",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_f796d939a4dc",
+        "student_name": "Benchmark Student 3-B 18",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_5bc549492811",
+        "student_name": "Benchmark Student 3-B 19",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_56fc9bc8a9c8",
+        "student_name": "Benchmark Student 3-B 20",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_b204f588d193",
+        "student_name": "Benchmark Student 4-C 1",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_5495cdb0453f",
+        "student_name": "Benchmark Student 4-C 2",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_393c24c174a4",
+        "student_name": "Benchmark Student 4-C 3",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_5565a01580b7",
+        "student_name": "Benchmark Student 4-C 4",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_fb2fa95abce6",
+        "student_name": "Benchmark Student 4-C 5",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_34fac9c36f01",
+        "student_name": "Benchmark Student 4-C 6",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_de9c201d2adc",
+        "student_name": "Benchmark Student 4-C 7",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_7fa3fdd15d46",
+        "student_name": "Benchmark Student 4-C 8",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_5c26d0e5f638",
+        "student_name": "Benchmark Student 4-C 9",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_8b8020e727d2",
+        "student_name": "Benchmark Student 4-C 10",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_1a1ec661426f",
+        "student_name": "Benchmark Student 4-C 11",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_cad6382bb07e",
+        "student_name": "Benchmark Student 4-C 12",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_db69379d2388",
+        "student_name": "Benchmark Student 4-C 13",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_38205e7124af",
+        "student_name": "Benchmark Student 4-C 14",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_d01824322d24",
+        "student_name": "Benchmark Student 4-C 15",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_784b7f577b1c",
+        "student_name": "Benchmark Student 4-C 16",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_b4dd24fa53d6",
+        "student_name": "Benchmark Student 4-C 17",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_6a197f49fae4",
+        "student_name": "Benchmark Student 4-C 18",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_6d031ad42279",
+        "student_name": "Benchmark Student 4-C 19",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_cac1eaf4c173",
+        "student_name": "Benchmark Student 4-C 20",
+        "classroom_key": "BMK-0103"
+      }
+    ],
+    "ingest_targets_hot_week": [
+      {
+        "student_id": "stu_f8929ebb007f",
+        "student_name": "Benchmark Student 2-A 1",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_85e563e9c9a2",
+        "student_name": "Benchmark Student 2-A 2",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_8a0d7dbd48d5",
+        "student_name": "Benchmark Student 2-A 3",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_e71cf7e59178",
+        "student_name": "Benchmark Student 2-A 4",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_ab5040c64106",
+        "student_name": "Benchmark Student 2-A 5",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_711a95f060b5",
+        "student_name": "Benchmark Student 2-A 6",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_6ffcad0805c2",
+        "student_name": "Benchmark Student 2-A 7",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_6cde2a3df6d4",
+        "student_name": "Benchmark Student 2-A 8",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_04856be75999",
+        "student_name": "Benchmark Student 2-A 9",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_7ba8089652b4",
+        "student_name": "Benchmark Student 2-A 10",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_9907236c4c80",
+        "student_name": "Benchmark Student 2-A 11",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_fca48f9686f1",
+        "student_name": "Benchmark Student 2-A 12",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_05c8c87eddbf",
+        "student_name": "Benchmark Student 2-A 13",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_e4f9f6b71a16",
+        "student_name": "Benchmark Student 2-A 14",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_efd240ad5f5e",
+        "student_name": "Benchmark Student 2-A 15",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_6faf58db911a",
+        "student_name": "Benchmark Student 2-A 16",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_e22c644161a6",
+        "student_name": "Benchmark Student 2-A 17",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_4e2e49923ef0",
+        "student_name": "Benchmark Student 2-A 18",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_ca1750a71b04",
+        "student_name": "Benchmark Student 2-A 19",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_6409096704f5",
+        "student_name": "Benchmark Student 2-A 20",
+        "classroom_key": "BMK-0101"
+      },
+      {
+        "student_id": "stu_e3b92908dc55",
+        "student_name": "Benchmark Student 3-B 1",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_140a61e2a960",
+        "student_name": "Benchmark Student 3-B 2",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_d30d697e8b7f",
+        "student_name": "Benchmark Student 3-B 3",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_741fd2c34f70",
+        "student_name": "Benchmark Student 3-B 4",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_d18cb330501c",
+        "student_name": "Benchmark Student 3-B 5",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_87ecf006f391",
+        "student_name": "Benchmark Student 3-B 6",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_886e1ad4265b",
+        "student_name": "Benchmark Student 3-B 7",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_9007f1c641a0",
+        "student_name": "Benchmark Student 3-B 8",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_dab6dca1986c",
+        "student_name": "Benchmark Student 3-B 9",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_6b2e3e341526",
+        "student_name": "Benchmark Student 3-B 10",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_458ece15d7c5",
+        "student_name": "Benchmark Student 3-B 11",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_ae33e96e0efc",
+        "student_name": "Benchmark Student 3-B 12",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_cab16330fd30",
+        "student_name": "Benchmark Student 3-B 13",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_85c99d09c3f8",
+        "student_name": "Benchmark Student 3-B 14",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_9380b2c2f27b",
+        "student_name": "Benchmark Student 3-B 15",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_e6cc71a7d36d",
+        "student_name": "Benchmark Student 3-B 16",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_a5c786548074",
+        "student_name": "Benchmark Student 3-B 17",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_f796d939a4dc",
+        "student_name": "Benchmark Student 3-B 18",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_5bc549492811",
+        "student_name": "Benchmark Student 3-B 19",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_56fc9bc8a9c8",
+        "student_name": "Benchmark Student 3-B 20",
+        "classroom_key": "BMK-0102"
+      },
+      {
+        "student_id": "stu_b204f588d193",
+        "student_name": "Benchmark Student 4-C 1",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_5495cdb0453f",
+        "student_name": "Benchmark Student 4-C 2",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_393c24c174a4",
+        "student_name": "Benchmark Student 4-C 3",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_5565a01580b7",
+        "student_name": "Benchmark Student 4-C 4",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_fb2fa95abce6",
+        "student_name": "Benchmark Student 4-C 5",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_34fac9c36f01",
+        "student_name": "Benchmark Student 4-C 6",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_de9c201d2adc",
+        "student_name": "Benchmark Student 4-C 7",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_7fa3fdd15d46",
+        "student_name": "Benchmark Student 4-C 8",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_5c26d0e5f638",
+        "student_name": "Benchmark Student 4-C 9",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_8b8020e727d2",
+        "student_name": "Benchmark Student 4-C 10",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_1a1ec661426f",
+        "student_name": "Benchmark Student 4-C 11",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_cad6382bb07e",
+        "student_name": "Benchmark Student 4-C 12",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_db69379d2388",
+        "student_name": "Benchmark Student 4-C 13",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_38205e7124af",
+        "student_name": "Benchmark Student 4-C 14",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_d01824322d24",
+        "student_name": "Benchmark Student 4-C 15",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_784b7f577b1c",
+        "student_name": "Benchmark Student 4-C 16",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_b4dd24fa53d6",
+        "student_name": "Benchmark Student 4-C 17",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_6a197f49fae4",
+        "student_name": "Benchmark Student 4-C 18",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_6d031ad42279",
+        "student_name": "Benchmark Student 4-C 19",
+        "classroom_key": "BMK-0103"
+      },
+      {
+        "student_id": "stu_cac1eaf4c173",
+        "student_name": "Benchmark Student 4-C 20",
+        "classroom_key": "BMK-0103"
+      }
+    ],
+    "replay_run_ids": [
+      "run_be1677d02dc54abc8aa44404251f4abd",
+      "run_14fccbfa26b148e5bc5b278746a2e111",
+      "run_c3627530b7a1470f87e283d36c83eee5",
+      "run_0dbae5a37c104b2f959d96c166d25a50",
+      "run_7be579880b7a473ebf725ce5555c92fe",
+      "run_017ea498a13046bab3880a1f1b65e234",
+      "run_8321e357a49a4a06a3ef54fb43732433",
+      "run_399fae108b05451c857f48ce73cbff2f",
+      "run_497474edf41545c3b01fa8a7177f05b4",
+      "run_9fae612768ba43dabe5ed10316a36e53",
+      "run_8c8d5dc5e4ef4c33bff25a9e034753d4",
+      "run_2d72280d713441deb9d449b24a5792ff",
+      "run_5bc1a7c92d4a4571a6cd9c471bbc0115",
+      "run_bef742cd89f64799b8850d26ad8c2ed2",
+      "run_1fb4dcd683804bd89fa1b89bf3eb1128",
+      "run_0f3d87054cbb409a9089533afe533fb0",
+      "run_98768383a8c6420b812f86f7106f728f",
+      "run_4fb6f39ee8ea45f68de996ad200c1b47",
+      "run_609a5ef4b94f4eb98a2807f5c4448db7",
+      "run_f7fad543c71c472bb15a912839da6ccc",
+      "run_b7445561311c4178bfd1a3903ce1acb1",
+      "run_d1c2a9e1e3354666b7a76f4d1bc8e26d",
+      "run_2e81f696a02c4f74ae960408f29560a2",
+      "run_bd0a4d2838bb4d25b4b13f7614d2b599",
+      "run_a8d583cae88f430e9f916db300344950",
+      "run_c36f78d9d1c1473abbf04d49518ebe24",
+      "run_a754a848943c44e9ad19e38b7b0c4ccb",
+      "run_9e7a6d03809e45699cda814f52137dc0",
+      "run_4f3c6759b3bb434f9a1bfe322e141e5d",
+      "run_7d54380af21848408c59089577fe6000",
+      "run_96ff99c637d3429589d89d96b6add045",
+      "run_d80f99d792c043c19c6bfdb1258edc4a",
+      "run_35049d2ef55b485da285fade5786f3b7",
+      "run_9d91e73ac7074ef296b0b8d9116f4f06",
+      "run_fce0c78f384b48bfa0e9e048b3fe4536",
+      "run_c3fb3f5cc8204163bbe44475de81cdfc",
+      "run_05add53bc7a5486f98c0aeb592800da8",
+      "run_e5f758f1831244019b25da2db8c8071a",
+      "run_2ffe9c5560a34b189f5e4d85c8385724",
+      "run_90ebc041402843a1af18f947f5e6920f",
+      "run_23eff17d731843879c0063751ab059f3",
+      "run_759c1d68d380450ba38399307de47576",
+      "run_cfe97abbeabd4655a27b44f10134b5ab",
+      "run_18590c28235e4c7aabd4459f401920ef",
+      "run_6176fcf5f0d04548a78b27460b5635dd",
+      "run_f958488cd99942f79ea81ed964a1e703",
+      "run_a5281c066372430aa2481b810a43bc83",
+      "run_0464f23ab3a94df6a64ff5d142482eff",
+      "run_3fd4f7c473ae492888d3d62bc7e3958a",
+      "run_f981d6d6fe944158a1a126222a476b4e"
+    ],
+    "replay_targets_hot": [
+      {
+        "run_id": "run_609a5ef4b94f4eb98a2807f5c4448db7",
+        "student_id": "stu_f8929ebb007f",
+        "week_start": "2026-03-02",
+        "hot": true
+      },
+      {
+        "run_id": "run_f7fad543c71c472bb15a912839da6ccc",
+        "student_id": "stu_f8929ebb007f",
+        "week_start": "2026-03-02",
+        "hot": true
+      },
+      {
+        "run_id": "run_b7445561311c4178bfd1a3903ce1acb1",
+        "student_id": "stu_f8929ebb007f",
+        "week_start": "2026-03-02",
+        "hot": true
+      },
+      {
+        "run_id": "run_d1c2a9e1e3354666b7a76f4d1bc8e26d",
+        "student_id": "stu_f8929ebb007f",
+        "week_start": "2026-03-09",
+        "hot": true
+      },
+      {
+        "run_id": "run_2e81f696a02c4f74ae960408f29560a2",
+        "student_id": "stu_f8929ebb007f",
+        "week_start": "2026-03-09",
+        "hot": true
+      },
+      {
+        "run_id": "run_bd0a4d2838bb4d25b4b13f7614d2b599",
+        "student_id": "stu_f8929ebb007f",
+        "week_start": "2026-03-09",
+        "hot": true
+      },
+      {
+        "run_id": "run_cfe97abbeabd4655a27b44f10134b5ab",
+        "student_id": "stu_85e563e9c9a2",
+        "week_start": "2026-03-02",
+        "hot": true
+      },
+      {
+        "run_id": "run_18590c28235e4c7aabd4459f401920ef",
+        "student_id": "stu_85e563e9c9a2",
+        "week_start": "2026-03-02",
+        "hot": true
+      },
+      {
+        "run_id": "run_6176fcf5f0d04548a78b27460b5635dd",
+        "student_id": "stu_85e563e9c9a2",
+        "week_start": "2026-03-02",
+        "hot": true
+      },
+      {
+        "run_id": "run_f958488cd99942f79ea81ed964a1e703",
+        "student_id": "stu_85e563e9c9a2",
+        "week_start": "2026-03-09",
+        "hot": true
+      },
+      {
+        "run_id": "run_a5281c066372430aa2481b810a43bc83",
+        "student_id": "stu_85e563e9c9a2",
+        "week_start": "2026-03-09",
+        "hot": true
+      },
+      {
+        "run_id": "run_0464f23ab3a94df6a64ff5d142482eff",
+        "student_id": "stu_85e563e9c9a2",
+        "week_start": "2026-03-09",
+        "hot": true
+      },
+      {
+        "run_id": "run_d5d15679d173493781ec612ffcc3b8af",
+        "student_id": "stu_8a0d7dbd48d5",
+        "week_start": "2026-03-02",
+        "hot": true
+      },
+      {
+        "run_id": "run_44c2e855b20d4829b0dbb2f3754363ef",
+        "student_id": "stu_8a0d7dbd48d5",
+        "week_start": "2026-03-02",
+        "hot": true
+      },
+      {
+        "run_id": "run_d13e5bcb3076455db4cd982115faa2aa",
+        "student_id": "stu_8a0d7dbd48d5",
+        "week_start": "2026-03-02",
+        "hot": true
+      },
+      {
+        "run_id": "run_d02af4d7526c4016a969e4806d6a3de1",
+        "student_id": "stu_8a0d7dbd48d5",
+        "week_start": "2026-03-09",
+        "hot": true
+      },
+      {
+        "run_id": "run_19ec42d5f62041068240510076555cc0",
+        "student_id": "stu_8a0d7dbd48d5",
+        "week_start": "2026-03-09",
+        "hot": true
+      },
+      {
+        "run_id": "run_8eaf89a4f91b48bd89fb6615265159ec",
+        "student_id": "stu_8a0d7dbd48d5",
+        "week_start": "2026-03-09",
+        "hot": true
+      },
+      {
+        "run_id": "run_c03db8a321f34ee68d434bf8007b9496",
+        "student_id": "stu_e71cf7e59178",
+        "week_start": "2026-03-02",
+        "hot": true
+      },
+      {
+        "run_id": "run_ffc90d5a934946b586c7757126a5cfe8",
+        "student_id": "stu_e71cf7e59178",
+        "week_start": "2026-03-02",
+        "hot": true
+      },
+      {
+        "run_id": "run_908bfe9d81634dfbb2b60ffdce11616d",
+        "student_id": "stu_e71cf7e59178",
+        "week_start": "2026-03-02",
+        "hot": true
+      },
+      {
+        "run_id": "run_bdf22eab228f464a883481f326323ab5",
+        "student_id": "stu_e71cf7e59178",
+        "week_start": "2026-03-09",
+        "hot": true
+      },
+      {
+        "run_id": "run_beedf39087624572926de07ac517b099",
+        "student_id": "stu_e71cf7e59178",
+        "week_start": "2026-03-09",
+        "hot": true
+      },
+      {
+        "run_id": "run_e0664f1d61874496865625fc0976fea1",
+        "student_id": "stu_e71cf7e59178",
+        "week_start": "2026-03-09",
+        "hot": true
+      },
+      {
+        "run_id": "run_167a9ff0cea54a62af5856a98ceaa7df",
+        "student_id": "stu_ab5040c64106",
+        "week_start": "2026-03-02",
+        "hot": true
+      },
+      {
+        "run_id": "run_00c5459077a04d4ab7ea7eb323158c6b",
+        "student_id": "stu_ab5040c64106",
+        "week_start": "2026-03-02",
+        "hot": true
+      },
+      {
+        "run_id": "run_d6177e5e04e448f98c0f4c1743363249",
+        "student_id": "stu_ab5040c64106",
+        "week_start": "2026-03-02",
+        "hot": true
+      },
+      {
+        "run_id": "run_37e55402dc8542268e442ab9ed28cb6a",
+        "student_id": "stu_ab5040c64106",
+        "week_start": "2026-03-09",
+        "hot": true
+      },
+      {
+        "run_id": "run_9b7fbdd21b704d6a929ed7990f6f4dd1",
+        "student_id": "stu_ab5040c64106",
+        "week_start": "2026-03-09",
+        "hot": true
+      },
+      {
+        "run_id": "run_b0998896e5a44cb3b813fcb895203cc8",
+        "student_id": "stu_ab5040c64106",
+        "week_start": "2026-03-09",
+        "hot": true
+      },
+      {
+        "run_id": "run_4c6e29aa5a324d329a2d0876fbf6e4f9",
+        "student_id": "stu_711a95f060b5",
+        "week_start": "2026-03-02",
+        "hot": true
+      },
+      {
+        "run_id": "run_ac8d3593b54641c88f93cedf436ad834",
+        "student_id": "stu_711a95f060b5",
+        "week_start": "2026-03-02",
+        "hot": true
+      },
+      {
+        "run_id": "run_b476cc5956bc40e8ac0fc73a56c30c2b",
+        "student_id": "stu_711a95f060b5",
+        "week_start": "2026-03-02",
+        "hot": true
+      },
+      {
+        "run_id": "run_3288079455f6419fada021da929d7ec6",
+        "student_id": "stu_711a95f060b5",
+        "week_start": "2026-03-09",
+        "hot": true
+      },
+      {
+        "run_id": "run_a8e1b23060334848a3acd856dd5f286c",
+        "student_id": "stu_711a95f060b5",
+        "week_start": "2026-03-09",
+        "hot": true
+      },
+      {
+        "run_id": "run_4f53a9ee1b4e4bfcba255c88f8732f6f",
+        "student_id": "stu_711a95f060b5",
+        "week_start": "2026-03-09",
+        "hot": true
+      },
+      {
+        "run_id": "run_d6613fd3b6074d6c8ddd9ed47173b759",
+        "student_id": "stu_6ffcad0805c2",
+        "week_start": "2026-03-02",
+        "hot": true
+      },
+      {
+        "run_id": "run_088aa67f62fa448e8d0b63ef4e541b59",
+        "student_id": "stu_6ffcad0805c2",
+        "week_start": "2026-03-02",
+        "hot": true
+      },
+      {
+        "run_id": "run_67cee16b3c004d8380c47fa53ae3ffc8",
+        "student_id": "stu_6ffcad0805c2",
+        "week_start": "2026-03-02",
+        "hot": true
+      },
+      {
+        "run_id": "run_5736d59380f0446ea0a991bce4f19705",
+        "student_id": "stu_6ffcad0805c2",
+        "week_start": "2026-03-09",
+        "hot": true
+      },
+      {
+        "run_id": "run_096c725aff164bf783d23622f2318f9a",
+        "student_id": "stu_6ffcad0805c2",
+        "week_start": "2026-03-09",
+        "hot": true
+      },
+      {
+        "run_id": "run_d87f921b563444b8927f3ef9ee2ec976",
+        "student_id": "stu_6ffcad0805c2",
+        "week_start": "2026-03-09",
+        "hot": true
+      },
+      {
+        "run_id": "run_ccc811922cfa4b8c8a04a85e05a36032",
+        "student_id": "stu_6cde2a3df6d4",
+        "week_start": "2026-03-02",
+        "hot": true
+      },
+      {
+        "run_id": "run_ca8aa23f597841dda54de6ba2b1ed463",
+        "student_id": "stu_6cde2a3df6d4",
+        "week_start": "2026-03-02",
+        "hot": true
+      },
+      {
+        "run_id": "run_ae3142f6d8174152b013b95de9577dce",
+        "student_id": "stu_6cde2a3df6d4",
+        "week_start": "2026-03-02",
+        "hot": true
+      },
+      {
+        "run_id": "run_9b2f0a51da474552b3118234f585ac5d",
+        "student_id": "stu_6cde2a3df6d4",
+        "week_start": "2026-03-09",
+        "hot": true
+      },
+      {
+        "run_id": "run_ceaaba5be88e4d44a004cf698f2564ab",
+        "student_id": "stu_6cde2a3df6d4",
+        "week_start": "2026-03-09",
+        "hot": true
+      },
+      {
+        "run_id": "run_79936a9836af431eb297251467853c6a",
+        "student_id": "stu_6cde2a3df6d4",
+        "week_start": "2026-03-09",
+        "hot": true
+      },
+      {
+        "run_id": "run_454c5dd0cbb54e2994b5366eca87dae8",
+        "student_id": "stu_04856be75999",
+        "week_start": "2026-03-02",
+        "hot": true
+      },
+      {
+        "run_id": "run_1544abae03c447558c859e7e95f3a0a9",
+        "student_id": "stu_04856be75999",
+        "week_start": "2026-03-02",
+        "hot": true
+      }
+    ],
+    "replay_targets_cold": [
+      {
+        "run_id": "run_be1677d02dc54abc8aa44404251f4abd",
+        "student_id": "stu_f8929ebb007f",
+        "week_start": "2026-01-19",
+        "hot": false
+      },
+      {
+        "run_id": "run_14fccbfa26b148e5bc5b278746a2e111",
+        "student_id": "stu_f8929ebb007f",
+        "week_start": "2026-01-19",
+        "hot": false
+      },
+      {
+        "run_id": "run_c3627530b7a1470f87e283d36c83eee5",
+        "student_id": "stu_f8929ebb007f",
+        "week_start": "2026-01-19",
+        "hot": false
+      },
+      {
+        "run_id": "run_0dbae5a37c104b2f959d96c166d25a50",
+        "student_id": "stu_f8929ebb007f",
+        "week_start": "2026-01-26",
+        "hot": false
+      },
+      {
+        "run_id": "run_7be579880b7a473ebf725ce5555c92fe",
+        "student_id": "stu_f8929ebb007f",
+        "week_start": "2026-01-26",
+        "hot": false
+      },
+      {
+        "run_id": "run_017ea498a13046bab3880a1f1b65e234",
+        "student_id": "stu_f8929ebb007f",
+        "week_start": "2026-01-26",
+        "hot": false
+      },
+      {
+        "run_id": "run_8321e357a49a4a06a3ef54fb43732433",
+        "student_id": "stu_f8929ebb007f",
+        "week_start": "2026-02-02",
+        "hot": false
+      },
+      {
+        "run_id": "run_399fae108b05451c857f48ce73cbff2f",
+        "student_id": "stu_f8929ebb007f",
+        "week_start": "2026-02-02",
+        "hot": false
+      },
+      {
+        "run_id": "run_497474edf41545c3b01fa8a7177f05b4",
+        "student_id": "stu_f8929ebb007f",
+        "week_start": "2026-02-02",
+        "hot": false
+      },
+      {
+        "run_id": "run_9fae612768ba43dabe5ed10316a36e53",
+        "student_id": "stu_f8929ebb007f",
+        "week_start": "2026-02-09",
+        "hot": false
+      },
+      {
+        "run_id": "run_8c8d5dc5e4ef4c33bff25a9e034753d4",
+        "student_id": "stu_f8929ebb007f",
+        "week_start": "2026-02-09",
+        "hot": false
+      },
+      {
+        "run_id": "run_2d72280d713441deb9d449b24a5792ff",
+        "student_id": "stu_f8929ebb007f",
+        "week_start": "2026-02-09",
+        "hot": false
+      },
+      {
+        "run_id": "run_5bc1a7c92d4a4571a6cd9c471bbc0115",
+        "student_id": "stu_f8929ebb007f",
+        "week_start": "2026-02-16",
+        "hot": false
+      },
+      {
+        "run_id": "run_bef742cd89f64799b8850d26ad8c2ed2",
+        "student_id": "stu_f8929ebb007f",
+        "week_start": "2026-02-16",
+        "hot": false
+      },
+      {
+        "run_id": "run_1fb4dcd683804bd89fa1b89bf3eb1128",
+        "student_id": "stu_f8929ebb007f",
+        "week_start": "2026-02-16",
+        "hot": false
+      },
+      {
+        "run_id": "run_0f3d87054cbb409a9089533afe533fb0",
+        "student_id": "stu_f8929ebb007f",
+        "week_start": "2026-02-23",
+        "hot": false
+      },
+      {
+        "run_id": "run_98768383a8c6420b812f86f7106f728f",
+        "student_id": "stu_f8929ebb007f",
+        "week_start": "2026-02-23",
+        "hot": false
+      },
+      {
+        "run_id": "run_4fb6f39ee8ea45f68de996ad200c1b47",
+        "student_id": "stu_f8929ebb007f",
+        "week_start": "2026-02-23",
+        "hot": false
+      },
+      {
+        "run_id": "run_a8d583cae88f430e9f916db300344950",
+        "student_id": "stu_85e563e9c9a2",
+        "week_start": "2026-01-19",
+        "hot": false
+      },
+      {
+        "run_id": "run_c36f78d9d1c1473abbf04d49518ebe24",
+        "student_id": "stu_85e563e9c9a2",
+        "week_start": "2026-01-19",
+        "hot": false
+      },
+      {
+        "run_id": "run_a754a848943c44e9ad19e38b7b0c4ccb",
+        "student_id": "stu_85e563e9c9a2",
+        "week_start": "2026-01-19",
+        "hot": false
+      },
+      {
+        "run_id": "run_9e7a6d03809e45699cda814f52137dc0",
+        "student_id": "stu_85e563e9c9a2",
+        "week_start": "2026-01-26",
+        "hot": false
+      },
+      {
+        "run_id": "run_4f3c6759b3bb434f9a1bfe322e141e5d",
+        "student_id": "stu_85e563e9c9a2",
+        "week_start": "2026-01-26",
+        "hot": false
+      },
+      {
+        "run_id": "run_7d54380af21848408c59089577fe6000",
+        "student_id": "stu_85e563e9c9a2",
+        "week_start": "2026-01-26",
+        "hot": false
+      },
+      {
+        "run_id": "run_96ff99c637d3429589d89d96b6add045",
+        "student_id": "stu_85e563e9c9a2",
+        "week_start": "2026-02-02",
+        "hot": false
+      },
+      {
+        "run_id": "run_d80f99d792c043c19c6bfdb1258edc4a",
+        "student_id": "stu_85e563e9c9a2",
+        "week_start": "2026-02-02",
+        "hot": false
+      },
+      {
+        "run_id": "run_35049d2ef55b485da285fade5786f3b7",
+        "student_id": "stu_85e563e9c9a2",
+        "week_start": "2026-02-02",
+        "hot": false
+      },
+      {
+        "run_id": "run_9d91e73ac7074ef296b0b8d9116f4f06",
+        "student_id": "stu_85e563e9c9a2",
+        "week_start": "2026-02-09",
+        "hot": false
+      },
+      {
+        "run_id": "run_fce0c78f384b48bfa0e9e048b3fe4536",
+        "student_id": "stu_85e563e9c9a2",
+        "week_start": "2026-02-09",
+        "hot": false
+      },
+      {
+        "run_id": "run_c3fb3f5cc8204163bbe44475de81cdfc",
+        "student_id": "stu_85e563e9c9a2",
+        "week_start": "2026-02-09",
+        "hot": false
+      },
+      {
+        "run_id": "run_05add53bc7a5486f98c0aeb592800da8",
+        "student_id": "stu_85e563e9c9a2",
+        "week_start": "2026-02-16",
+        "hot": false
+      },
+      {
+        "run_id": "run_e5f758f1831244019b25da2db8c8071a",
+        "student_id": "stu_85e563e9c9a2",
+        "week_start": "2026-02-16",
+        "hot": false
+      },
+      {
+        "run_id": "run_2ffe9c5560a34b189f5e4d85c8385724",
+        "student_id": "stu_85e563e9c9a2",
+        "week_start": "2026-02-16",
+        "hot": false
+      },
+      {
+        "run_id": "run_90ebc041402843a1af18f947f5e6920f",
+        "student_id": "stu_85e563e9c9a2",
+        "week_start": "2026-02-23",
+        "hot": false
+      },
+      {
+        "run_id": "run_23eff17d731843879c0063751ab059f3",
+        "student_id": "stu_85e563e9c9a2",
+        "week_start": "2026-02-23",
+        "hot": false
+      },
+      {
+        "run_id": "run_759c1d68d380450ba38399307de47576",
+        "student_id": "stu_85e563e9c9a2",
+        "week_start": "2026-02-23",
+        "hot": false
+      },
+      {
+        "run_id": "run_3fd4f7c473ae492888d3d62bc7e3958a",
+        "student_id": "stu_8a0d7dbd48d5",
+        "week_start": "2026-01-19",
+        "hot": false
+      },
+      {
+        "run_id": "run_f981d6d6fe944158a1a126222a476b4e",
+        "student_id": "stu_8a0d7dbd48d5",
+        "week_start": "2026-01-19",
+        "hot": false
+      },
+      {
+        "run_id": "run_19e2b70d6b4842558366dbcf3b1f99aa",
+        "student_id": "stu_8a0d7dbd48d5",
+        "week_start": "2026-01-19",
+        "hot": false
+      },
+      {
+        "run_id": "run_d6b0d83736774c1586856003e40b744b",
+        "student_id": "stu_8a0d7dbd48d5",
+        "week_start": "2026-01-26",
+        "hot": false
+      },
+      {
+        "run_id": "run_a8990dc9c301462fa6a54a0f77011da6",
+        "student_id": "stu_8a0d7dbd48d5",
+        "week_start": "2026-01-26",
+        "hot": false
+      },
+      {
+        "run_id": "run_4b1afb71c33a4f1189913b394653e72b",
+        "student_id": "stu_8a0d7dbd48d5",
+        "week_start": "2026-01-26",
+        "hot": false
+      },
+      {
+        "run_id": "run_28f899aa803a47be89edc29b74e3171e",
+        "student_id": "stu_8a0d7dbd48d5",
+        "week_start": "2026-02-02",
+        "hot": false
+      },
+      {
+        "run_id": "run_0ec71e4378174e2aa8775d3bd68e27ea",
+        "student_id": "stu_8a0d7dbd48d5",
+        "week_start": "2026-02-02",
+        "hot": false
+      },
+      {
+        "run_id": "run_b3a3adb55c5d43d4a05117b146ebb4b0",
+        "student_id": "stu_8a0d7dbd48d5",
+        "week_start": "2026-02-02",
+        "hot": false
+      },
+      {
+        "run_id": "run_05ada1570c77443ab715f784be207fbb",
+        "student_id": "stu_8a0d7dbd48d5",
+        "week_start": "2026-02-09",
+        "hot": false
+      },
+      {
+        "run_id": "run_7893fa938dea4278984f6f784c015863",
+        "student_id": "stu_8a0d7dbd48d5",
+        "week_start": "2026-02-09",
+        "hot": false
+      },
+      {
+        "run_id": "run_55dac80642cc42eba83196ec893694e1",
+        "student_id": "stu_8a0d7dbd48d5",
+        "week_start": "2026-02-09",
+        "hot": false
+      },
+      {
+        "run_id": "run_dd2b46616148469e94578fd5a8d21844",
+        "student_id": "stu_8a0d7dbd48d5",
+        "week_start": "2026-02-16",
+        "hot": false
+      },
+      {
+        "run_id": "run_235854fed18f4c43975105eb10f14631",
+        "student_id": "stu_8a0d7dbd48d5",
+        "week_start": "2026-02-16",
+        "hot": false
+      }
+    ],
+    "teacher_targets": [
+      {
+        "teacher_id": "tch_8a899523422d",
+        "username": "benchmark_teacher_1",
+        "classroom_id": "cls_f157cbd6e638",
+        "classroom_key": "BMK-0101"
+      }
+    ],
+    "dashboard_filter_targets": [
+      {
+        "classroom_id": "cls_f157cbd6e638",
+        "classroom_key": "BMK-0101",
+        "teacher_id": "tch_8a899523422d",
+        "grade": 2
+      },
+      {
+        "classroom_id": "cls_4730f81fbf98",
+        "classroom_key": "BMK-0102",
+        "teacher_id": "tch_8a899523422d",
+        "grade": 3
+      },
+      {
+        "classroom_id": "cls_a81df9e17264",
+        "classroom_key": "BMK-0103",
+        "teacher_id": "tch_8a899523422d",
+        "grade": 4
+      }
+    ],
+    "classrooms": [
+      {
+        "classroom_id": "cls_f157cbd6e638",
+        "classroom_key": "BMK-0101",
+        "teacher_id": "tch_8a899523422d",
+        "grade": 2
+      },
+      {
+        "classroom_id": "cls_4730f81fbf98",
+        "classroom_key": "BMK-0102",
+        "teacher_id": "tch_8a899523422d",
+        "grade": 3
+      },
+      {
+        "classroom_id": "cls_a81df9e17264",
+        "classroom_key": "BMK-0103",
+        "teacher_id": "tch_8a899523422d",
+        "grade": 4
+      }
+    ]
+  },
+  "pre_benchmark": {
+    "scenario_name": "realistic_school_day_pre",
+    "teacher_id": "tch_8a899523422d",
+    "iterations": 5,
+    "student_count": 60,
+    "classroom_count": 3,
+    "measurements_ms": {
+      "analytics_payload": {
+        "count": 5,
+        "avg": 43.67,
+        "p50": 32.67,
+        "p95": 103.84,
+        "p99": 112.5,
+        "min": 32.09,
+        "max": 78.6
+      },
+      "turn_insights_payload": {
+        "count": 5,
+        "avg": 53.23,
+        "p50": 49.06,
+        "p95": 90.92,
+        "p99": 95.99,
+        "min": 42.9,
+        "max": 76.13
+      },
+      "student_dashboard_summaries": {
+        "count": 5,
+        "avg": 293.23,
+        "p50": 293.71,
+        "p95": 306.26,
+        "p99": 307.98,
+        "min": 286.67,
+        "max": 301.23
+      },
+      "classroom_dashboard_summaries": {
+        "count": 5,
+        "avg": 9.33,
+        "p50": 8.51,
+        "p95": 16.82,
+        "p99": 17.97,
+        "min": 7.93,
+        "max": 13.49
+      }
+    },
+    "table_sizes_bytes": {
+      "digitmileapi_run": 5283840,
+      "digitmileapi_turnevent": 39108608,
+      "digitmileapi_specialtiletrigger": 1245184,
+      "digitmileapi_studentweekstats": 491520,
+      "digitmileapi_studentweeklevelstats": 802816,
+      "digitmileapi_studentweekcardtypestats": 2555904,
+      "digitmileapi_studentrunbuckettrend": 581632,
+      "digitmileapi_classroomweekstats": 155648,
+      "digitmileapi_replayarchive": 1024000
+    },
+    "archive_directory_size_bytes": 1810219,
+    "archive_totals": {
+      "compressed_size_bytes": 1810219,
+      "uncompressed_size_bytes": 21903973
+    }
+  },
+  "docker_stats_before": [
+    {
+      "BlockIO": "0B / 7.09MB",
+      "CPUPerc": "47.35%",
+      "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+      "ID": "7d99225d2b6a",
+      "MemPerc": "4.83%",
+      "MemUsage": "189.3MiB / 3.824GiB",
+      "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+      "NetIO": "83.5MB / 49MB",
+      "PIDs": "8"
+    },
+    {
+      "BlockIO": "4.1kB / 319MB",
+      "CPUPerc": "6.44%",
+      "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+      "ID": "75c081f863ac",
+      "MemPerc": "2.64%",
+      "MemUsage": "103.4MiB / 3.824GiB",
+      "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+      "NetIO": "49MB / 83.5MB",
+      "PIDs": "6"
+    },
+    {
+      "BlockIO": "0B / 0B",
+      "CPUPerc": "5.68%",
+      "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+      "ID": "a7d547442049",
+      "MemPerc": "0.08%",
+      "MemUsage": "3.211MiB / 3.824GiB",
+      "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+      "NetIO": "238kB / 91.9kB",
+      "PIDs": "6"
+    },
+    {
+      "BlockIO": "0B / 0B",
+      "CPUPerc": "0.34%",
+      "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+      "ID": "2f0c0dddbdcb",
+      "MemPerc": "1.39%",
+      "MemUsage": "54.28MiB / 3.824GiB",
+      "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+      "NetIO": "90.4kB / 230kB",
+      "PIDs": "1"
+    }
+  ],
+  "k6_summaries": [
+    {
+      "script": "mixed_weekly_cycle.js",
+      "summary_path": "/var/www/digitmile/benchmarks/reports/no_pgbouncer/realistic_school_day_artifacts/mixed_weekly_cycle_summary.json",
+      "highlights": {
+        "http_req_duration": {
+          "med": 30.993759500000003,
+          "max": 1191.149156,
+          "p(90)": 79.18185940000001,
+          "p(95)": 98.13704124999998,
+          "avg": 46.67111890748892,
+          "min": 8.234595
+        },
+        "http_req_failed": {
+          "fails": 908,
+          "passes": 0,
+          "value": 0
+        },
+        "http_reqs": {
+          "count": 908,
+          "rate": 4.986620888823635
+        },
+        "dropped_iterations": {},
+        "iterations": {
+          "count": 905,
+          "rate": 4.970145269146905
+        },
+        "vus_max": {
+          "max": 14,
+          "value": 14,
+          "min": 14
+        }
+      },
+      "checks": {
+        "passes": 905,
+        "fails": 0,
+        "by_check": {
+          "mixed open-week ingest accepted": {
+            "passes": 181,
+            "fails": 0
+          },
+          "mixed replay ok": {
+            "passes": 181,
+            "fails": 0
+          },
+          "mixed turn insights ok": {
+            "passes": 181,
+            "fails": 0
+          },
+          "mixed analytics ok": {
+            "passes": 181,
+            "fails": 0
+          },
+          "mixed dashboard ok": {
+            "passes": 181,
+            "fails": 0
+          }
+        }
+      },
+      "load_health": {
+        "status": "green",
+        "note": "Server handled this load without drops or failures. Latency numbers reflect the true cost of each request.",
+        "dropped_iterations": 0,
+        "completed_iterations": 905,
+        "total_attempted": 905,
+        "drop_rate": 0.0,
+        "check_passes": 905,
+        "check_fails": 0,
+        "check_fail_rate": 0.0
+      },
+      "resource_summary": {
+        "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+          "sample_count": 20,
+          "cpu_percent_peak": 56.5,
+          "memory_usage_bytes_peak": 320444825.6,
+          "memory_percent_peak": 7.81,
+          "cpu_percent_avg": 18.47,
+          "memory_usage_bytes_avg": 304370155.52
+        },
+        "digitmile-bench-realistic-school-day-benchmark-db-1": {
+          "sample_count": 20,
+          "cpu_percent_peak": 7.98,
+          "memory_usage_bytes_peak": 131176857.6,
+          "memory_percent_peak": 3.19,
+          "cpu_percent_avg": 3.13,
+          "memory_usage_bytes_avg": 126112235.52
+        },
+        "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+          "sample_count": 20,
+          "cpu_percent_peak": 0.74,
+          "memory_usage_bytes_peak": 5435817.98,
+          "memory_percent_peak": 0.13,
+          "cpu_percent_avg": 0.67,
+          "memory_usage_bytes_avg": 5081661.44
+        },
+        "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+          "sample_count": 20,
+          "cpu_percent_peak": 2.75,
+          "memory_usage_bytes_peak": 61949870.08,
+          "memory_percent_peak": 1.51,
+          "cpu_percent_avg": 1.61,
+          "memory_usage_bytes_avg": 59303264.26
+        }
+      },
+      "runtime_docker_stats": [
+        {
+          "timestamp": "2026-05-14T04:37:07.195873+00:00",
+          "elapsed_seconds": 1.6,
+          "containers": {
+            "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+              "cpu_percent": 0.03,
+              "memory_percent": 4.83,
+              "memory_usage_bytes": 198495436.8,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 8,
+              "raw": {
+                "BlockIO": "0B / 7.09MB",
+                "CPUPerc": "0.03%",
+                "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+                "ID": "7d99225d2b6a",
+                "MemPerc": "4.83%",
+                "MemUsage": "189.3MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+                "NetIO": "83.5MB / 49MB",
+                "PIDs": "8"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-db-1": {
+              "cpu_percent": 0.03,
+              "memory_percent": 2.64,
+              "memory_usage_bytes": 108422758.4,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 6,
+              "raw": {
+                "BlockIO": "4.1kB / 320MB",
+                "CPUPerc": "0.03%",
+                "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+                "ID": "75c081f863ac",
+                "MemPerc": "2.64%",
+                "MemUsage": "103.4MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+                "NetIO": "49MB / 83.5MB",
+                "PIDs": "6"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+              "cpu_percent": 0.57,
+              "memory_percent": 0.08,
+              "memory_usage_bytes": 3386900.48,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 6,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "0.57%",
+                "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+                "ID": "a7d547442049",
+                "MemPerc": "0.08%",
+                "MemUsage": "3.23MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+                "NetIO": "243kB / 93.9kB",
+                "PIDs": "6"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+              "cpu_percent": 0.41,
+              "memory_percent": 1.39,
+              "memory_usage_bytes": 56916705.28,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 1,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "0.41%",
+                "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+                "ID": "2f0c0dddbdcb",
+                "MemPerc": "1.39%",
+                "MemUsage": "54.28MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+                "NetIO": "93.5kB / 238kB",
+                "PIDs": "1"
+              }
+            }
+          }
+        },
+        {
+          "timestamp": "2026-05-14T04:37:17.767754+00:00",
+          "elapsed_seconds": 12.17,
+          "containers": {
+            "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+              "cpu_percent": 16.99,
+              "memory_percent": 7.28,
+              "memory_usage_bytes": 298739302.4,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 8,
+              "raw": {
+                "BlockIO": "0B / 7.09MB",
+                "CPUPerc": "16.99%",
+                "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+                "ID": "7d99225d2b6a",
+                "MemPerc": "7.28%",
+                "MemUsage": "284.9MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+                "NetIO": "84.9MB / 53.7MB",
+                "PIDs": "8"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-db-1": {
+              "cpu_percent": 5.5,
+              "memory_percent": 3.12,
+              "memory_usage_bytes": 128240844.8,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 12,
+              "raw": {
+                "BlockIO": "4.1kB / 321MB",
+                "CPUPerc": "5.50%",
+                "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+                "ID": "75c081f863ac",
+                "MemPerc": "3.12%",
+                "MemUsage": "122.3MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+                "NetIO": "49.4MB / 84.6MB",
+                "PIDs": "12"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+              "cpu_percent": 0.7,
+              "memory_percent": 0.11,
+              "memory_usage_bytes": 4321181.7,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 6,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "0.70%",
+                "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+                "ID": "a7d547442049",
+                "MemPerc": "0.11%",
+                "MemUsage": "4.121MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+                "NetIO": "791kB / 385kB",
+                "PIDs": "6"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+              "cpu_percent": 1.53,
+              "memory_percent": 1.39,
+              "memory_usage_bytes": 57000591.36,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 1,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "1.53%",
+                "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+                "ID": "2f0c0dddbdcb",
+                "MemPerc": "1.39%",
+                "MemUsage": "54.36MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+                "NetIO": "247kB / 446kB",
+                "PIDs": "1"
+              }
+            }
+          }
+        },
+        {
+          "timestamp": "2026-05-14T04:37:27.837175+00:00",
+          "elapsed_seconds": 22.24,
+          "containers": {
+            "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+              "cpu_percent": 35.64,
+              "memory_percent": 7.64,
+              "memory_usage_bytes": 313524224.0,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 9,
+              "raw": {
+                "BlockIO": "0B / 7.87MB",
+                "CPUPerc": "35.64%",
+                "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+                "ID": "7d99225d2b6a",
+                "MemPerc": "7.64%",
+                "MemUsage": "299MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+                "NetIO": "86.3MB / 60.6MB",
+                "PIDs": "9"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-db-1": {
+              "cpu_percent": 2.28,
+              "memory_percent": 3.16,
+              "memory_usage_bytes": 129813708.8,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 12,
+              "raw": {
+                "BlockIO": "4.1kB / 323MB",
+                "CPUPerc": "2.28%",
+                "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+                "ID": "75c081f863ac",
+                "MemPerc": "3.16%",
+                "MemUsage": "123.8MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+                "NetIO": "49.8MB / 85MB",
+                "PIDs": "12"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+              "cpu_percent": 0.69,
+              "memory_percent": 0.12,
+              "memory_usage_bytes": 4791992.32,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 6,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "0.69%",
+                "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+                "ID": "a7d547442049",
+                "MemPerc": "0.12%",
+                "MemUsage": "4.57MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+                "NetIO": "1.25MB / 1.54MB",
+                "PIDs": "6"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+              "cpu_percent": 1.6,
+              "memory_percent": 1.39,
+              "memory_usage_bytes": 57011077.12,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 1,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "1.60%",
+                "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+                "ID": "2f0c0dddbdcb",
+                "MemPerc": "1.39%",
+                "MemUsage": "54.37MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+                "NetIO": "427kB / 691kB",
+                "PIDs": "1"
+              }
+            }
+          }
+        },
+        {
+          "timestamp": "2026-05-14T04:37:37.937214+00:00",
+          "elapsed_seconds": 32.34,
+          "containers": {
+            "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+              "cpu_percent": 42.41,
+              "memory_percent": 7.71,
+              "memory_usage_bytes": 316565094.4,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 9,
+              "raw": {
+                "BlockIO": "0B / 7.87MB",
+                "CPUPerc": "42.41%",
+                "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+                "ID": "7d99225d2b6a",
+                "MemPerc": "7.71%",
+                "MemUsage": "301.9MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+                "NetIO": "88.3MB / 68.7MB",
+                "PIDs": "9"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-db-1": {
+              "cpu_percent": 2.25,
+              "memory_percent": 3.17,
+              "memory_usage_bytes": 130233139.2,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 12,
+              "raw": {
+                "BlockIO": "4.1kB / 324MB",
+                "CPUPerc": "2.25%",
+                "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+                "ID": "75c081f863ac",
+                "MemPerc": "3.17%",
+                "MemUsage": "124.2MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+                "NetIO": "50.1MB / 85.3MB",
+                "PIDs": "12"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+              "cpu_percent": 0.72,
+              "memory_percent": 0.12,
+              "memory_usage_bytes": 5001707.52,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 6,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "0.72%",
+                "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+                "ID": "a7d547442049",
+                "MemPerc": "0.12%",
+                "MemUsage": "4.77MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+                "NetIO": "1.56MB / 2.89MB",
+                "PIDs": "6"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+              "cpu_percent": 1.74,
+              "memory_percent": 1.4,
+              "memory_usage_bytes": 57283706.88,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 1,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "1.74%",
+                "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+                "ID": "2f0c0dddbdcb",
+                "MemPerc": "1.40%",
+                "MemUsage": "54.63MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+                "NetIO": "661kB / 1MB",
+                "PIDs": "1"
+              }
+            }
+          }
+        },
+        {
+          "timestamp": "2026-05-14T04:37:48.017342+00:00",
+          "elapsed_seconds": 42.42,
+          "containers": {
+            "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+              "cpu_percent": 8.8,
+              "memory_percent": 7.46,
+              "memory_usage_bytes": 306498764.8,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 8,
+              "raw": {
+                "BlockIO": "0B / 7.87MB",
+                "CPUPerc": "8.80%",
+                "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+                "ID": "7d99225d2b6a",
+                "MemPerc": "7.46%",
+                "MemUsage": "292.3MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+                "NetIO": "89.9MB / 76.4MB",
+                "PIDs": "8"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-db-1": {
+              "cpu_percent": 2.33,
+              "memory_percent": 3.18,
+              "memory_usage_bytes": 130442854.4,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 12,
+              "raw": {
+                "BlockIO": "4.1kB / 325MB",
+                "CPUPerc": "2.33%",
+                "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+                "ID": "75c081f863ac",
+                "MemPerc": "3.18%",
+                "MemUsage": "124.4MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+                "NetIO": "50.6MB / 85.8MB",
+                "PIDs": "12"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+              "cpu_percent": 0.67,
+              "memory_percent": 0.13,
+              "memory_usage_bytes": 5230297.09,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 6,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "0.67%",
+                "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+                "ID": "a7d547442049",
+                "MemPerc": "0.13%",
+                "MemUsage": "4.988MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+                "NetIO": "1.89MB / 4.1MB",
+                "PIDs": "6"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+              "cpu_percent": 2.75,
+              "memory_percent": 1.4,
+              "memory_usage_bytes": 57545850.88,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 1,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "2.75%",
+                "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+                "ID": "2f0c0dddbdcb",
+                "MemPerc": "1.40%",
+                "MemUsage": "54.88MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+                "NetIO": "863kB / 1.28MB",
+                "PIDs": "1"
+              }
+            }
+          }
+        },
+        {
+          "timestamp": "2026-05-14T04:37:58.082203+00:00",
+          "elapsed_seconds": 52.49,
+          "containers": {
+            "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+              "cpu_percent": 7.13,
+              "memory_percent": 7.53,
+              "memory_usage_bytes": 309120204.8,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 8,
+              "raw": {
+                "BlockIO": "0B / 7.87MB",
+                "CPUPerc": "7.13%",
+                "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+                "ID": "7d99225d2b6a",
+                "MemPerc": "7.53%",
+                "MemUsage": "294.8MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+                "NetIO": "91.1MB / 81.8MB",
+                "PIDs": "8"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-db-1": {
+              "cpu_percent": 2.07,
+              "memory_percent": 3.19,
+              "memory_usage_bytes": 131072000.0,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 12,
+              "raw": {
+                "BlockIO": "4.1kB / 342MB",
+                "CPUPerc": "2.07%",
+                "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+                "ID": "75c081f863ac",
+                "MemPerc": "3.19%",
+                "MemUsage": "125MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+                "NetIO": "50.9MB / 86MB",
+                "PIDs": "12"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+              "cpu_percent": 0.69,
+              "memory_percent": 0.13,
+              "memory_usage_bytes": 5185208.32,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 6,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "0.69%",
+                "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+                "ID": "a7d547442049",
+                "MemPerc": "0.13%",
+                "MemUsage": "4.945MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+                "NetIO": "2.11MB / 5.22MB",
+                "PIDs": "6"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+              "cpu_percent": 1.55,
+              "memory_percent": 1.41,
+              "memory_usage_bytes": 57839452.16,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 1,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "1.55%",
+                "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+                "ID": "2f0c0dddbdcb",
+                "MemPerc": "1.41%",
+                "MemUsage": "55.16MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+                "NetIO": "1.07MB / 1.56MB",
+                "PIDs": "1"
+              }
+            }
+          }
+        },
+        {
+          "timestamp": "2026-05-14T04:38:08.147980+00:00",
+          "elapsed_seconds": 62.56,
+          "containers": {
+            "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+              "cpu_percent": 9.09,
+              "memory_percent": 7.5,
+              "memory_usage_bytes": 308071628.8,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 8,
+              "raw": {
+                "BlockIO": "0B / 7.87MB",
+                "CPUPerc": "9.09%",
+                "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+                "ID": "7d99225d2b6a",
+                "MemPerc": "7.50%",
+                "MemUsage": "293.8MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+                "NetIO": "92.9MB / 89.7MB",
+                "PIDs": "8"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-db-1": {
+              "cpu_percent": 2.22,
+              "memory_percent": 3.19,
+              "memory_usage_bytes": 131176857.6,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 12,
+              "raw": {
+                "BlockIO": "4.1kB / 343MB",
+                "CPUPerc": "2.22%",
+                "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+                "ID": "75c081f863ac",
+                "MemPerc": "3.19%",
+                "MemUsage": "125.1MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+                "NetIO": "51.3MB / 86.5MB",
+                "PIDs": "12"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+              "cpu_percent": 0.67,
+              "memory_percent": 0.13,
+              "memory_usage_bytes": 5373952.0,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 6,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "0.67%",
+                "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+                "ID": "a7d547442049",
+                "MemPerc": "0.13%",
+                "MemUsage": "5.125MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+                "NetIO": "2.45MB / 6.34MB",
+                "PIDs": "6"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+              "cpu_percent": 1.76,
+              "memory_percent": 1.42,
+              "memory_usage_bytes": 58174996.48,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 1,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "1.76%",
+                "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+                "ID": "2f0c0dddbdcb",
+                "MemPerc": "1.42%",
+                "MemUsage": "55.48MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+                "NetIO": "1.29MB / 1.84MB",
+                "PIDs": "1"
+              }
+            }
+          }
+        },
+        {
+          "timestamp": "2026-05-14T04:38:18.216174+00:00",
+          "elapsed_seconds": 72.62,
+          "containers": {
+            "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+              "cpu_percent": 9.11,
+              "memory_percent": 7.5,
+              "memory_usage_bytes": 307966771.2,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 8,
+              "raw": {
+                "BlockIO": "0B / 7.87MB",
+                "CPUPerc": "9.11%",
+                "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+                "ID": "7d99225d2b6a",
+                "MemPerc": "7.50%",
+                "MemUsage": "293.7MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+                "NetIO": "94.5MB / 97MB",
+                "PIDs": "8"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-db-1": {
+              "cpu_percent": 4.66,
+              "memory_percent": 3.04,
+              "memory_usage_bytes": 124675686.4,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 12,
+              "raw": {
+                "BlockIO": "4.1kB / 343MB",
+                "CPUPerc": "4.66%",
+                "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+                "ID": "75c081f863ac",
+                "MemPerc": "3.04%",
+                "MemUsage": "118.9MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+                "NetIO": "51.7MB / 86.7MB",
+                "PIDs": "12"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+              "cpu_percent": 0.66,
+              "memory_percent": 0.13,
+              "memory_usage_bytes": 5271191.55,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 6,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "0.66%",
+                "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+                "ID": "a7d547442049",
+                "MemPerc": "0.13%",
+                "MemUsage": "5.027MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+                "NetIO": "2.67MB / 7.73MB",
+                "PIDs": "6"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+              "cpu_percent": 1.72,
+              "memory_percent": 1.43,
+              "memory_usage_bytes": 58510540.8,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 1,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "1.72%",
+                "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+                "ID": "2f0c0dddbdcb",
+                "MemPerc": "1.43%",
+                "MemUsage": "55.8MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+                "NetIO": "1.51MB / 2.13MB",
+                "PIDs": "1"
+              }
+            }
+          }
+        },
+        {
+          "timestamp": "2026-05-14T04:38:28.283488+00:00",
+          "elapsed_seconds": 82.69,
+          "containers": {
+            "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+              "cpu_percent": 53.15,
+              "memory_percent": 7.55,
+              "memory_usage_bytes": 310063923.2,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 8,
+              "raw": {
+                "BlockIO": "0B / 7.87MB",
+                "CPUPerc": "53.15%",
+                "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+                "ID": "7d99225d2b6a",
+                "MemPerc": "7.55%",
+                "MemUsage": "295.7MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+                "NetIO": "96MB / 103MB",
+                "PIDs": "8"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-db-1": {
+              "cpu_percent": 2.25,
+              "memory_percent": 3.05,
+              "memory_usage_bytes": 125304832.0,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 12,
+              "raw": {
+                "BlockIO": "4.1kB / 344MB",
+                "CPUPerc": "2.25%",
+                "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+                "ID": "75c081f863ac",
+                "MemPerc": "3.05%",
+                "MemUsage": "119.5MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+                "NetIO": "52MB / 86.9MB",
+                "PIDs": "12"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+              "cpu_percent": 0.69,
+              "memory_percent": 0.13,
+              "memory_usage_bytes": 5283774.46,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 6,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "0.69%",
+                "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+                "ID": "a7d547442049",
+                "MemPerc": "0.13%",
+                "MemUsage": "5.039MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+                "NetIO": "2.89MB / 8.95MB",
+                "PIDs": "6"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+              "cpu_percent": 1.63,
+              "memory_percent": 1.43,
+              "memory_usage_bytes": 58772684.8,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 1,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "1.63%",
+                "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+                "ID": "2f0c0dddbdcb",
+                "MemPerc": "1.43%",
+                "MemUsage": "56.05MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+                "NetIO": "1.72MB / 2.42MB",
+                "PIDs": "1"
+              }
+            }
+          }
+        },
+        {
+          "timestamp": "2026-05-14T04:38:38.349016+00:00",
+          "elapsed_seconds": 92.76,
+          "containers": {
+            "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+              "cpu_percent": 6.97,
+              "memory_percent": 7.48,
+              "memory_usage_bytes": 307127910.4,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 8,
+              "raw": {
+                "BlockIO": "0B / 7.87MB",
+                "CPUPerc": "6.97%",
+                "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+                "ID": "7d99225d2b6a",
+                "MemPerc": "7.48%",
+                "MemUsage": "292.9MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+                "NetIO": "97.6MB / 111MB",
+                "PIDs": "8"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-db-1": {
+              "cpu_percent": 2.23,
+              "memory_percent": 3.06,
+              "memory_usage_bytes": 125724262.4,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 12,
+              "raw": {
+                "BlockIO": "4.1kB / 344MB",
+                "CPUPerc": "2.23%",
+                "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+                "ID": "75c081f863ac",
+                "MemPerc": "3.06%",
+                "MemUsage": "119.9MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+                "NetIO": "52.4MB / 87.2MB",
+                "PIDs": "12"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+              "cpu_percent": 0.65,
+              "memory_percent": 0.13,
+              "memory_usage_bytes": 5247074.3,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 6,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "0.65%",
+                "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+                "ID": "a7d547442049",
+                "MemPerc": "0.13%",
+                "MemUsage": "5.004MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+                "NetIO": "3.1MB / 10.2MB",
+                "PIDs": "6"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+              "cpu_percent": 1.71,
+              "memory_percent": 1.44,
+              "memory_usage_bytes": 59118714.88,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 1,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "1.71%",
+                "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+                "ID": "2f0c0dddbdcb",
+                "MemPerc": "1.44%",
+                "MemUsage": "56.38MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+                "NetIO": "1.94MB / 2.7MB",
+                "PIDs": "1"
+              }
+            }
+          }
+        },
+        {
+          "timestamp": "2026-05-14T04:38:48.417874+00:00",
+          "elapsed_seconds": 102.82,
+          "containers": {
+            "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+              "cpu_percent": 9.32,
+              "memory_percent": 7.52,
+              "memory_usage_bytes": 308910489.6,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 8,
+              "raw": {
+                "BlockIO": "0B / 7.87MB",
+                "CPUPerc": "9.32%",
+                "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+                "ID": "7d99225d2b6a",
+                "MemPerc": "7.52%",
+                "MemUsage": "294.6MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+                "NetIO": "98.8MB / 117MB",
+                "PIDs": "8"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-db-1": {
+              "cpu_percent": 2.32,
+              "memory_percent": 3.06,
+              "memory_usage_bytes": 125829120.0,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 12,
+              "raw": {
+                "BlockIO": "4.1kB / 345MB",
+                "CPUPerc": "2.32%",
+                "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+                "ID": "75c081f863ac",
+                "MemPerc": "3.06%",
+                "MemUsage": "120MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+                "NetIO": "52.7MB / 87.4MB",
+                "PIDs": "12"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+              "cpu_percent": 0.71,
+              "memory_percent": 0.13,
+              "memory_usage_bytes": 5312086.02,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 6,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "0.71%",
+                "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+                "ID": "a7d547442049",
+                "MemPerc": "0.13%",
+                "MemUsage": "5.066MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+                "NetIO": "3.33MB / 11.4MB",
+                "PIDs": "6"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+              "cpu_percent": 1.64,
+              "memory_percent": 1.45,
+              "memory_usage_bytes": 59454259.2,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 1,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "1.64%",
+                "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+                "ID": "2f0c0dddbdcb",
+                "MemPerc": "1.45%",
+                "MemUsage": "56.7MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+                "NetIO": "2.18MB / 3.02MB",
+                "PIDs": "1"
+              }
+            }
+          }
+        },
+        {
+          "timestamp": "2026-05-14T04:38:58.484200+00:00",
+          "elapsed_seconds": 112.89,
+          "containers": {
+            "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+              "cpu_percent": 6.64,
+              "memory_percent": 7.55,
+              "memory_usage_bytes": 310168780.8,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 8,
+              "raw": {
+                "BlockIO": "0B / 7.87MB",
+                "CPUPerc": "6.64%",
+                "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+                "ID": "7d99225d2b6a",
+                "MemPerc": "7.55%",
+                "MemUsage": "295.8MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+                "NetIO": "101MB / 124MB",
+                "PIDs": "8"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-db-1": {
+              "cpu_percent": 2.33,
+              "memory_percent": 3.07,
+              "memory_usage_bytes": 125933977.6,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 12,
+              "raw": {
+                "BlockIO": "4.1kB / 346MB",
+                "CPUPerc": "2.33%",
+                "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+                "ID": "75c081f863ac",
+                "MemPerc": "3.07%",
+                "MemUsage": "120.1MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+                "NetIO": "53.1MB / 87.6MB",
+                "PIDs": "12"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+              "cpu_percent": 0.74,
+              "memory_percent": 0.13,
+              "memory_usage_bytes": 5337251.84,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 6,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "0.74%",
+                "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+                "ID": "a7d547442049",
+                "MemPerc": "0.13%",
+                "MemUsage": "5.09MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+                "NetIO": "3.54MB / 12.7MB",
+                "PIDs": "6"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+              "cpu_percent": 1.75,
+              "memory_percent": 1.46,
+              "memory_usage_bytes": 59768832.0,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 1,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "1.75%",
+                "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+                "ID": "2f0c0dddbdcb",
+                "MemPerc": "1.46%",
+                "MemUsage": "57MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+                "NetIO": "2.38MB / 3.29MB",
+                "PIDs": "1"
+              }
+            }
+          }
+        },
+        {
+          "timestamp": "2026-05-14T04:39:08.555423+00:00",
+          "elapsed_seconds": 122.96,
+          "containers": {
+            "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+              "cpu_percent": 9.0,
+              "memory_percent": 7.55,
+              "memory_usage_bytes": 310168780.8,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 8,
+              "raw": {
+                "BlockIO": "0B / 7.87MB",
+                "CPUPerc": "9.00%",
+                "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+                "ID": "7d99225d2b6a",
+                "MemPerc": "7.55%",
+                "MemUsage": "295.8MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+                "NetIO": "102MB / 131MB",
+                "PIDs": "8"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-db-1": {
+              "cpu_percent": 2.01,
+              "memory_percent": 3.07,
+              "memory_usage_bytes": 125933977.6,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 12,
+              "raw": {
+                "BlockIO": "4.1kB / 346MB",
+                "CPUPerc": "2.01%",
+                "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+                "ID": "75c081f863ac",
+                "MemPerc": "3.07%",
+                "MemUsage": "120.1MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+                "NetIO": "53.4MB / 87.8MB",
+                "PIDs": "12"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+              "cpu_percent": 0.68,
+              "memory_percent": 0.13,
+              "memory_usage_bytes": 5173673.98,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 6,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "0.68%",
+                "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+                "ID": "a7d547442049",
+                "MemPerc": "0.13%",
+                "MemUsage": "4.934MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+                "NetIO": "3.78MB / 14.1MB",
+                "PIDs": "6"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+              "cpu_percent": 1.8,
+              "memory_percent": 1.46,
+              "memory_usage_bytes": 60083404.8,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 1,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "1.80%",
+                "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+                "ID": "2f0c0dddbdcb",
+                "MemPerc": "1.46%",
+                "MemUsage": "57.3MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+                "NetIO": "2.6MB / 3.58MB",
+                "PIDs": "1"
+              }
+            }
+          }
+        },
+        {
+          "timestamp": "2026-05-14T04:39:18.629885+00:00",
+          "elapsed_seconds": 133.04,
+          "containers": {
+            "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+              "cpu_percent": 25.72,
+              "memory_percent": 7.54,
+              "memory_usage_bytes": 309434777.6,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 8,
+              "raw": {
+                "BlockIO": "0B / 7.87MB",
+                "CPUPerc": "25.72%",
+                "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+                "ID": "7d99225d2b6a",
+                "MemPerc": "7.54%",
+                "MemUsage": "295.1MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+                "NetIO": "104MB / 139MB",
+                "PIDs": "8"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-db-1": {
+              "cpu_percent": 2.38,
+              "memory_percent": 3.05,
+              "memory_usage_bytes": 125095116.8,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 12,
+              "raw": {
+                "BlockIO": "4.1kB / 347MB",
+                "CPUPerc": "2.38%",
+                "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+                "ID": "75c081f863ac",
+                "MemPerc": "3.05%",
+                "MemUsage": "119.3MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+                "NetIO": "53.8MB / 88MB",
+                "PIDs": "12"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+              "cpu_percent": 0.71,
+              "memory_percent": 0.13,
+              "memory_usage_bytes": 5316280.32,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 6,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "0.71%",
+                "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+                "ID": "a7d547442049",
+                "MemPerc": "0.13%",
+                "MemUsage": "5.07MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+                "NetIO": "3.99MB / 15.2MB",
+                "PIDs": "6"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+              "cpu_percent": 1.82,
+              "memory_percent": 1.47,
+              "memory_usage_bytes": 60335063.04,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 1,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "1.82%",
+                "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+                "ID": "2f0c0dddbdcb",
+                "MemPerc": "1.47%",
+                "MemUsage": "57.54MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+                "NetIO": "2.81MB / 3.85MB",
+                "PIDs": "1"
+              }
+            }
+          }
+        },
+        {
+          "timestamp": "2026-05-14T04:39:28.693950+00:00",
+          "elapsed_seconds": 143.1,
+          "containers": {
+            "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+              "cpu_percent": 37.46,
+              "memory_percent": 7.81,
+              "memory_usage_bytes": 320444825.6,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 9,
+              "raw": {
+                "BlockIO": "0B / 7.87MB",
+                "CPUPerc": "37.46%",
+                "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+                "ID": "7d99225d2b6a",
+                "MemPerc": "7.81%",
+                "MemUsage": "305.6MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+                "NetIO": "105MB / 145MB",
+                "PIDs": "9"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-db-1": {
+              "cpu_percent": 2.15,
+              "memory_percent": 3.07,
+              "memory_usage_bytes": 125829120.0,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 12,
+              "raw": {
+                "BlockIO": "4.1kB / 348MB",
+                "CPUPerc": "2.15%",
+                "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+                "ID": "75c081f863ac",
+                "MemPerc": "3.07%",
+                "MemUsage": "120MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+                "NetIO": "54.2MB / 88.3MB",
+                "PIDs": "12"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+              "cpu_percent": 0.63,
+              "memory_percent": 0.13,
+              "memory_usage_bytes": 5435817.98,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 6,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "0.63%",
+                "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+                "ID": "a7d547442049",
+                "MemPerc": "0.13%",
+                "MemUsage": "5.184MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+                "NetIO": "4.22MB / 16.5MB",
+                "PIDs": "6"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+              "cpu_percent": 1.55,
+              "memory_percent": 1.48,
+              "memory_usage_bytes": 60639150.08,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 1,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "1.55%",
+                "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+                "ID": "2f0c0dddbdcb",
+                "MemPerc": "1.48%",
+                "MemUsage": "57.83MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+                "NetIO": "3.03MB / 4.15MB",
+                "PIDs": "1"
+              }
+            }
+          }
+        },
+        {
+          "timestamp": "2026-05-14T04:39:38.769596+00:00",
+          "elapsed_seconds": 153.18,
+          "containers": {
+            "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+              "cpu_percent": 8.74,
+              "memory_percent": 7.5,
+              "memory_usage_bytes": 308176486.4,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 8,
+              "raw": {
+                "BlockIO": "0B / 7.87MB",
+                "CPUPerc": "8.74%",
+                "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+                "ID": "7d99225d2b6a",
+                "MemPerc": "7.50%",
+                "MemUsage": "293.9MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+                "NetIO": "107MB / 152MB",
+                "PIDs": "8"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-db-1": {
+              "cpu_percent": 1.99,
+              "memory_percent": 3.07,
+              "memory_usage_bytes": 126143692.8,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 12,
+              "raw": {
+                "BlockIO": "4.1kB / 349MB",
+                "CPUPerc": "1.99%",
+                "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+                "ID": "75c081f863ac",
+                "MemPerc": "3.07%",
+                "MemUsage": "120.3MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+                "NetIO": "54.5MB / 88.5MB",
+                "PIDs": "12"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+              "cpu_percent": 0.7,
+              "memory_percent": 0.13,
+              "memory_usage_bytes": 5369757.7,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 6,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "0.70%",
+                "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+                "ID": "a7d547442049",
+                "MemPerc": "0.13%",
+                "MemUsage": "5.121MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+                "NetIO": "4.44MB / 17.8MB",
+                "PIDs": "6"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+              "cpu_percent": 1.68,
+              "memory_percent": 1.48,
+              "memory_usage_bytes": 60943237.12,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 1,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "1.68%",
+                "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+                "ID": "2f0c0dddbdcb",
+                "MemPerc": "1.48%",
+                "MemUsage": "58.12MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+                "NetIO": "3.25MB / 4.43MB",
+                "PIDs": "1"
+              }
+            }
+          }
+        },
+        {
+          "timestamp": "2026-05-14T04:39:48.838925+00:00",
+          "elapsed_seconds": 163.25,
+          "containers": {
+            "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+              "cpu_percent": 9.35,
+              "memory_percent": 7.55,
+              "memory_usage_bytes": 309854208.0,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 8,
+              "raw": {
+                "BlockIO": "0B / 7.87MB",
+                "CPUPerc": "9.35%",
+                "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+                "ID": "7d99225d2b6a",
+                "MemPerc": "7.55%",
+                "MemUsage": "295.5MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+                "NetIO": "108MB / 159MB",
+                "PIDs": "8"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-db-1": {
+              "cpu_percent": 7.98,
+              "memory_percent": 3.08,
+              "memory_usage_bytes": 126248550.4,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 12,
+              "raw": {
+                "BlockIO": "4.1kB / 349MB",
+                "CPUPerc": "7.98%",
+                "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+                "ID": "75c081f863ac",
+                "MemPerc": "3.08%",
+                "MemUsage": "120.4MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+                "NetIO": "54.8MB / 88.7MB",
+                "PIDs": "12"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+              "cpu_percent": 0.66,
+              "memory_percent": 0.13,
+              "memory_usage_bytes": 5247074.3,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 6,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "0.66%",
+                "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+                "ID": "a7d547442049",
+                "MemPerc": "0.13%",
+                "MemUsage": "5.004MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+                "NetIO": "4.66MB / 19MB",
+                "PIDs": "6"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+              "cpu_percent": 1.73,
+              "memory_percent": 1.49,
+              "memory_usage_bytes": 61289267.2,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 1,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "1.73%",
+                "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+                "ID": "2f0c0dddbdcb",
+                "MemPerc": "1.49%",
+                "MemUsage": "58.45MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+                "NetIO": "3.48MB / 4.74MB",
+                "PIDs": "1"
+              }
+            }
+          }
+        },
+        {
+          "timestamp": "2026-05-14T04:39:58.938793+00:00",
+          "elapsed_seconds": 173.35,
+          "containers": {
+            "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+              "cpu_percent": 14.14,
+              "memory_percent": 7.55,
+              "memory_usage_bytes": 310168780.8,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 8,
+              "raw": {
+                "BlockIO": "0B / 7.87MB",
+                "CPUPerc": "14.14%",
+                "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+                "ID": "7d99225d2b6a",
+                "MemPerc": "7.55%",
+                "MemUsage": "295.8MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+                "NetIO": "110MB / 166MB",
+                "PIDs": "8"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-db-1": {
+              "cpu_percent": 3.01,
+              "memory_percent": 3.09,
+              "memory_usage_bytes": 126667980.8,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 12,
+              "raw": {
+                "BlockIO": "4.1kB / 350MB",
+                "CPUPerc": "3.01%",
+                "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+                "ID": "75c081f863ac",
+                "MemPerc": "3.09%",
+                "MemUsage": "120.8MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+                "NetIO": "55.2MB / 89MB",
+                "PIDs": "12"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+              "cpu_percent": 0.7,
+              "memory_percent": 0.13,
+              "memory_usage_bytes": 5152702.46,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 6,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "0.70%",
+                "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+                "ID": "a7d547442049",
+                "MemPerc": "0.13%",
+                "MemUsage": "4.914MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+                "NetIO": "4.87MB / 20.3MB",
+                "PIDs": "6"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+              "cpu_percent": 1.7,
+              "memory_percent": 1.5,
+              "memory_usage_bytes": 61519953.92,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 1,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "1.70%",
+                "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+                "ID": "2f0c0dddbdcb",
+                "MemPerc": "1.50%",
+                "MemUsage": "58.67MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+                "NetIO": "3.67MB / 4.99MB",
+                "PIDs": "1"
+              }
+            }
+          }
+        },
+        {
+          "timestamp": "2026-05-14T04:40:09.013791+00:00",
+          "elapsed_seconds": 183.42,
+          "containers": {
+            "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+              "cpu_percent": 56.5,
+              "memory_percent": 7.58,
+              "memory_usage_bytes": 311322214.4,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 8,
+              "raw": {
+                "BlockIO": "0B / 7.87MB",
+                "CPUPerc": "56.50%",
+                "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+                "ID": "7d99225d2b6a",
+                "MemPerc": "7.58%",
+                "MemUsage": "296.9MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+                "NetIO": "111MB / 172MB",
+                "PIDs": "8"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-db-1": {
+              "cpu_percent": 5.54,
+              "memory_percent": 3.12,
+              "memory_usage_bytes": 128031129.6,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 18,
+              "raw": {
+                "BlockIO": "4.1kB / 350MB",
+                "CPUPerc": "5.54%",
+                "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+                "ID": "75c081f863ac",
+                "MemPerc": "3.12%",
+                "MemUsage": "122.1MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+                "NetIO": "55.6MB / 89.2MB",
+                "PIDs": "18"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+              "cpu_percent": 0.66,
+              "memory_percent": 0.13,
+              "memory_usage_bytes": 5210374.14,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 6,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "0.66%",
+                "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+                "ID": "a7d547442049",
+                "MemPerc": "0.13%",
+                "MemUsage": "4.969MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+                "NetIO": "5.1MB / 21.6MB",
+                "PIDs": "6"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+              "cpu_percent": 1.72,
+              "memory_percent": 1.51,
+              "memory_usage_bytes": 61907927.04,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 1,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "1.72%",
+                "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+                "ID": "2f0c0dddbdcb",
+                "MemPerc": "1.51%",
+                "MemUsage": "59.04MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+                "NetIO": "3.93MB / 5.33MB",
+                "PIDs": "1"
+              }
+            }
+          }
+        },
+        {
+          "timestamp": "2026-05-14T04:40:14.083954+00:00",
+          "elapsed_seconds": 188.49,
+          "containers": {
+            "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+              "cpu_percent": 3.17,
+              "memory_percent": 7.61,
+              "memory_usage_bytes": 312580505.6,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 8,
+              "raw": {
+                "BlockIO": "0B / 7.87MB",
+                "CPUPerc": "3.17%",
+                "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+                "ID": "7d99225d2b6a",
+                "MemPerc": "7.61%",
+                "MemUsage": "298.1MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+                "NetIO": "111MB / 174MB",
+                "PIDs": "8"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-db-1": {
+              "cpu_percent": 7.06,
+              "memory_percent": 2.96,
+              "memory_usage_bytes": 121425100.8,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 10,
+              "raw": {
+                "BlockIO": "4.1kB / 351MB",
+                "CPUPerc": "7.06%",
+                "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+                "ID": "75c081f863ac",
+                "MemPerc": "2.96%",
+                "MemUsage": "115.8MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+                "NetIO": "55.7MB / 89.3MB",
+                "PIDs": "10"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+              "cpu_percent": 0.58,
+              "memory_percent": 0.12,
+              "memory_usage_bytes": 4984930.3,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 6,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "0.58%",
+                "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+                "ID": "a7d547442049",
+                "MemPerc": "0.12%",
+                "MemUsage": "4.754MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+                "NetIO": "5.16MB / 21.7MB",
+                "PIDs": "6"
+              }
+            },
+            "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+              "cpu_percent": 0.37,
+              "memory_percent": 1.51,
+              "memory_usage_bytes": 61949870.08,
+              "memory_limit_bytes": 4105988734.98,
+              "pids": 1,
+              "raw": {
+                "BlockIO": "0B / 0B",
+                "CPUPerc": "0.37%",
+                "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+                "ID": "2f0c0dddbdcb",
+                "MemPerc": "1.51%",
+                "MemUsage": "59.08MiB / 3.824GiB",
+                "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+                "NetIO": "3.98MB / 5.4MB",
+                "PIDs": "1"
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "runtime_docker_stats": [
+    {
+      "timestamp": "2026-05-14T04:37:07.195873+00:00",
+      "elapsed_seconds": 1.6,
+      "containers": {
+        "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+          "cpu_percent": 0.03,
+          "memory_percent": 4.83,
+          "memory_usage_bytes": 198495436.8,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 8,
+          "raw": {
+            "BlockIO": "0B / 7.09MB",
+            "CPUPerc": "0.03%",
+            "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+            "ID": "7d99225d2b6a",
+            "MemPerc": "4.83%",
+            "MemUsage": "189.3MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+            "NetIO": "83.5MB / 49MB",
+            "PIDs": "8"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-db-1": {
+          "cpu_percent": 0.03,
+          "memory_percent": 2.64,
+          "memory_usage_bytes": 108422758.4,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 6,
+          "raw": {
+            "BlockIO": "4.1kB / 320MB",
+            "CPUPerc": "0.03%",
+            "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+            "ID": "75c081f863ac",
+            "MemPerc": "2.64%",
+            "MemUsage": "103.4MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+            "NetIO": "49MB / 83.5MB",
+            "PIDs": "6"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+          "cpu_percent": 0.57,
+          "memory_percent": 0.08,
+          "memory_usage_bytes": 3386900.48,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 6,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "0.57%",
+            "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+            "ID": "a7d547442049",
+            "MemPerc": "0.08%",
+            "MemUsage": "3.23MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+            "NetIO": "243kB / 93.9kB",
+            "PIDs": "6"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+          "cpu_percent": 0.41,
+          "memory_percent": 1.39,
+          "memory_usage_bytes": 56916705.28,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 1,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "0.41%",
+            "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+            "ID": "2f0c0dddbdcb",
+            "MemPerc": "1.39%",
+            "MemUsage": "54.28MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+            "NetIO": "93.5kB / 238kB",
+            "PIDs": "1"
+          }
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-14T04:37:17.767754+00:00",
+      "elapsed_seconds": 12.17,
+      "containers": {
+        "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+          "cpu_percent": 16.99,
+          "memory_percent": 7.28,
+          "memory_usage_bytes": 298739302.4,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 8,
+          "raw": {
+            "BlockIO": "0B / 7.09MB",
+            "CPUPerc": "16.99%",
+            "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+            "ID": "7d99225d2b6a",
+            "MemPerc": "7.28%",
+            "MemUsage": "284.9MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+            "NetIO": "84.9MB / 53.7MB",
+            "PIDs": "8"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-db-1": {
+          "cpu_percent": 5.5,
+          "memory_percent": 3.12,
+          "memory_usage_bytes": 128240844.8,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 12,
+          "raw": {
+            "BlockIO": "4.1kB / 321MB",
+            "CPUPerc": "5.50%",
+            "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+            "ID": "75c081f863ac",
+            "MemPerc": "3.12%",
+            "MemUsage": "122.3MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+            "NetIO": "49.4MB / 84.6MB",
+            "PIDs": "12"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+          "cpu_percent": 0.7,
+          "memory_percent": 0.11,
+          "memory_usage_bytes": 4321181.7,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 6,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "0.70%",
+            "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+            "ID": "a7d547442049",
+            "MemPerc": "0.11%",
+            "MemUsage": "4.121MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+            "NetIO": "791kB / 385kB",
+            "PIDs": "6"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+          "cpu_percent": 1.53,
+          "memory_percent": 1.39,
+          "memory_usage_bytes": 57000591.36,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 1,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "1.53%",
+            "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+            "ID": "2f0c0dddbdcb",
+            "MemPerc": "1.39%",
+            "MemUsage": "54.36MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+            "NetIO": "247kB / 446kB",
+            "PIDs": "1"
+          }
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-14T04:37:27.837175+00:00",
+      "elapsed_seconds": 22.24,
+      "containers": {
+        "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+          "cpu_percent": 35.64,
+          "memory_percent": 7.64,
+          "memory_usage_bytes": 313524224.0,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 9,
+          "raw": {
+            "BlockIO": "0B / 7.87MB",
+            "CPUPerc": "35.64%",
+            "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+            "ID": "7d99225d2b6a",
+            "MemPerc": "7.64%",
+            "MemUsage": "299MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+            "NetIO": "86.3MB / 60.6MB",
+            "PIDs": "9"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-db-1": {
+          "cpu_percent": 2.28,
+          "memory_percent": 3.16,
+          "memory_usage_bytes": 129813708.8,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 12,
+          "raw": {
+            "BlockIO": "4.1kB / 323MB",
+            "CPUPerc": "2.28%",
+            "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+            "ID": "75c081f863ac",
+            "MemPerc": "3.16%",
+            "MemUsage": "123.8MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+            "NetIO": "49.8MB / 85MB",
+            "PIDs": "12"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+          "cpu_percent": 0.69,
+          "memory_percent": 0.12,
+          "memory_usage_bytes": 4791992.32,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 6,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "0.69%",
+            "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+            "ID": "a7d547442049",
+            "MemPerc": "0.12%",
+            "MemUsage": "4.57MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+            "NetIO": "1.25MB / 1.54MB",
+            "PIDs": "6"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+          "cpu_percent": 1.6,
+          "memory_percent": 1.39,
+          "memory_usage_bytes": 57011077.12,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 1,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "1.60%",
+            "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+            "ID": "2f0c0dddbdcb",
+            "MemPerc": "1.39%",
+            "MemUsage": "54.37MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+            "NetIO": "427kB / 691kB",
+            "PIDs": "1"
+          }
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-14T04:37:37.937214+00:00",
+      "elapsed_seconds": 32.34,
+      "containers": {
+        "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+          "cpu_percent": 42.41,
+          "memory_percent": 7.71,
+          "memory_usage_bytes": 316565094.4,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 9,
+          "raw": {
+            "BlockIO": "0B / 7.87MB",
+            "CPUPerc": "42.41%",
+            "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+            "ID": "7d99225d2b6a",
+            "MemPerc": "7.71%",
+            "MemUsage": "301.9MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+            "NetIO": "88.3MB / 68.7MB",
+            "PIDs": "9"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-db-1": {
+          "cpu_percent": 2.25,
+          "memory_percent": 3.17,
+          "memory_usage_bytes": 130233139.2,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 12,
+          "raw": {
+            "BlockIO": "4.1kB / 324MB",
+            "CPUPerc": "2.25%",
+            "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+            "ID": "75c081f863ac",
+            "MemPerc": "3.17%",
+            "MemUsage": "124.2MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+            "NetIO": "50.1MB / 85.3MB",
+            "PIDs": "12"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+          "cpu_percent": 0.72,
+          "memory_percent": 0.12,
+          "memory_usage_bytes": 5001707.52,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 6,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "0.72%",
+            "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+            "ID": "a7d547442049",
+            "MemPerc": "0.12%",
+            "MemUsage": "4.77MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+            "NetIO": "1.56MB / 2.89MB",
+            "PIDs": "6"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+          "cpu_percent": 1.74,
+          "memory_percent": 1.4,
+          "memory_usage_bytes": 57283706.88,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 1,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "1.74%",
+            "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+            "ID": "2f0c0dddbdcb",
+            "MemPerc": "1.40%",
+            "MemUsage": "54.63MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+            "NetIO": "661kB / 1MB",
+            "PIDs": "1"
+          }
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-14T04:37:48.017342+00:00",
+      "elapsed_seconds": 42.42,
+      "containers": {
+        "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+          "cpu_percent": 8.8,
+          "memory_percent": 7.46,
+          "memory_usage_bytes": 306498764.8,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 8,
+          "raw": {
+            "BlockIO": "0B / 7.87MB",
+            "CPUPerc": "8.80%",
+            "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+            "ID": "7d99225d2b6a",
+            "MemPerc": "7.46%",
+            "MemUsage": "292.3MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+            "NetIO": "89.9MB / 76.4MB",
+            "PIDs": "8"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-db-1": {
+          "cpu_percent": 2.33,
+          "memory_percent": 3.18,
+          "memory_usage_bytes": 130442854.4,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 12,
+          "raw": {
+            "BlockIO": "4.1kB / 325MB",
+            "CPUPerc": "2.33%",
+            "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+            "ID": "75c081f863ac",
+            "MemPerc": "3.18%",
+            "MemUsage": "124.4MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+            "NetIO": "50.6MB / 85.8MB",
+            "PIDs": "12"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+          "cpu_percent": 0.67,
+          "memory_percent": 0.13,
+          "memory_usage_bytes": 5230297.09,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 6,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "0.67%",
+            "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+            "ID": "a7d547442049",
+            "MemPerc": "0.13%",
+            "MemUsage": "4.988MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+            "NetIO": "1.89MB / 4.1MB",
+            "PIDs": "6"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+          "cpu_percent": 2.75,
+          "memory_percent": 1.4,
+          "memory_usage_bytes": 57545850.88,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 1,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "2.75%",
+            "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+            "ID": "2f0c0dddbdcb",
+            "MemPerc": "1.40%",
+            "MemUsage": "54.88MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+            "NetIO": "863kB / 1.28MB",
+            "PIDs": "1"
+          }
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-14T04:37:58.082203+00:00",
+      "elapsed_seconds": 52.49,
+      "containers": {
+        "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+          "cpu_percent": 7.13,
+          "memory_percent": 7.53,
+          "memory_usage_bytes": 309120204.8,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 8,
+          "raw": {
+            "BlockIO": "0B / 7.87MB",
+            "CPUPerc": "7.13%",
+            "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+            "ID": "7d99225d2b6a",
+            "MemPerc": "7.53%",
+            "MemUsage": "294.8MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+            "NetIO": "91.1MB / 81.8MB",
+            "PIDs": "8"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-db-1": {
+          "cpu_percent": 2.07,
+          "memory_percent": 3.19,
+          "memory_usage_bytes": 131072000.0,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 12,
+          "raw": {
+            "BlockIO": "4.1kB / 342MB",
+            "CPUPerc": "2.07%",
+            "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+            "ID": "75c081f863ac",
+            "MemPerc": "3.19%",
+            "MemUsage": "125MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+            "NetIO": "50.9MB / 86MB",
+            "PIDs": "12"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+          "cpu_percent": 0.69,
+          "memory_percent": 0.13,
+          "memory_usage_bytes": 5185208.32,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 6,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "0.69%",
+            "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+            "ID": "a7d547442049",
+            "MemPerc": "0.13%",
+            "MemUsage": "4.945MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+            "NetIO": "2.11MB / 5.22MB",
+            "PIDs": "6"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+          "cpu_percent": 1.55,
+          "memory_percent": 1.41,
+          "memory_usage_bytes": 57839452.16,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 1,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "1.55%",
+            "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+            "ID": "2f0c0dddbdcb",
+            "MemPerc": "1.41%",
+            "MemUsage": "55.16MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+            "NetIO": "1.07MB / 1.56MB",
+            "PIDs": "1"
+          }
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-14T04:38:08.147980+00:00",
+      "elapsed_seconds": 62.56,
+      "containers": {
+        "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+          "cpu_percent": 9.09,
+          "memory_percent": 7.5,
+          "memory_usage_bytes": 308071628.8,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 8,
+          "raw": {
+            "BlockIO": "0B / 7.87MB",
+            "CPUPerc": "9.09%",
+            "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+            "ID": "7d99225d2b6a",
+            "MemPerc": "7.50%",
+            "MemUsage": "293.8MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+            "NetIO": "92.9MB / 89.7MB",
+            "PIDs": "8"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-db-1": {
+          "cpu_percent": 2.22,
+          "memory_percent": 3.19,
+          "memory_usage_bytes": 131176857.6,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 12,
+          "raw": {
+            "BlockIO": "4.1kB / 343MB",
+            "CPUPerc": "2.22%",
+            "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+            "ID": "75c081f863ac",
+            "MemPerc": "3.19%",
+            "MemUsage": "125.1MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+            "NetIO": "51.3MB / 86.5MB",
+            "PIDs": "12"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+          "cpu_percent": 0.67,
+          "memory_percent": 0.13,
+          "memory_usage_bytes": 5373952.0,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 6,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "0.67%",
+            "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+            "ID": "a7d547442049",
+            "MemPerc": "0.13%",
+            "MemUsage": "5.125MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+            "NetIO": "2.45MB / 6.34MB",
+            "PIDs": "6"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+          "cpu_percent": 1.76,
+          "memory_percent": 1.42,
+          "memory_usage_bytes": 58174996.48,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 1,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "1.76%",
+            "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+            "ID": "2f0c0dddbdcb",
+            "MemPerc": "1.42%",
+            "MemUsage": "55.48MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+            "NetIO": "1.29MB / 1.84MB",
+            "PIDs": "1"
+          }
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-14T04:38:18.216174+00:00",
+      "elapsed_seconds": 72.62,
+      "containers": {
+        "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+          "cpu_percent": 9.11,
+          "memory_percent": 7.5,
+          "memory_usage_bytes": 307966771.2,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 8,
+          "raw": {
+            "BlockIO": "0B / 7.87MB",
+            "CPUPerc": "9.11%",
+            "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+            "ID": "7d99225d2b6a",
+            "MemPerc": "7.50%",
+            "MemUsage": "293.7MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+            "NetIO": "94.5MB / 97MB",
+            "PIDs": "8"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-db-1": {
+          "cpu_percent": 4.66,
+          "memory_percent": 3.04,
+          "memory_usage_bytes": 124675686.4,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 12,
+          "raw": {
+            "BlockIO": "4.1kB / 343MB",
+            "CPUPerc": "4.66%",
+            "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+            "ID": "75c081f863ac",
+            "MemPerc": "3.04%",
+            "MemUsage": "118.9MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+            "NetIO": "51.7MB / 86.7MB",
+            "PIDs": "12"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+          "cpu_percent": 0.66,
+          "memory_percent": 0.13,
+          "memory_usage_bytes": 5271191.55,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 6,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "0.66%",
+            "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+            "ID": "a7d547442049",
+            "MemPerc": "0.13%",
+            "MemUsage": "5.027MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+            "NetIO": "2.67MB / 7.73MB",
+            "PIDs": "6"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+          "cpu_percent": 1.72,
+          "memory_percent": 1.43,
+          "memory_usage_bytes": 58510540.8,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 1,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "1.72%",
+            "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+            "ID": "2f0c0dddbdcb",
+            "MemPerc": "1.43%",
+            "MemUsage": "55.8MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+            "NetIO": "1.51MB / 2.13MB",
+            "PIDs": "1"
+          }
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-14T04:38:28.283488+00:00",
+      "elapsed_seconds": 82.69,
+      "containers": {
+        "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+          "cpu_percent": 53.15,
+          "memory_percent": 7.55,
+          "memory_usage_bytes": 310063923.2,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 8,
+          "raw": {
+            "BlockIO": "0B / 7.87MB",
+            "CPUPerc": "53.15%",
+            "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+            "ID": "7d99225d2b6a",
+            "MemPerc": "7.55%",
+            "MemUsage": "295.7MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+            "NetIO": "96MB / 103MB",
+            "PIDs": "8"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-db-1": {
+          "cpu_percent": 2.25,
+          "memory_percent": 3.05,
+          "memory_usage_bytes": 125304832.0,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 12,
+          "raw": {
+            "BlockIO": "4.1kB / 344MB",
+            "CPUPerc": "2.25%",
+            "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+            "ID": "75c081f863ac",
+            "MemPerc": "3.05%",
+            "MemUsage": "119.5MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+            "NetIO": "52MB / 86.9MB",
+            "PIDs": "12"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+          "cpu_percent": 0.69,
+          "memory_percent": 0.13,
+          "memory_usage_bytes": 5283774.46,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 6,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "0.69%",
+            "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+            "ID": "a7d547442049",
+            "MemPerc": "0.13%",
+            "MemUsage": "5.039MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+            "NetIO": "2.89MB / 8.95MB",
+            "PIDs": "6"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+          "cpu_percent": 1.63,
+          "memory_percent": 1.43,
+          "memory_usage_bytes": 58772684.8,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 1,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "1.63%",
+            "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+            "ID": "2f0c0dddbdcb",
+            "MemPerc": "1.43%",
+            "MemUsage": "56.05MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+            "NetIO": "1.72MB / 2.42MB",
+            "PIDs": "1"
+          }
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-14T04:38:38.349016+00:00",
+      "elapsed_seconds": 92.76,
+      "containers": {
+        "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+          "cpu_percent": 6.97,
+          "memory_percent": 7.48,
+          "memory_usage_bytes": 307127910.4,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 8,
+          "raw": {
+            "BlockIO": "0B / 7.87MB",
+            "CPUPerc": "6.97%",
+            "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+            "ID": "7d99225d2b6a",
+            "MemPerc": "7.48%",
+            "MemUsage": "292.9MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+            "NetIO": "97.6MB / 111MB",
+            "PIDs": "8"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-db-1": {
+          "cpu_percent": 2.23,
+          "memory_percent": 3.06,
+          "memory_usage_bytes": 125724262.4,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 12,
+          "raw": {
+            "BlockIO": "4.1kB / 344MB",
+            "CPUPerc": "2.23%",
+            "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+            "ID": "75c081f863ac",
+            "MemPerc": "3.06%",
+            "MemUsage": "119.9MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+            "NetIO": "52.4MB / 87.2MB",
+            "PIDs": "12"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+          "cpu_percent": 0.65,
+          "memory_percent": 0.13,
+          "memory_usage_bytes": 5247074.3,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 6,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "0.65%",
+            "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+            "ID": "a7d547442049",
+            "MemPerc": "0.13%",
+            "MemUsage": "5.004MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+            "NetIO": "3.1MB / 10.2MB",
+            "PIDs": "6"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+          "cpu_percent": 1.71,
+          "memory_percent": 1.44,
+          "memory_usage_bytes": 59118714.88,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 1,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "1.71%",
+            "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+            "ID": "2f0c0dddbdcb",
+            "MemPerc": "1.44%",
+            "MemUsage": "56.38MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+            "NetIO": "1.94MB / 2.7MB",
+            "PIDs": "1"
+          }
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-14T04:38:48.417874+00:00",
+      "elapsed_seconds": 102.82,
+      "containers": {
+        "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+          "cpu_percent": 9.32,
+          "memory_percent": 7.52,
+          "memory_usage_bytes": 308910489.6,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 8,
+          "raw": {
+            "BlockIO": "0B / 7.87MB",
+            "CPUPerc": "9.32%",
+            "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+            "ID": "7d99225d2b6a",
+            "MemPerc": "7.52%",
+            "MemUsage": "294.6MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+            "NetIO": "98.8MB / 117MB",
+            "PIDs": "8"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-db-1": {
+          "cpu_percent": 2.32,
+          "memory_percent": 3.06,
+          "memory_usage_bytes": 125829120.0,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 12,
+          "raw": {
+            "BlockIO": "4.1kB / 345MB",
+            "CPUPerc": "2.32%",
+            "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+            "ID": "75c081f863ac",
+            "MemPerc": "3.06%",
+            "MemUsage": "120MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+            "NetIO": "52.7MB / 87.4MB",
+            "PIDs": "12"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+          "cpu_percent": 0.71,
+          "memory_percent": 0.13,
+          "memory_usage_bytes": 5312086.02,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 6,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "0.71%",
+            "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+            "ID": "a7d547442049",
+            "MemPerc": "0.13%",
+            "MemUsage": "5.066MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+            "NetIO": "3.33MB / 11.4MB",
+            "PIDs": "6"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+          "cpu_percent": 1.64,
+          "memory_percent": 1.45,
+          "memory_usage_bytes": 59454259.2,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 1,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "1.64%",
+            "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+            "ID": "2f0c0dddbdcb",
+            "MemPerc": "1.45%",
+            "MemUsage": "56.7MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+            "NetIO": "2.18MB / 3.02MB",
+            "PIDs": "1"
+          }
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-14T04:38:58.484200+00:00",
+      "elapsed_seconds": 112.89,
+      "containers": {
+        "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+          "cpu_percent": 6.64,
+          "memory_percent": 7.55,
+          "memory_usage_bytes": 310168780.8,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 8,
+          "raw": {
+            "BlockIO": "0B / 7.87MB",
+            "CPUPerc": "6.64%",
+            "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+            "ID": "7d99225d2b6a",
+            "MemPerc": "7.55%",
+            "MemUsage": "295.8MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+            "NetIO": "101MB / 124MB",
+            "PIDs": "8"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-db-1": {
+          "cpu_percent": 2.33,
+          "memory_percent": 3.07,
+          "memory_usage_bytes": 125933977.6,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 12,
+          "raw": {
+            "BlockIO": "4.1kB / 346MB",
+            "CPUPerc": "2.33%",
+            "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+            "ID": "75c081f863ac",
+            "MemPerc": "3.07%",
+            "MemUsage": "120.1MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+            "NetIO": "53.1MB / 87.6MB",
+            "PIDs": "12"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+          "cpu_percent": 0.74,
+          "memory_percent": 0.13,
+          "memory_usage_bytes": 5337251.84,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 6,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "0.74%",
+            "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+            "ID": "a7d547442049",
+            "MemPerc": "0.13%",
+            "MemUsage": "5.09MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+            "NetIO": "3.54MB / 12.7MB",
+            "PIDs": "6"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+          "cpu_percent": 1.75,
+          "memory_percent": 1.46,
+          "memory_usage_bytes": 59768832.0,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 1,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "1.75%",
+            "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+            "ID": "2f0c0dddbdcb",
+            "MemPerc": "1.46%",
+            "MemUsage": "57MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+            "NetIO": "2.38MB / 3.29MB",
+            "PIDs": "1"
+          }
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-14T04:39:08.555423+00:00",
+      "elapsed_seconds": 122.96,
+      "containers": {
+        "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+          "cpu_percent": 9.0,
+          "memory_percent": 7.55,
+          "memory_usage_bytes": 310168780.8,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 8,
+          "raw": {
+            "BlockIO": "0B / 7.87MB",
+            "CPUPerc": "9.00%",
+            "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+            "ID": "7d99225d2b6a",
+            "MemPerc": "7.55%",
+            "MemUsage": "295.8MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+            "NetIO": "102MB / 131MB",
+            "PIDs": "8"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-db-1": {
+          "cpu_percent": 2.01,
+          "memory_percent": 3.07,
+          "memory_usage_bytes": 125933977.6,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 12,
+          "raw": {
+            "BlockIO": "4.1kB / 346MB",
+            "CPUPerc": "2.01%",
+            "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+            "ID": "75c081f863ac",
+            "MemPerc": "3.07%",
+            "MemUsage": "120.1MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+            "NetIO": "53.4MB / 87.8MB",
+            "PIDs": "12"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+          "cpu_percent": 0.68,
+          "memory_percent": 0.13,
+          "memory_usage_bytes": 5173673.98,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 6,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "0.68%",
+            "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+            "ID": "a7d547442049",
+            "MemPerc": "0.13%",
+            "MemUsage": "4.934MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+            "NetIO": "3.78MB / 14.1MB",
+            "PIDs": "6"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+          "cpu_percent": 1.8,
+          "memory_percent": 1.46,
+          "memory_usage_bytes": 60083404.8,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 1,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "1.80%",
+            "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+            "ID": "2f0c0dddbdcb",
+            "MemPerc": "1.46%",
+            "MemUsage": "57.3MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+            "NetIO": "2.6MB / 3.58MB",
+            "PIDs": "1"
+          }
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-14T04:39:18.629885+00:00",
+      "elapsed_seconds": 133.04,
+      "containers": {
+        "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+          "cpu_percent": 25.72,
+          "memory_percent": 7.54,
+          "memory_usage_bytes": 309434777.6,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 8,
+          "raw": {
+            "BlockIO": "0B / 7.87MB",
+            "CPUPerc": "25.72%",
+            "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+            "ID": "7d99225d2b6a",
+            "MemPerc": "7.54%",
+            "MemUsage": "295.1MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+            "NetIO": "104MB / 139MB",
+            "PIDs": "8"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-db-1": {
+          "cpu_percent": 2.38,
+          "memory_percent": 3.05,
+          "memory_usage_bytes": 125095116.8,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 12,
+          "raw": {
+            "BlockIO": "4.1kB / 347MB",
+            "CPUPerc": "2.38%",
+            "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+            "ID": "75c081f863ac",
+            "MemPerc": "3.05%",
+            "MemUsage": "119.3MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+            "NetIO": "53.8MB / 88MB",
+            "PIDs": "12"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+          "cpu_percent": 0.71,
+          "memory_percent": 0.13,
+          "memory_usage_bytes": 5316280.32,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 6,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "0.71%",
+            "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+            "ID": "a7d547442049",
+            "MemPerc": "0.13%",
+            "MemUsage": "5.07MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+            "NetIO": "3.99MB / 15.2MB",
+            "PIDs": "6"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+          "cpu_percent": 1.82,
+          "memory_percent": 1.47,
+          "memory_usage_bytes": 60335063.04,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 1,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "1.82%",
+            "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+            "ID": "2f0c0dddbdcb",
+            "MemPerc": "1.47%",
+            "MemUsage": "57.54MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+            "NetIO": "2.81MB / 3.85MB",
+            "PIDs": "1"
+          }
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-14T04:39:28.693950+00:00",
+      "elapsed_seconds": 143.1,
+      "containers": {
+        "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+          "cpu_percent": 37.46,
+          "memory_percent": 7.81,
+          "memory_usage_bytes": 320444825.6,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 9,
+          "raw": {
+            "BlockIO": "0B / 7.87MB",
+            "CPUPerc": "37.46%",
+            "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+            "ID": "7d99225d2b6a",
+            "MemPerc": "7.81%",
+            "MemUsage": "305.6MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+            "NetIO": "105MB / 145MB",
+            "PIDs": "9"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-db-1": {
+          "cpu_percent": 2.15,
+          "memory_percent": 3.07,
+          "memory_usage_bytes": 125829120.0,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 12,
+          "raw": {
+            "BlockIO": "4.1kB / 348MB",
+            "CPUPerc": "2.15%",
+            "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+            "ID": "75c081f863ac",
+            "MemPerc": "3.07%",
+            "MemUsage": "120MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+            "NetIO": "54.2MB / 88.3MB",
+            "PIDs": "12"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+          "cpu_percent": 0.63,
+          "memory_percent": 0.13,
+          "memory_usage_bytes": 5435817.98,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 6,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "0.63%",
+            "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+            "ID": "a7d547442049",
+            "MemPerc": "0.13%",
+            "MemUsage": "5.184MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+            "NetIO": "4.22MB / 16.5MB",
+            "PIDs": "6"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+          "cpu_percent": 1.55,
+          "memory_percent": 1.48,
+          "memory_usage_bytes": 60639150.08,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 1,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "1.55%",
+            "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+            "ID": "2f0c0dddbdcb",
+            "MemPerc": "1.48%",
+            "MemUsage": "57.83MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+            "NetIO": "3.03MB / 4.15MB",
+            "PIDs": "1"
+          }
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-14T04:39:38.769596+00:00",
+      "elapsed_seconds": 153.18,
+      "containers": {
+        "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+          "cpu_percent": 8.74,
+          "memory_percent": 7.5,
+          "memory_usage_bytes": 308176486.4,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 8,
+          "raw": {
+            "BlockIO": "0B / 7.87MB",
+            "CPUPerc": "8.74%",
+            "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+            "ID": "7d99225d2b6a",
+            "MemPerc": "7.50%",
+            "MemUsage": "293.9MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+            "NetIO": "107MB / 152MB",
+            "PIDs": "8"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-db-1": {
+          "cpu_percent": 1.99,
+          "memory_percent": 3.07,
+          "memory_usage_bytes": 126143692.8,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 12,
+          "raw": {
+            "BlockIO": "4.1kB / 349MB",
+            "CPUPerc": "1.99%",
+            "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+            "ID": "75c081f863ac",
+            "MemPerc": "3.07%",
+            "MemUsage": "120.3MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+            "NetIO": "54.5MB / 88.5MB",
+            "PIDs": "12"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+          "cpu_percent": 0.7,
+          "memory_percent": 0.13,
+          "memory_usage_bytes": 5369757.7,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 6,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "0.70%",
+            "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+            "ID": "a7d547442049",
+            "MemPerc": "0.13%",
+            "MemUsage": "5.121MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+            "NetIO": "4.44MB / 17.8MB",
+            "PIDs": "6"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+          "cpu_percent": 1.68,
+          "memory_percent": 1.48,
+          "memory_usage_bytes": 60943237.12,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 1,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "1.68%",
+            "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+            "ID": "2f0c0dddbdcb",
+            "MemPerc": "1.48%",
+            "MemUsage": "58.12MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+            "NetIO": "3.25MB / 4.43MB",
+            "PIDs": "1"
+          }
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-14T04:39:48.838925+00:00",
+      "elapsed_seconds": 163.25,
+      "containers": {
+        "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+          "cpu_percent": 9.35,
+          "memory_percent": 7.55,
+          "memory_usage_bytes": 309854208.0,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 8,
+          "raw": {
+            "BlockIO": "0B / 7.87MB",
+            "CPUPerc": "9.35%",
+            "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+            "ID": "7d99225d2b6a",
+            "MemPerc": "7.55%",
+            "MemUsage": "295.5MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+            "NetIO": "108MB / 159MB",
+            "PIDs": "8"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-db-1": {
+          "cpu_percent": 7.98,
+          "memory_percent": 3.08,
+          "memory_usage_bytes": 126248550.4,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 12,
+          "raw": {
+            "BlockIO": "4.1kB / 349MB",
+            "CPUPerc": "7.98%",
+            "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+            "ID": "75c081f863ac",
+            "MemPerc": "3.08%",
+            "MemUsage": "120.4MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+            "NetIO": "54.8MB / 88.7MB",
+            "PIDs": "12"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+          "cpu_percent": 0.66,
+          "memory_percent": 0.13,
+          "memory_usage_bytes": 5247074.3,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 6,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "0.66%",
+            "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+            "ID": "a7d547442049",
+            "MemPerc": "0.13%",
+            "MemUsage": "5.004MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+            "NetIO": "4.66MB / 19MB",
+            "PIDs": "6"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+          "cpu_percent": 1.73,
+          "memory_percent": 1.49,
+          "memory_usage_bytes": 61289267.2,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 1,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "1.73%",
+            "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+            "ID": "2f0c0dddbdcb",
+            "MemPerc": "1.49%",
+            "MemUsage": "58.45MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+            "NetIO": "3.48MB / 4.74MB",
+            "PIDs": "1"
+          }
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-14T04:39:58.938793+00:00",
+      "elapsed_seconds": 173.35,
+      "containers": {
+        "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+          "cpu_percent": 14.14,
+          "memory_percent": 7.55,
+          "memory_usage_bytes": 310168780.8,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 8,
+          "raw": {
+            "BlockIO": "0B / 7.87MB",
+            "CPUPerc": "14.14%",
+            "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+            "ID": "7d99225d2b6a",
+            "MemPerc": "7.55%",
+            "MemUsage": "295.8MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+            "NetIO": "110MB / 166MB",
+            "PIDs": "8"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-db-1": {
+          "cpu_percent": 3.01,
+          "memory_percent": 3.09,
+          "memory_usage_bytes": 126667980.8,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 12,
+          "raw": {
+            "BlockIO": "4.1kB / 350MB",
+            "CPUPerc": "3.01%",
+            "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+            "ID": "75c081f863ac",
+            "MemPerc": "3.09%",
+            "MemUsage": "120.8MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+            "NetIO": "55.2MB / 89MB",
+            "PIDs": "12"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+          "cpu_percent": 0.7,
+          "memory_percent": 0.13,
+          "memory_usage_bytes": 5152702.46,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 6,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "0.70%",
+            "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+            "ID": "a7d547442049",
+            "MemPerc": "0.13%",
+            "MemUsage": "4.914MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+            "NetIO": "4.87MB / 20.3MB",
+            "PIDs": "6"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+          "cpu_percent": 1.7,
+          "memory_percent": 1.5,
+          "memory_usage_bytes": 61519953.92,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 1,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "1.70%",
+            "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+            "ID": "2f0c0dddbdcb",
+            "MemPerc": "1.50%",
+            "MemUsage": "58.67MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+            "NetIO": "3.67MB / 4.99MB",
+            "PIDs": "1"
+          }
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-14T04:40:09.013791+00:00",
+      "elapsed_seconds": 183.42,
+      "containers": {
+        "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+          "cpu_percent": 56.5,
+          "memory_percent": 7.58,
+          "memory_usage_bytes": 311322214.4,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 8,
+          "raw": {
+            "BlockIO": "0B / 7.87MB",
+            "CPUPerc": "56.50%",
+            "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+            "ID": "7d99225d2b6a",
+            "MemPerc": "7.58%",
+            "MemUsage": "296.9MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+            "NetIO": "111MB / 172MB",
+            "PIDs": "8"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-db-1": {
+          "cpu_percent": 5.54,
+          "memory_percent": 3.12,
+          "memory_usage_bytes": 128031129.6,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 18,
+          "raw": {
+            "BlockIO": "4.1kB / 350MB",
+            "CPUPerc": "5.54%",
+            "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+            "ID": "75c081f863ac",
+            "MemPerc": "3.12%",
+            "MemUsage": "122.1MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+            "NetIO": "55.6MB / 89.2MB",
+            "PIDs": "18"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+          "cpu_percent": 0.66,
+          "memory_percent": 0.13,
+          "memory_usage_bytes": 5210374.14,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 6,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "0.66%",
+            "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+            "ID": "a7d547442049",
+            "MemPerc": "0.13%",
+            "MemUsage": "4.969MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+            "NetIO": "5.1MB / 21.6MB",
+            "PIDs": "6"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+          "cpu_percent": 1.72,
+          "memory_percent": 1.51,
+          "memory_usage_bytes": 61907927.04,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 1,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "1.72%",
+            "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+            "ID": "2f0c0dddbdcb",
+            "MemPerc": "1.51%",
+            "MemUsage": "59.04MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+            "NetIO": "3.93MB / 5.33MB",
+            "PIDs": "1"
+          }
+        }
+      }
+    },
+    {
+      "timestamp": "2026-05-14T04:40:14.083954+00:00",
+      "elapsed_seconds": 188.49,
+      "containers": {
+        "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+          "cpu_percent": 3.17,
+          "memory_percent": 7.61,
+          "memory_usage_bytes": 312580505.6,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 8,
+          "raw": {
+            "BlockIO": "0B / 7.87MB",
+            "CPUPerc": "3.17%",
+            "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+            "ID": "7d99225d2b6a",
+            "MemPerc": "7.61%",
+            "MemUsage": "298.1MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+            "NetIO": "111MB / 174MB",
+            "PIDs": "8"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-db-1": {
+          "cpu_percent": 7.06,
+          "memory_percent": 2.96,
+          "memory_usage_bytes": 121425100.8,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 10,
+          "raw": {
+            "BlockIO": "4.1kB / 351MB",
+            "CPUPerc": "7.06%",
+            "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+            "ID": "75c081f863ac",
+            "MemPerc": "2.96%",
+            "MemUsage": "115.8MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+            "NetIO": "55.7MB / 89.3MB",
+            "PIDs": "10"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+          "cpu_percent": 0.58,
+          "memory_percent": 0.12,
+          "memory_usage_bytes": 4984930.3,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 6,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "0.58%",
+            "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+            "ID": "a7d547442049",
+            "MemPerc": "0.12%",
+            "MemUsage": "4.754MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+            "NetIO": "5.16MB / 21.7MB",
+            "PIDs": "6"
+          }
+        },
+        "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+          "cpu_percent": 0.37,
+          "memory_percent": 1.51,
+          "memory_usage_bytes": 61949870.08,
+          "memory_limit_bytes": 4105988734.98,
+          "pids": 1,
+          "raw": {
+            "BlockIO": "0B / 0B",
+            "CPUPerc": "0.37%",
+            "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+            "ID": "2f0c0dddbdcb",
+            "MemPerc": "1.51%",
+            "MemUsage": "59.08MiB / 3.824GiB",
+            "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+            "NetIO": "3.98MB / 5.4MB",
+            "PIDs": "1"
+          }
+        }
+      }
+    }
+  ],
+  "resource_summary": {
+    "digitmile-bench-realistic-school-day-benchmark-backend-1": {
+      "sample_count": 20,
+      "cpu_percent_peak": 56.5,
+      "memory_usage_bytes_peak": 320444825.6,
+      "memory_percent_peak": 7.81,
+      "cpu_percent_avg": 18.47,
+      "memory_usage_bytes_avg": 304370155.52
+    },
+    "digitmile-bench-realistic-school-day-benchmark-db-1": {
+      "sample_count": 20,
+      "cpu_percent_peak": 7.98,
+      "memory_usage_bytes_peak": 131176857.6,
+      "memory_percent_peak": 3.19,
+      "cpu_percent_avg": 3.13,
+      "memory_usage_bytes_avg": 126112235.52
+    },
+    "digitmile-bench-realistic-school-day-benchmark-redis-1": {
+      "sample_count": 20,
+      "cpu_percent_peak": 0.74,
+      "memory_usage_bytes_peak": 5435817.98,
+      "memory_percent_peak": 0.13,
+      "cpu_percent_avg": 0.67,
+      "memory_usage_bytes_avg": 5081661.44
+    },
+    "digitmile-bench-realistic-school-day-benchmark-flusher-1": {
+      "sample_count": 20,
+      "cpu_percent_peak": 2.75,
+      "memory_usage_bytes_peak": 61949870.08,
+      "memory_percent_peak": 1.51,
+      "cpu_percent_avg": 1.61,
+      "memory_usage_bytes_avg": 59303264.26
+    }
+  },
+  "docker_stats_after": [
+    {
+      "BlockIO": "0B / 7.87MB",
+      "CPUPerc": "0.02%",
+      "Container": "7d99225d2b6abf2466e48adae915029c56d12809cadd8a33504ca3a7032fb4a6",
+      "ID": "7d99225d2b6a",
+      "MemPerc": "7.61%",
+      "MemUsage": "298.1MiB / 3.824GiB",
+      "Name": "digitmile-bench-realistic-school-day-benchmark-backend-1",
+      "NetIO": "111MB / 174MB",
+      "PIDs": "8"
+    },
+    {
+      "BlockIO": "4.1kB / 351MB",
+      "CPUPerc": "0.02%",
+      "Container": "75c081f863ac737a9c71fcb89b244707810bf440c3e9611c1729c3953059c103",
+      "ID": "75c081f863ac",
+      "MemPerc": "2.96%",
+      "MemUsage": "115.8MiB / 3.824GiB",
+      "Name": "digitmile-bench-realistic-school-day-benchmark-db-1",
+      "NetIO": "55.7MB / 89.3MB",
+      "PIDs": "10"
+    },
+    {
+      "BlockIO": "0B / 0B",
+      "CPUPerc": "0.56%",
+      "Container": "a7d5474420499bc07f1430f0b08e7dfc34b33a7130f2ccbf27889aa91fcececd",
+      "ID": "a7d547442049",
+      "MemPerc": "0.12%",
+      "MemUsage": "4.754MiB / 3.824GiB",
+      "Name": "digitmile-bench-realistic-school-day-benchmark-redis-1",
+      "NetIO": "5.16MB / 21.8MB",
+      "PIDs": "6"
+    },
+    {
+      "BlockIO": "0B / 0B",
+      "CPUPerc": "0.36%",
+      "Container": "2f0c0dddbdcb3ea4457d79412604356b09add33eb19a015b2fd1f69dcb8911ec",
+      "ID": "2f0c0dddbdcb",
+      "MemPerc": "1.51%",
+      "MemUsage": "59.08MiB / 3.824GiB",
+      "Name": "digitmile-bench-realistic-school-day-benchmark-flusher-1",
+      "NetIO": "3.98MB / 5.4MB",
+      "PIDs": "1"
+    }
+  ],
+  "redis_stats_before": {
+    "keyspace_hits": 0,
+    "keyspace_misses": 883,
+    "total_commands_processed": 3569,
+    "keyspace": {}
+  },
+  "redis_stats_after": {
+    "keyspace_hits": 694,
+    "keyspace_misses": 2758,
+    "total_commands_processed": 12493,
+    "keyspace": {
+      "db1_keys": 30,
+      "db1_expires": 30,
+      "db1_avg_ttl": 604633777,
+      "db1_subexpiry": 0
+    }
+  },
+  "redis_cache_summary": {
+    "hits": 694,
+    "misses": 1875,
+    "total_lookups": 2569,
+    "hit_rate_pct": 27.0,
+    "keys_stored": 30
+  },
+  "compaction_result": null,
+  "post_benchmark": {
+    "scenario_name": "realistic_school_day_post",
+    "teacher_id": "tch_8a899523422d",
+    "iterations": 5,
+    "student_count": 60,
+    "classroom_count": 3,
+    "measurements_ms": {
+      "analytics_payload": {
+        "count": 5,
+        "avg": 38.64,
+        "p50": 31.98,
+        "p95": 89.1,
+        "p99": 97.16,
+        "min": 31.79,
+        "max": 65.58
+      },
+      "turn_insights_payload": {
+        "count": 5,
+        "avg": 47.2,
+        "p50": 42.04,
+        "p95": 87.11,
+        "p99": 93.45,
+        "min": 41.28,
+        "max": 68.6
+      },
+      "student_dashboard_summaries": {
+        "count": 5,
+        "avg": 292.61,
+        "p50": 286.44,
+        "p95": 339.05,
+        "p99": 345.75,
+        "min": 282.67,
+        "max": 319.51
+      },
+      "classroom_dashboard_summaries": {
+        "count": 5,
+        "avg": 8.91,
+        "p50": 7.65,
+        "p95": 18.37,
+        "p99": 19.87,
+        "min": 7.58,
+        "max": 13.99
+      }
+    },
+    "table_sizes_bytes": {
+      "digitmileapi_run": 5316608,
+      "digitmileapi_turnevent": 40239104,
+      "digitmileapi_specialtiletrigger": 1245184,
+      "digitmileapi_studentweekstats": 524288,
+      "digitmileapi_studentweeklevelstats": 950272,
+      "digitmileapi_studentweekcardtypestats": 2555904,
+      "digitmileapi_studentrunbuckettrend": 581632,
+      "digitmileapi_classroomweekstats": 155648,
+      "digitmileapi_replayarchive": 1024000
+    },
+    "archive_directory_size_bytes": 1810219,
+    "archive_totals": {
+      "compressed_size_bytes": 1810219,
+      "uncompressed_size_bytes": 21903973
+    }
+  }
+}
