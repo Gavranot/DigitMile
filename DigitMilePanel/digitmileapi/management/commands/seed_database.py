@@ -480,10 +480,16 @@ Run bucket trend rows:        {bucket_result['bucket_rows']}
         Classroom.objects.all().delete()
         TeacherSchoolAssignment.objects.all().delete()
 
-        # Delete teacher users (but not superusers)
-        teacher_users = User.objects.filter(teacher_profile__isnull=False)
+        # Delete teacher users (but not superusers).
+        # Capture IDs before deleting Teachers, since the reverse relation
+        # disappears once Teacher rows are gone and the lazy queryset would
+        # re-evaluate to empty.
+        teacher_user_ids = list(
+            Teacher.objects.filter(user__isnull=False)
+            .values_list("user_id", flat=True)
+        )
         Teacher.objects.all().delete()
-        teacher_users.delete()
+        User.objects.filter(id__in=teacher_user_ids, is_superuser=False).delete()
 
         School.objects.all().delete()
 
