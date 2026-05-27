@@ -33,6 +33,7 @@ from digitmileapi.models import (
     School,
     StudentWeekBackCardUsageStats,
     StudentWeekCardFamilyStats,
+    StudentWeekCardTypeStats,
     StudentWeekChainLengthStats,
     StudentWeekConditionalStats,
     StudentWeekForeachContextStats,
@@ -41,6 +42,7 @@ from digitmileapi.models import (
     StudentWeekNumberChoiceStats,
     StudentWeekSpecialTileStats,
     StudentWeekStats,
+    StudentRunBucketTrend,
     Teacher,
     TeacherSchoolAssignment,
     WeeklyCompactionRun,
@@ -338,6 +340,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        from digitmileapi.run_bucket_trends import rebuild_run_bucket_trends
         from digitmileapi.weekly_aggregation import aggregate_weekly_rollups
         from digitmileapi.weekly_rollups import week_end_for, week_start_for
 
@@ -410,15 +413,29 @@ class Command(BaseCommand):
             total_turns += turns
             total_triggers += triggers
 
+            self.stdout.write(f"    Aggregating rollups for week {ws}...")
+            rollup_result = aggregate_weekly_rollups(ws)
+            self.stdout.write(
+                f"    Rollup: {rollup_result['run_count']} runs → "
+                f"{rollup_result['student_week_rows']} student-week rows"
+            )
+
             if should_compact:
                 self.stdout.write(f"    Compacting week {ws}...")
-                rollup_result = aggregate_weekly_rollups(ws)
                 self._compact_week_data(ws, we)
                 compacted_week_count += 1
-                self.stdout.write(
-                    f"    Rollup: {rollup_result['run_count']} runs → "
-                    f"{rollup_result['student_week_rows']} student-week rows"
-                )
+
+        self.stdout.write(
+            self.style.NOTICE("Building run bucket trends...")
+        )
+        all_runs_qs = Run.objects.filter(
+            student__in=students
+        )
+        bucket_result = rebuild_run_bucket_trends(all_runs_qs)
+        self.stdout.write(
+            f"  Built {bucket_result['bucket_rows']} bucket trend rows "
+            f"for {bucket_result['student_level_pairs']} student-level pairs"
+        )
 
         self.stdout.write(
             self.style.SUCCESS(f"""
@@ -432,6 +449,7 @@ Total weeks:                  {total_weeks} ({compacted_week_count} compacted, {
 Runs created:                 {total_runs}
 Turn events created:          {total_turns} ({total_turns - TurnEvent.objects.count()} compacted)
 Special tile triggers:        {total_triggers}
+Run bucket trend rows:        {bucket_result['bucket_rows']}
         """)
         )
 
@@ -444,8 +462,10 @@ Special tile triggers:        {total_triggers}
         SpecialTileTrigger.objects.all().delete()
         TurnEvent.objects.all().delete()
         Run.objects.all().delete()
+        StudentRunBucketTrend.objects.all().delete()
         StudentWeekBackCardUsageStats.objects.all().delete()
         StudentWeekCardFamilyStats.objects.all().delete()
+        StudentWeekCardTypeStats.objects.all().delete()
         StudentWeekChainLengthStats.objects.all().delete()
         StudentWeekConditionalStats.objects.all().delete()
         StudentWeekForeachContextStats.objects.all().delete()
