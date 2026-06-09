@@ -26,9 +26,9 @@ DigitMile is a Unity WebGL math game served alongside a Django/PostgreSQL backen
 
 ### …deploying or on-calling
 - `docs/guides/deployment.md` — bring-up on a fresh server.
-- `docs/guides/operations.md` — day-2 operations, PgBouncer, migrations, restarts.
+- `docs/guides/operations.md` — day-2 operations: services, env vars, signals to watch, management commands.
 - `docs/guides/ssl.md` — self-signed (local) vs Let's Encrypt (prod).
-- `docs/guides/rollup-runbook.md` — weekly compaction, verify, rebuild.
+- `docs/guides/rollup-runbook.md` — weekly compaction, verify, rebuild (fired by the `compactor` cron container in prod).
 - `docs/guides/ci-cd.md` — how the GitHub Actions workflows are wired.
 - `docs/guides/i18n.md` — `makemessages` / `compilemessages` + the language switcher.
 - `docs/guides/testing.md` — running the Django test suite.

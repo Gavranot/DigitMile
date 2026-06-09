@@ -15,16 +15,16 @@ How to bring DigitMile up on a fresh production server. Local development is cov
   frontend (nginx, Unity WebGL)     backend (Gunicorn, 5 workers)
                                           │
                                           ▼
-                                    pgbouncer (transaction pooling)
-                                          │
-                                          ▼
-                                    db (postgres:16-alpine)
+                                    db (postgres:16-alpine,
+                                        CONN_MAX_AGE=60)
                                           ▲
                                           │
                                     flusher ──▶ redis (ingest buffer + cache)
+
+  compactor (cron, Fri 20:00 EET) ──▶ backend /api/internal/compaction/
 ```
 
-Six always-on services (`db`, `redis`, `pgbouncer`, `backend`, `flusher`, `frontend`) plus `nginx-proxy` and `certbot` in production overlay.
+Five always-on services (`db`, `redis`, `backend`, `flusher`, `frontend`) plus `nginx-proxy`, `certbot`, and `compactor` in the production overlay.
 
 ## Prerequisites
 
@@ -60,13 +60,16 @@ Edit `.env`. Set the full set from `docs/reference/configuration.md`. At minimum
 DB_NAME=digitmile
 DB_USER=digitmile
 DB_PASS=<strong-random>
-DB_HOST=pgbouncer
+DB_HOST=db
 DB_PORT=5432
+DB_CONN_MAX_AGE=60
 
 DJANGO_SECRET_KEY=<long-random>
 DEBUG=False
 ALLOWED_HOSTS=your-domain.tld
 SITE_URL=https://your-domain.tld
+
+INTERNAL_API_TOKEN=<long-random>   # shared with the compactor container
 
 DJANGO_SUPERUSER_USERNAME=<admin>
 DJANGO_SUPERUSER_PASSWORD=<strong-random>
@@ -98,13 +101,13 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 The `backend` container's boot command runs:
 
 ```
-DB_HOST=db python manage.py migrate
+python manage.py migrate
 python manage.py collectstatic --noinput
 python manage.py create_superuser
 gunicorn ... --workers 5
 ```
 
-The explicit `DB_HOST=db` bypasses PgBouncer for migrations — Django's `migrate` command takes advisory locks that don't survive transaction-pooling. App traffic still goes through `pgbouncer`.
+Django connects directly to `db` (no PgBouncer in the current stack), so migrations need no special routing.
 
 ### 5. Verify
 
@@ -116,9 +119,11 @@ curl -I https://your-domain.tld/panel/admin/login/  # redirect to login
 
 ## Post-deploy checks
 
-- `docker compose ps` — all six services (`db`, `redis`, `pgbouncer`, `backend`, `flusher`, `frontend`) + `nginx-proxy` + `certbot` should be `Up`.
+- `docker compose ps` — all five core services (`db`, `redis`, `backend`, `flusher`, `frontend`) + `nginx-proxy` + `certbot` + `compactor` should be `Up`.
 - `docker compose logs flusher | tail` — confirm batches are being flushed (or at least the "queue empty, sleeping" line).
+- `docker compose logs compactor | tail` — confirm the cron loop is alive (`crond` ready message). Real compaction activity only shows up on Fridays at 20:00 EET unless you trigger manually.
 - `docker compose exec backend python manage.py shell -c "from django.contrib.auth.models import User; print(User.objects.filter(is_superuser=True).count())"` — should print at least `1`.
+- `docker compose exec redis redis-cli -n 1 LLEN ingest_buffer` — should be near 0 in steady state.
 
 ## Rollback
 

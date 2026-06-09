@@ -16,17 +16,17 @@ The root `.env` file is the single source of truth in all deployed modes; `docke
 
 Hardcoded (not env-driven): `CSRF_TRUSTED_ORIGINS = ["https://digit.mile.mk"]`, `CORS_ALLOW_ALL_ORIGINS = True`, `APPEND_SLASH = False`, `SECURE_PROXY_SSL_HEADER`.
 
-## Database (PostgreSQL via PgBouncer)
+## Database (PostgreSQL, direct connection)
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `DB_NAME` | *(required)* | Database name. |
 | `DB_USER` | *(required)* | Database user. |
 | `DB_PASS` | *(required)* | Database password. |
-| `DB_HOST` | *(required)* | Normally `pgbouncer` in the docker-compose stack; `db` for migrations. |
+| `DB_HOST` | *(required)* | Always `db` in the current stack. (Historical: `pgbouncer` before PgBouncer was removed from prod — see `docs/guides/operations.md#pgbouncer-history`.) |
 | `DB_PORT` | `5432` | Integer or blank. Non-numeric values fall back to Django's default. |
-
-Django is configured with `CONN_MAX_AGE = 0` and `DISABLE_SERVER_SIDE_CURSORS = True` because PgBouncer is in transaction-pooling mode; this is not env-configurable.
+| `DB_CONN_MAX_AGE` | `60` | Seconds Django keeps a persistent Postgres connection open. |
+| `DB_DISABLE_SERVER_SIDE_CURSORS` | `False` | Re-enabled now that PgBouncer is gone. The benchmark `no-pgbouncer.yml` overlay flips this back. |
 
 ## Redis
 
@@ -62,6 +62,18 @@ Django is configured with `CONN_MAX_AGE = 0` and `DISABLE_SERVER_SIDE_CURSORS = 
 | `INGEST_BUFFER_SLEEP_MS` | `100` | Idle sleep between flushes when the queue is empty. |
 
 The Redis key name (`"ingest_buffer"`) is hardcoded as `INGEST_BUFFER_REDIS_KEY` in `settings.py` — not env-configurable.
+
+## Internal endpoints
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `INTERNAL_API_TOKEN` | *(required for prod compaction)* | Shared header value used by the `compactor` cron container when it POSTs `/panel/api/internal/compaction/run-weekly/`. Reject mismatched tokens. |
+
+## Cache backend
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `DJANGO_CACHE_BACKEND` | empty (= `django_redis.cache.RedisCache`) | Set to `dummy` only via the benchmark `dummy-cache.yml` overlay to disable the dashboard cache. Not used in production. |
 
 ## Benchmark-only
 

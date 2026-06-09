@@ -1,319 +1,218 @@
 # Backend Operations and Configuration
 
-Last updated: 2026-03-18
+Last updated: 2026-05-29
 
-## Why this subsystem exists
+## Why this document exists
 
-This document covers how the Django backend is configured, started, observed, and safely changed in development and production-like environments.
+How the Django backend is configured, started, observed, and safely changed in development and production. For first-time setup, see `docs/getting-started.md`. For production bring-up, see `docs/guides/deployment.md`. For the weekly compaction lifecycle, see `docs/guides/rollup-runbook.md`.
 
 ## Runtime topology
 
-From `docker-compose.yml` and `docker-compose.localhost.yml`:
+From `docker-compose.yml` (always-on) and `docker-compose.prod.yml` (prod overlay):
 
-- `db` — PostgreSQL 16
-- `pgbouncer` — PgBouncer connection pooler (sits between Django and PostgreSQL)
-- `backend` — Django + Gunicorn (5 workers)
-- `frontend` — Unity/nginx frontend
-- optional `nginx-proxy` — local HTTPS reverse proxy
+| Service | Always-on | Role |
+|---|---|---|
+| `db` | yes | PostgreSQL 16 |
+| `redis` | yes | Ingest write buffer + django-redis dashboard cache |
+| `backend` | yes | Django + Gunicorn (5 workers); django-ninja ingest, teacher dashboard, admin |
+| `flusher` | yes | `python manage.py flush_ingest_buffer` — drains Redis into Postgres |
+| `frontend` | yes | Static nginx serving the Unity WebGL build |
+| `nginx-proxy` | prod | TLS termination + reverse proxy (auto-reloads every 6 h) |
+| `certbot` | prod | Let's Encrypt renewal loop (every 12 h) |
+| `compactor` | prod | Cron container; fires weekly compaction on Friday 20:00 EET |
 
-Traffic model:
+Traffic flow:
 
-- users reach nginx/frontend
-- backend is mounted under `/panel/`
-- Django admin and API are both behind that mount point
-- Django connects to `pgbouncer`, not directly to `db`; PgBouncer forwards to `db`
+- Users reach the `frontend` (Unity) or `nginx-proxy` (everything else, prod).
+- The backend is mounted under `/panel/`. Admin, API, and dashboard all live there.
+- Django connects directly to `db` with `CONN_MAX_AGE=60` (PgBouncer was removed from prod — see [PgBouncer history](#pgbouncer-history)).
+- Unity ingest goes `Unity → backend → Redis LPUSH → 202` synchronously; persistence happens out-of-band in `flusher`.
 
 ## Application bootstrap
 
 ### Django settings highlights
 
-Configured in `DigitMilePanel/digitmile/settings.py`.
+Configured in `DigitMilePanel/digitmile/settings.py`:
 
-- database engine: PostgreSQL
-- static files: WhiteNoise with compressed manifest storage
-- installed apps: `digitmileapi`, Django admin/auth apps, `corsheaders`, `rest_framework`, `captcha`
-- middleware includes custom `HealthCheckMiddleware`
-- supported languages: English, Macedonian, Albanian
-- login URLs:
-  - `LOGIN_URL = /panel/`
-  - `LOGIN_REDIRECT_URL = /panel/`
-  - `LOGOUT_REDIRECT_URL = /panel/`
+- Database engine: PostgreSQL (direct, `CONN_MAX_AGE=60`)
+- Cache: django-redis (`django_redis.cache.RedisCache`), 7-day TTL for dashboard sections
+- Static files: WhiteNoise with compressed manifest storage
+- Installed apps: `digitmileapi`, Django admin/auth, `corsheaders`, `rest_framework`, `ninja`, `captcha`
+- Middleware includes a custom `HealthCheckMiddleware`
+- Supported languages: English, Macedonian, Albanian
+- `APPEND_SLASH = False` — callers must hit exact paths
+- Login URLs all default to `/panel/`
 
 ### Compose startup sequence
 
 The backend container command runs, in order:
 
-1. migrations — run with `DB_HOST=db` (bypasses PgBouncer; see [PgBouncer and Django migrations](#pgbouncer-and-django-migrations))
-2. static collection
-3. custom superuser creation command
-4. gunicorn with 5 workers
+1. `python manage.py migrate`
+2. `python manage.py collectstatic --noinput`
+3. `python manage.py create_superuser`
+4. `gunicorn digitmile.wsgi:application --bind 0.0.0.0:8000 --workers 5`
+
+Migrations run normally — Postgres is directly addressable as `db`, no special pooler routing is required.
+
+The `flusher` container's only command is `python manage.py flush_ingest_buffer` with `restart: always`.
+
+The `compactor` container (prod only) is a tiny cron loop that POSTs `/panel/api/internal/compaction/run-weekly/` on its schedule.
 
 ### Docker images
 
-`DigitMilePanel/Dockerfile` and `DigitMilePanel/Dockerfile.compose` both:
-
-- use Python 3.12 slim
-- install `libpq-dev`, `gcc`, `gettext`
-- install Python requirements from `requirements.txt`
+`DigitMilePanel/Dockerfile` (CI) and `DigitMilePanel/Dockerfile.compose` (dev) both use Python 3.12 slim and install `libpq-dev`, `gcc`, `gettext`, and `requirements.txt`. The `compactor/Dockerfile` is a separate small image (no Django runtime).
 
 ## Configuration matrix
 
-### Core Django and database variables
+Full env-var reference is in `docs/reference/configuration.md`. Operational highlights:
 
-| Variable | Used in code | Purpose |
-| --- | --- | --- |
-| `DJANGO_SECRET_KEY` | yes | Django secret key |
-| `DEBUG` | yes | toggles Django debug mode |
-| `DB_NAME` | yes | PostgreSQL database name |
-| `DB_USER` | yes | PostgreSQL username |
-| `DB_PASS` | yes | PostgreSQL password |
-| `DB_HOST` | yes | Database host. Must be `pgbouncer` in all environments (dev and prod). Set to `db` only when running migrations directly — see [PgBouncer and Django migrations](#pgbouncer-and-django-migrations). |
-| `DB_PORT` | yes | PostgreSQL port; parsed carefully, defaults to 5432 when unset |
-| `SERVER_IP` | yes | appended to `ALLOWED_HOSTS` when present |
-| `ALLOWED_HOSTS` | yes | comma-separated host allowlist |
+| Variable | Purpose |
+|---|---|
+| `DB_HOST` | Always `db` in the current stack. (Historical: `pgbouncer` before pooler removal.) |
+| `DB_CONN_MAX_AGE` | Persistent connections; defaults to `60`. |
+| `REDIS_URL` | Shared between django-redis cache and the ingest buffer. `redis://redis:6379/1` in compose. |
+| `INGEST_BUFFER_BATCH_SIZE` | Default `50`. Max items the flusher pops per iteration. |
+| `INGEST_BUFFER_SLEEP_MS` | Default `100`. Idle backoff between drained batches. |
+| `INTERNAL_API_TOKEN` | Shared between backend and compactor for the internal compaction trigger. |
+| `DJANGO_CACHE_BACKEND` | Default empty = real Redis cache. Set to `dummy` only via benchmark overlay. |
+| `DJANGO_SUPERUSER_USERNAME` / `_PASSWORD` / `_EMAIL` | Read by `create_superuser` on boot. Skipped (with a warning) if password is unset. |
 
-### Email variables
+## Data stores
 
-| Variable | Used in code | Purpose |
-| --- | --- | --- |
-| `EMAIL_BACKEND` | yes | console vs SMTP backend |
-| `EMAIL_HOST` | yes | SMTP host |
-| `EMAIL_PORT` | yes | SMTP port |
-| `EMAIL_USE_TLS` | yes | TLS toggle |
-| `EMAIL_HOST_USER` | yes | SMTP username |
-| `EMAIL_HOST_PASSWORD` | yes | SMTP password |
-| `DEFAULT_FROM_EMAIL` | yes | sender address |
-| `SITE_URL` | yes | links included in teacher emails |
-
-### Product-specific variables
-
-| Variable | Used in code | Purpose |
-| --- | --- | --- |
-| `GOOGLE_MAPS_API_KEY` | yes | map picker on school registration page |
-
-### Superuser bootstrap variables
-
-Used by `DigitMilePanel/digitmileapi/management/commands/create_superuser.py`:
-
-- `DJANGO_SUPERUSER_USERNAME`
-- `DJANGO_SUPERUSER_EMAIL`
-- `DJANGO_SUPERUSER_PASSWORD`
-
-If the password variable is absent, the command logs a warning and skips user creation.
-
-## Data stores and file-backed inputs
-
-### Primary database
-
-- PostgreSQL is the intended runtime database.
-- A `db.sqlite3` file exists in the repository, but runtime settings point to PostgreSQL.
-
-### File-backed analytics inputs
-
-- level deck JSON files in `DigitMilePanel/digitmileapi/templates/assets/`
-- locale files in `DigitMilePanel/locale/`
-
-### Static files
-
-- collected into `DigitMilePanel/staticfiles/`
-- served by WhiteNoise
+- **PostgreSQL** — primary store. A `db.sqlite3` file exists in the repo but runtime settings always point at Postgres.
+- **Redis** — ingest buffer (`ingest_buffer` list) + dashboard cache (`teacher_dashboard:*` keys). AOF on with `appendfsync everysec` (bounds loss to ~1 s).
+- **Replay archives** — gzipped JSONL files under `REPLAY_ARCHIVE_ROOT` (`/var/lib/digitmile/replay-archives`, bind-mounted volume). One archive per compacted `(teacher, week)`.
 
 ## Security-relevant behavior
 
-### CSRF and sessions
-
-- Unity is expected to fetch a CSRF token and send it in `X-CSRFToken`.
-- Only the token-fetch endpoint bypasses CSRF enforcement.
-
-### CORS
-
-- `CORS_ALLOW_ALL_ORIGINS = True`
-- this is intentionally permissive and should be treated as a conscious trust decision
-
-### Host handling and health checks
-
-- `ALLOWED_HOSTS` is environment-driven
-- `HealthCheckMiddleware` returns `{"status": "healthy"}` for any path containing `health`
-- this happens before normal processing and is intended to keep health probes simple
-
-### Soft rejection model
-
-- rejecting a school or teacher disables access without deleting data
-- this is good for auditability but means rejected records stay in the database indefinitely
-
-### Teacher auth posture
-
-- teacher users are staff users and can enter Django admin
-- object scoping is implemented in admin/view code, not via separate admin sites or object-permission libraries
+- **CSRF** — Unity fetches the token from `/panel/api/fetchCSRFToken/` once and sends it in `X-CSRFToken`. Only the token-fetch endpoint bypasses CSRF.
+- **CORS** — `CORS_ALLOW_ALL_ORIGINS = True`. Intentional for Unity WebGL builds that may be hosted across origins.
+- **Internal endpoints** — `/panel/api/internal/compaction/...` requires the `INTERNAL_API_TOKEN` shared header. Used by the compactor cron container only.
+- **Health checks** — `HealthCheckMiddleware` always-200 for paths containing `health`. Use for liveness, not readiness.
+- **Soft rejection** — rejecting a school/teacher disables access; data is not deleted (audit trail). Rejected rows stay in the database indefinitely.
+- **Teacher auth posture** — teacher users are staff users and can enter Django admin. Scoping is implemented per-view, not via per-object permission libraries.
 
 ## Observability and troubleshooting
 
 ### Logging
 
-Logging is configured to stdout only.
+stdout per container. Consume via `docker compose logs -f <service>`.
 
-- root logger -> console
-- `django` logger -> console
-- `email` logger -> console
+- Newer ingest, flusher, and compaction paths use structured `logger.info` / `.warning` / `.exception`.
+- Older registration/admin paths still emit some `print()` and raw traceback output.
 
-Code quality note:
+### Key signals to watch
 
-- some code paths still use `print()` and raw traceback printing, especially older API endpoints
-- newer ingestion and email paths use structured `logger.info/warning/error/exception`
-
-### Caching
-
-- there is no explicit `CACHES` setting in `settings.py`
-- teacher visualization payloads use `django.core.cache.cache`
-- effective backend therefore depends on Django defaults unless overridden elsewhere
+- **`LLEN ingest_buffer`** — should stay near 0 in steady state. Sustained growth means the flusher is behind or down.
+  ```bash
+  docker compose exec redis redis-cli -n 1 LLEN ingest_buffer
+  ```
+- **Flusher batch logs** — `docker compose logs -f flusher` shows each drained batch.
+- **`WeeklyCompactionRun` rows** — terminal `status` field tells you whether the last Friday's compaction succeeded.
+  ```bash
+  docker compose exec backend python manage.py shell -c "from digitmileapi.models import WeeklyCompactionRun; print(WeeklyCompactionRun.objects.order_by('-created_at').values('week_start','status')[:5])"
+  ```
+- **Backend `/panel/health/`** — always-200 even when DB is unhealthy; use it for liveness, not readiness.
 
 ### Useful operational commands
 
-From `AGENTS.md`:
+- Start stack: `docker compose up -d`
+- Start with localhost HTTPS: `docker compose -f docker-compose.yml -f docker-compose.localhost.yml up -d`
+- Start in production mode: `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d`
+- Tail backend logs: `docker compose logs -f backend`
+- Tail flusher logs: `docker compose logs -f flusher`
+- Run migrations: `docker compose exec backend python manage.py migrate` (no pooler bypass needed)
+- Django shell: `docker compose exec backend python manage.py shell`
+- Update teacher group perms: `docker compose exec backend python manage.py setup_teachers_group`
+- Wipe school/game data: `docker compose exec backend python manage.py clear_school_data --yes`
+- Seed demo data: `docker compose exec backend python manage.py seed_database --preset medium`
+- Manually compact a week: see `docs/guides/rollup-runbook.md`.
 
-- start stack: `docker-compose up -d`
-- start with localhost HTTPS: `docker-compose -f docker-compose.yml -f docker-compose.localhost.yml up -d`
-- backend logs: `docker-compose logs -f backend`
-- run migrations: see [PgBouncer and Django migrations](#pgbouncer-and-django-migrations) — do not use the plain `migrate` command
-- Django shell: `docker-compose exec backend python manage.py shell`
-- create/update teachers group: `python manage.py setup_teachers_group`
-- clear school/game data: `python manage.py clear_school_data --yes`
+## Background and bootstrap commands
 
-## Background/bootstrap commands in the app
+| Command | Purpose |
+|---|---|
+| `flush_ingest_buffer` | Long-running flusher. Started automatically by the `flusher` container; should not be run by hand on a live system (it would compete with the container's instance). |
+| `compact_weekly_runs` | Per-(teacher, week) compaction worker. Normally fired by the compactor → internal HTTP trigger; can be invoked manually for backfill. |
+| `rebuild_weekly_rollups <YYYY-MM-DD>` | Idempotent rebuild of all rollup tables for a given week start. Use after manual changes or to recover from a divergence. |
+| `verify_weekly_rollups` | Compares rollup tables against raw rows for a week. Used by compaction before it deletes raw rows. |
+| `archive_week_replays` | Writes the `ReplayArchive` rows + gzipped JSONL files. Embedded in `compact_weekly_runs`. |
+| `verify_replay_archives` | Spot-check that archives decode to the expected row counts. |
+| `setup_teachers_group` | Re-runs teacher group permission provisioning. Safe to call any time. |
+| `create_superuser` | Idempotent superuser bootstrap from `DJANGO_SUPERUSER_*` env vars. Runs on every backend boot. |
+| `clear_school_data` | Destructive; requires `--yes`. Drops schools, teachers, classrooms, students, runs, triggers, and teacher-linked users. |
+| `seed_database` | Demo data: schools, teachers, classrooms, students, runs, triggers, rollups. `--preset low/medium/high`. |
+| `prepare_benchmark_dataset` | Used by the benchmark harness, not in production. Builds a deterministic fixture sized to the requested adoption tier. |
 
-### `setup_teachers_group`
+Full command catalogue: `docs/reference/management-commands.md`.
 
-- re-runs teacher group permission provisioning
+## PgBouncer history
 
-### `create_superuser`
+PgBouncer used to sit between Django and PostgreSQL in transaction-pooling mode (`CONN_MAX_AGE=0`, `DISABLE_SERVER_SIDE_CURSORS=True`, migrations bypassed it via `DB_HOST=db`). Benchmarks on the production-target VPS showed that once the Redis write buffer (optimization F) was in place, the HTTP ingest path stopped touching PostgreSQL synchronously — and PgBouncer's per-request handshake cost (forced by `CONN_MAX_AGE=0`) started exceeding the savings from pooling. Removing PgBouncer cut average ingest latency from 412 ms to 11 ms on the same hardware.
 
-- idempotently creates a superuser from env vars
+Production now connects Django directly to `db` with `CONN_MAX_AGE=60`. Server-side cursors are re-enabled. With 5 Gunicorn workers + 1 flusher ≈ 6–7 persistent connections, Postgres's default `max_connections=100` leaves a 14× margin.
 
-### `clear_school_data`
+The historical pieces are preserved:
 
-- destructive command that deletes schools, teachers, classrooms, students, runs, triggers, and teacher-linked users
-- intentionally keeps the confirmation prompt unless `--yes` is provided
+- `benchmarks/overlays/no-pgbouncer.yml` toggles the benchmark stack between the two modes.
+- `benchmarks/scenarios/before_pgbouncer_*` produce the before/after numbers.
+- `docs/thesis/chapter5_final.md` §5.3.2 is the writeup of the finding.
 
-### `seed_database`
-
-- creates demo schools, teachers, classrooms, students, runs, triggers, and optional legacy stats
-- useful for dashboard and analytics testing
-
-## PgBouncer and Django migrations
-
-### What PgBouncer does
-
-PgBouncer is a connection pooler that sits between Django and PostgreSQL. Without it, every HTTP request that Django handles opens a new TCP connection to PostgreSQL, authenticates, runs its queries, and closes the connection. At load this is wasteful: opening a connection costs ~2–5 ms and forces PostgreSQL to spawn a new backend process (~5 MB RAM each) for every request.
-
-PgBouncer maintains a warm pool of already-open connections to PostgreSQL. Django "connects" to PgBouncer (which is instantaneous — same Docker network, no auth round-trip), borrows a real connection from the pool, runs its queries, and returns the connection when the transaction commits. PostgreSQL never sees the per-request connect/disconnect churn.
-
-### Transaction pooling mode
-
-PgBouncer is configured in **transaction pooling mode** (`POOL_MODE=transaction`). In this mode, a real PostgreSQL connection is held only for the duration of a single transaction — it is released back to the pool the moment Django calls `COMMIT` or `ROLLBACK`. This means 5 Gunicorn workers can share as few as 5–10 real PostgreSQL connections instead of holding 5 open permanently.
-
-Two Django settings are required for this to work correctly:
-
-```python
-# settings.py — DATABASES["default"]
-"CONN_MAX_AGE": 0,
-"DISABLE_SERVER_SIDE_CURSORS": True,
-```
-
-- `CONN_MAX_AGE=0` — Django must not hold a persistent connection across requests. If it did, PgBouncer could not reclaim the connection between transactions, defeating the pool. PgBouncer owns the pool; Django treats each request as stateless.
-- `DISABLE_SERVER_SIDE_CURSORS=True` — PostgreSQL prepared statements and server-side cursors are tied to a specific backend connection by session ID. In transaction mode, the same Django "connection" is routed to different real PostgreSQL connections on each transaction. Prepared statements therefore break silently. This setting tells Django's ORM to avoid them entirely.
-
-### Why migrations cannot run through PgBouncer
-
-Django's migration system acquires a **PostgreSQL advisory lock** at the start of every `migrate` run:
-
-```sql
-SELECT pg_try_advisory_lock(hash_of_app_label_and_migration_name);
-```
-
-Advisory locks in PostgreSQL are **session-scoped** — they are held for the lifetime of a database session, not a transaction. In transaction pooling mode, a session does not correspond to a single real PostgreSQL connection. When the migration's first transaction commits, PgBouncer releases the underlying connection back to the pool and may route the next transaction to a completely different PostgreSQL backend. The advisory lock, held by the original session, is lost. Django then fails to detect that its own lock has disappeared and either errors out or, worse, allows two concurrent `migrate` processes to run simultaneously.
-
-### What to do instead
-
-**Always run migrations with `DB_HOST=db`**, which bypasses PgBouncer and connects Django directly to PostgreSQL for that process only.
-
-**In development (docker-compose):**
-
-The compose startup command already does this:
-
-```yaml
-command: >
-  sh -c "DB_HOST=db python manage.py migrate && ..."
-```
-
-`DB_HOST=db` is set only for the `migrate` subprocess. Django reads `os.getenv("DB_HOST")` at startup, so this override is scoped to that single process. Gunicorn, started later in the same `sh -c` chain without the override, picks up `DB_HOST=pgbouncer` from the container's `.env` and connects through the pool.
-
-**In production (manual or CI migrations):**
-
-```bash
-# via docker exec on the running backend container
-docker exec -e DB_HOST=db digitmile-backend python manage.py migrate
-
-# or via docker-compose exec
-DB_HOST=db docker-compose exec backend python manage.py migrate
-```
-
-Do not run `docker-compose exec backend python manage.py migrate` without the `DB_HOST=db` override. The container's `.env` sets `DB_HOST=pgbouncer`, so a plain `migrate` command will route through PgBouncer and fail on the advisory lock.
-
-### Summary
-
-| Operation | Connect through | Why |
-| --- | --- | --- |
-| Normal request handling (Gunicorn) | `pgbouncer` | Pool reduces per-request connection overhead |
-| `python manage.py migrate` | `db` (direct) | Advisory locks require a stable session |
-| `python manage.py shell` | `pgbouncer` | Fine — no advisory locks in an interactive shell |
-| `python manage.py` any other command | `pgbouncer` | Fine for all other management commands |
+The `BENCHMARK_DISABLE_PGBOUNCER=1` env var on the benchmark runner inverts overlay selection. Nothing in the production stack reads it.
 
 ## Performance characteristics and hotspots
 
-### Relatively efficient parts
+### Efficient by design
 
-- run ingestion uses `transaction.atomic()` plus `bulk_create()` for turns and triggers
-- `Run` and `TurnEvent` have indexes aligned with common analytics access patterns
+- Ingest never blocks on Postgres in the HTTP path; it pushes to Redis and returns 202.
+- Dashboard reads come from rollup tables only, with django-redis caching layered on top.
+- Compaction writes archives + deletes raw rows in batches per (teacher, week).
 
 ### Potential hotspots
 
-- dashboard page computes student summaries in Python per student, which can get expensive for large classes
-- several analytics helpers iterate through raw turn rows in Python rather than relying fully on SQL aggregation
-- deck/share and conditional analytics parse JSON/card data repeatedly
-- replay loads all turns for a run at once into the template
+- Dashboard page computes some per-student summaries in Python; expensive for very large classes (a 100-student classroom is still fine, but a 1000-student "class" would not be).
+- Run replay loads all turns for a single Run into the template at once. Bound: one Run ≈ 20 turns, so fine in practice.
+- Some legacy DRF analytics helpers iterate raw rows in Python rather than relying on SQL aggregation; the rollup-only invariant means these are not on the hot path, but they're slow when invoked.
 
 ## Safe change guidance
 
-### If changing model fields
+### Changing model fields
 
-- inspect both ingestion endpoints
-- inspect `analytics.py`
-- inspect admin read-only field lists and filters
-- inspect dashboard JSON serialization in `teacher_statistics_dashboard`
+- Inspect the django-ninja ingest router for payload validation.
+- Inspect `analytics.py` and the rollup commands (`weekly_aggregation.py`, `rollup_incremental.py`, `rebuild_weekly_rollups.py`).
+- Inspect admin read-only field lists and filters.
+- Inspect dashboard payload assembly in `teacher_statistics_dashboard`.
+- If the change touches `Run`/`TurnEvent`, also check `compact_weekly_runs` (the archive shape).
 
-### If changing auth or teacher access
+### Changing auth or teacher access
 
-- inspect `apps.py` group permissions
-- inspect `IsTeacher`
-- inspect admin `get_queryset()` and permission overrides
-- inspect status transition side effects in `models.py`
+- `apps.py` group permissions.
+- `IsTeacher` and any per-view scoping decorators.
+- Admin `get_queryset()` and permission overrides.
+- Status transition side effects in `models.py`.
 
-### If changing Unity payload shape
+### Changing Unity payload shape
 
-- update serializer(s)
-- update normalization helpers in `views.py`
-- update replay parsing logic in `teacher_run_replay.html`
-- verify card analytics still parse the stored payload correctly
+- Update the Pydantic models the ninja router validates.
+- Update normalization helpers in `views.py` if the legacy path also touches them.
+- Update replay parsing in `teacher_run_replay.html`.
+- Verify card analytics still parse the stored payload correctly.
 
 ## Evidence-backed technical debt
 
-- legacy and current gameplay data paths coexist and are only partially harmonized
-- `insertRunData/` and `runs/ingest/` are not semantically identical despite similar purpose
-- some public approval/rejection actions are GET routes
-- duplicate-handling logic is inconsistent between forms and database constraints
-- no automated tests currently exercise this behavior; `DigitMilePanel/digitmileapi/tests.py` is effectively empty
+- Legacy and current ingest paths coexist (`insertRunData/` and `runs/ingest/`); only `runs/ingest/` is the canonical Unity target.
+- `RunStatistics` still has admin/API surface but the modern dashboard ignores it.
+- Some public approval/rejection actions are still GET routes.
+- Duplicate-handling logic is inconsistent between forms and database constraints in registration.
+- Test coverage is partial — there are real tests for ingestion and rollup accuracy, but registration, admin, and dashboard rendering are not exercised.
 
-## Open questions / uncertainty notes
+## Related docs
 
-- Because no test suite covers the current backend behavior, code inspection is the main source of truth for all docs here.
-- Production cache backend, email backend, and host values may vary by deploy environment beyond what is represented in repository defaults.
+- `docs/getting-started.md` — local dev setup.
+- `docs/guides/deployment.md` — production bring-up.
+- `docs/guides/rollup-runbook.md` — weekly compaction lifecycle.
+- `docs/guides/ssl.md` — TLS (self-signed vs Let's Encrypt).
+- `docs/guides/ci-cd.md` — GitHub Actions deploy workflow.
+- `docs/reference/configuration.md` — every env var.
+- `docs/decisions/write-buffering-adr.md` — design of the Redis ingest buffer.
+- `docs/thesis/chapter5_final.md` — empirical evaluation, including the PgBouncer-removal finding.

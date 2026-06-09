@@ -13,7 +13,7 @@ There is no `pytest.ini`; the stock Django test runner is used (`manage.py test`
 docker compose exec backend python manage.py test digitmileapi
 ```
 
-The first run creates a throw-away test database against whatever `DATABASES['default']` points at. With PgBouncer + transaction pooling this can be slow on first run; subsequent runs are faster if you pass `--keepdb`.
+The first run creates a throw-away test database against whatever `DATABASES['default']` points at. Subsequent runs are faster if you pass `--keepdb`.
 
 ## Target a single test
 

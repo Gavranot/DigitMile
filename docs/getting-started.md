@@ -27,9 +27,10 @@ cp .env.example .env      # or .env.docker for the docker-compose defaults
 Edit `.env` and set at minimum:
 
 - `DB_NAME`, `DB_USER`, `DB_PASS` — Postgres creds (any values; the container creates the DB).
-- `DB_HOST=pgbouncer` and `DB_PORT=5432` — route traffic through PgBouncer by default.
+- `DB_HOST=db` and `DB_PORT=5432` — Django connects directly to Postgres (no PgBouncer in the current stack).
 - `DJANGO_SECRET_KEY` — any long random string for dev.
 - `DEBUG=True` for local development.
+- `INTERNAL_API_TOKEN` — any long random string for dev; only used in prod by the `compactor` cron.
 
 See `docs/reference/configuration.md` for the full list of variables.
 
@@ -43,16 +44,17 @@ Fastest — plain HTTP, no reverse proxy:
 docker compose up -d
 ```
 
-This brings up six services:
+This brings up five services:
 
 | Service | Port exposed | Role |
 |---------|--------------|------|
-| `db` | 5432 | PostgreSQL 16 |
+| `db` | 5433 → 5432 | PostgreSQL 16 |
 | `redis` | — | Dashboard cache + ingest write buffer |
-| `pgbouncer` | — | Connection pooler (transaction mode) |
 | `backend` | 8000 | Django (Gunicorn, 5 workers); runs migrate + collectstatic + create_superuser on boot |
 | `flusher` | — | Reads from the Redis ingest buffer and bulk-inserts into Postgres |
 | `frontend` | 80 | nginx serving the Unity WebGL build |
+
+The production overlay (`docker-compose.prod.yml`) adds `nginx-proxy`, `certbot`, and a `compactor` cron container (Friday 20:00 EET).
 
 Alternative modes:
 
@@ -100,6 +102,6 @@ See `docs/guides/testing.md` for scope and how to target specific test classes.
 
 ## Troubleshooting
 
-- **`backend` fails to start** — check `docker compose logs backend`. The boot command runs `DB_HOST=db migrate` explicitly (bypassing PgBouncer, which deadlocks on Django's advisory-lock during migrations). If you overrode `DB_HOST` incorrectly in `.env`, this is usually the symptom.
-- **Ingest endpoint returns 202 but nothing shows up in DB** — the `flusher` service must be running. `docker compose ps flusher` should show it up; `docker compose logs flusher` will show batch-flush logs.
+- **`backend` fails to start** — check `docker compose logs backend`. Most common cause is a `DB_HOST` mismatch (should be `db` in the current stack) or missing `DJANGO_SECRET_KEY`.
+- **Ingest endpoint returns 202 but nothing shows up in DB** — the `flusher` service must be running. `docker compose ps flusher` should show it up; `docker compose logs flusher` will show batch-flush logs. You can also check `docker compose exec redis redis-cli -n 1 LLEN ingest_buffer` — sustained growth means the flusher is down or behind.
 - **Dashboard is empty after seeding** — dashboard reads come from rollup tables only (never from hot `Run` data). `seed_database` already runs rollups; if you compacted a week manually and still see nothing, `docker compose exec backend python manage.py rebuild_weekly_rollups <YYYY-MM-DD>` will rebuild the rollup cache.
