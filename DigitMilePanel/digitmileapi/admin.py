@@ -582,54 +582,9 @@ class StudentAdmin(admin.ModelAdmin):
                 raise PermissionDenied("You can only assign students to your own classrooms.")
         super().save_model(request, obj, form, change)
 
-@admin.register(RunStatistics)
-class RunStatisticsAdmin(admin.ModelAdmin):
-    list_display = (
-        'student',
-        'level',
-        'score',
-        'place',
-        'player_won',
-        'correct_moves',
-        'wrong_moves',
-        'time_elapsed',
-        'created_at',
-        'updated_at',
-        'get_classroom_from_student',
-    )
-    list_filter = ('player_won', 'level', 'place', 'student__classroom__teacher')
-    search_fields = ('student__full_name',)
-    readonly_fields = ('created_at', 'updated_at')
-
-    def get_classroom_from_student(self, obj):
-        if obj.student and obj.student.classroom:
-            return obj.student.classroom
-        return None
-    get_classroom_from_student.short_description = 'Classroom'
-
-    # Restrict queryset for non-superusers (teachers)
-    def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        if request.user.is_superuser:
-            return qs
-        if hasattr(request.user, 'teacher_profile'):
-            # Show only stats for students in classrooms belonging to this teacher
-            return qs.filter(student__classroom__teacher=request.user.teacher_profile)
-        return qs.none()
-
-    def has_module_permission(self, request):
-        return request.user.is_superuser
-
-    def has_view_permission(self, request, obj=None):
-        return request.user.is_superuser
-
-    # Teachers should not add, change, or delete RunStatistics directly (it's an audit/log table)
-    def has_add_permission(self, request):
-        return request.user.is_superuser
-    def has_change_permission(self, request, obj=None):
-        return request.user.is_superuser
-    def has_delete_permission(self, request, obj=None):
-        return request.user.is_superuser
+# RunStatistics is intentionally NOT registered in the admin. It is a legacy
+# audit/log table and should not appear in the panel for anyone (superuser or
+# teacher). To re-expose it, re-add an @admin.register(RunStatistics) class.
 
 
 # ==================== Run Analytics Admin ====================
@@ -744,6 +699,14 @@ class TurnEventAdmin(admin.ModelAdmin):
             return qs.filter(run__student__classroom__teacher=request.user.teacher_profile)
         return qs.none()
 
+    # Hide standalone Turn Events from teachers (still visible as a read-only
+    # inline inside a Run). Superusers retain full access.
+    def has_module_permission(self, request):
+        return request.user.is_superuser
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_superuser
+
     def has_add_permission(self, request):
         return False
 
@@ -776,6 +739,14 @@ class SpecialTileTriggerAdmin(admin.ModelAdmin):
         if hasattr(request.user, 'teacher_profile'):
             return qs.filter(turn__run__student__classroom__teacher=request.user.teacher_profile)
         return qs.none()
+
+    # Hide standalone Special Tile Triggers from teachers (still visible as a
+    # read-only inline inside a Turn Event). Superusers retain full access.
+    def has_module_permission(self, request):
+        return request.user.is_superuser
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_superuser
 
     def has_add_permission(self, request):
         return False
