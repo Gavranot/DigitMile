@@ -72,6 +72,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "rest_framework",
     "captcha",
+    "django_extensions"
 ]
 
 MIDDLEWARE = [
