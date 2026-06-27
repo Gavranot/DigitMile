@@ -4,12 +4,15 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import mock
 
-from django.db import IntegrityError
+import fakeredis
+from django.conf import settings
 from django.core.management import call_command
 from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
+from . import ingest_router
+from .management.commands.flush_ingest_buffer import Command as FlushCommand
 from .models import (
     ClassroomWeekStats,
     Classroom,
@@ -99,6 +102,12 @@ class RunIngestionTests(TestCase):
             classroom=self.classroom,
         )
         self.client = APIClient()
+        # Ingest is asynchronous: the endpoint validates and pushes onto a Redis
+        # write buffer (returning 202); the flusher later materializes the Run.
+        # An in-memory fake stands in for the buffer so tests can POST, then
+        # drive the flusher to assert on persisted rows. See
+        # test_ingest_durability.py for the canonical patterns.
+        self.fake = fakeredis.FakeStrictRedis()
 
     def _unity_payload(self):
         return {
@@ -266,23 +275,41 @@ class RunIngestionTests(TestCase):
             "run_finished_at": datetime(2026, 3, 4, 10, 0, tzinfo=dt_timezone.utc),
         }
 
-    @mock.patch(
-        "digitmileapi.views.get_recording_window_status_for_run_finish",
-    )
-    def test_runs_ingest_accepts_unity_payload_and_persists_parity_fields(
-        self,
-        recording_window_mock,
-    ):
-        recording_window_mock.return_value = self._open_recording_window()
-
-        response = self.client.post(
-            "/panel/api/runs/ingest/",
-            self._unity_payload(),
-            format="json",
+    def _ingest(self, payload, **extra):
+        return self.client.post(
+            "/panel/api/runs/ingest/", payload, format="json", **extra
         )
 
-        self.assertEqual(response.status_code, 201)
-        run = Run.objects.get(id=response.data["run_id"])
+    def _flush(self):
+        """Drain the fake buffer into Postgres exactly as the worker would."""
+        return FlushCommand()._flush_batch(
+            self.fake, settings.INGEST_BUFFER_BATCH_SIZE
+        )
+
+    def _window_open(self):
+        """Patch the recording-window check at the namespace ingest_router uses
+        (it imports the symbol directly, so patching digitmileapi.views.* would
+        not take effect)."""
+        return mock.patch.object(
+            ingest_router,
+            "get_recording_window_status_for_run_finish",
+            return_value=self._open_recording_window(),
+        )
+
+    def _buffer(self):
+        return mock.patch.object(ingest_router, "_redis", self.fake)
+
+    def test_runs_ingest_accepts_unity_payload_and_persists_parity_fields(self):
+        with self._buffer(), self._window_open():
+            response = self._ingest(self._unity_payload())
+
+        # The endpoint only queues the run (202); the flusher materializes it.
+        self.assertEqual(response.status_code, 202)
+        self.assertEqual(Run.objects.count(), 0)
+
+        self._flush()
+
+        run = Run.objects.get(id=response.json()["run_id"])
         self.assertEqual(run.student, self.student)
         self.assertEqual(run.place, 1)
         self.assertTrue(run.player_won)
@@ -306,72 +333,62 @@ class RunIngestionTests(TestCase):
         self.assertIsNone(second_turn.chosen_number)
         self.assertIsNone(second_turn.number_decision_time_ms)
 
-    @mock.patch(
-        "digitmileapi.views.get_recording_window_status_for_run_finish",
-    )
-    def test_runs_ingest_is_idempotent_for_unity_retries(self, recording_window_mock):
-        recording_window_mock.return_value = self._open_recording_window()
+    def test_runs_ingest_is_idempotent_for_unity_retries(self):
         payload = self._unity_payload()
 
-        first_response = self.client.post(
-            "/panel/api/runs/ingest/",
-            payload,
-            format="json",
-        )
-        second_response = self.client.post(
-            "/panel/api/runs/ingest/",
-            payload,
-            format="json",
-        )
+        with self._buffer(), self._window_open():
+            first_response = self._ingest(payload)
+            # Materialize the first run before the retry so the endpoint's
+            # existing-run idempotency guard short-circuits the second POST.
+            self._flush()
+            second_response = self._ingest(payload)
 
-        self.assertEqual(first_response.status_code, 201)
+        self.assertEqual(first_response.status_code, 202)
         self.assertEqual(second_response.status_code, 200)
+        self.assertIn("already", second_response.json()["message"].lower())
         self.assertEqual(Run.objects.count(), 1)
         self.assertEqual(
-            first_response.data["run_id"],
-            second_response.data["run_id"],
+            first_response.json()["run_id"],
+            second_response.json()["run_id"],
         )
 
-    @mock.patch(
-        "digitmileapi.views.get_recording_window_status_for_run_finish",
-    )
-    def test_runs_ingest_handles_duplicate_key_race_condition(
-        self,
-        recording_window_mock,
-    ):
-        recording_window_mock.return_value = self._open_recording_window()
+    def test_runs_ingest_dedupes_duplicate_run_id_within_flush_batch(self):
+        # Two identical Unity payloads derive the same run_id. If they reach the
+        # buffer before either is flushed (the endpoint's DB idempotency guard
+        # can't see them yet), the flusher must still create exactly one Run.
+        # The duplicate guard now lives in flush_ingest_buffer._flush_batch.
+        payload = self._unity_payload()
 
-        with mock.patch(
-            "digitmileapi.views.Run.objects.create",
-            side_effect=IntegrityError(
-                'duplicate key value violates unique constraint "digitmileapi_run_pkey"'
-            ),
-        ):
-            response = self.client.post(
-                "/panel/api/runs/ingest/",
-                self._unity_payload(),
-                format="json",
-            )
+        with self._buffer(), self._window_open():
+            first_response = self._ingest(payload)
+            second_response = self._ingest(payload)
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(Run.objects.count(), 0)
+        self.assertEqual(first_response.status_code, 202)
+        self.assertEqual(second_response.status_code, 202)
+        self.assertEqual(self.fake.llen(settings.INGEST_BUFFER_REDIS_KEY), 2)
+
+        self._flush()
+
+        self.assertEqual(Run.objects.count(), 1)
 
     @override_settings(BENCHMARK_TIME_OVERRIDE_ENABLED=True)
     def test_runs_ingest_accepts_synthetic_open_week_benchmark_time(self):
+        # No window mock: the real check runs against the benchmark reference
+        # time. Both the run-finish and the reference time are fixed relative to
+        # each other, so this stays valid as wall-clock advances.
         started_at = datetime(2026, 3, 11, 9, 0, tzinfo=dt_timezone.utc)
         finished_at = datetime(2026, 3, 11, 9, 0, 45, tzinfo=dt_timezone.utc)
         payload = self._unity_payload()
         payload["run"]["runStartedUnixMs"] = int(started_at.timestamp() * 1000)
         payload["run"]["runEndedUnixMs"] = int(finished_at.timestamp() * 1000)
 
-        response = self.client.post(
-            "/panel/api/runs/ingest/",
-            payload,
-            format="json",
-            HTTP_X_BENCHMARK_REFERENCE_TIME="2026-03-13T19:59:00Z",
-        )
+        with self._buffer():
+            response = self._ingest(
+                payload, HTTP_X_BENCHMARK_REFERENCE_TIME="2026-03-13T19:59:00Z"
+            )
 
-        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.status_code, 202)
+        self._flush()
         self.assertEqual(Run.objects.count(), 1)
 
     @override_settings(BENCHMARK_TIME_OVERRIDE_ENABLED=True)
@@ -393,25 +410,26 @@ class RunIngestionTests(TestCase):
         self.assertEqual(Run.objects.count(), 0)
 
     @override_settings(BENCHMARK_TIME_OVERRIDE_ENABLED=False)
-    @mock.patch(
-        "digitmileapi.views.get_recording_window_status_for_run_finish",
-    )
-    def test_runs_ingest_ignores_benchmark_header_when_override_disabled(
-        self,
-        recording_window_mock,
-    ):
-        recording_window_mock.return_value = self._open_recording_window()
+    def test_runs_ingest_ignores_benchmark_header_when_override_disabled(self):
+        # Patch the window check in ingest_router's namespace so we can observe
+        # the reference_time it was called with. With the override disabled the
+        # header must be ignored, i.e. reference_time stays None.
+        with self._buffer(), mock.patch.object(
+            ingest_router,
+            "get_recording_window_status_for_run_finish",
+            return_value=self._open_recording_window(),
+        ) as recording_window_mock:
+            response = self._ingest(
+                self._unity_payload(),
+                HTTP_X_BENCHMARK_REFERENCE_TIME="2026-03-13T20:00:00Z",
+            )
 
-        response = self.client.post(
-            "/panel/api/runs/ingest/",
-            self._unity_payload(),
-            format="json",
-            HTTP_X_BENCHMARK_REFERENCE_TIME="2026-03-13T20:00:00Z",
-        )
-
-        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.status_code, 202)
         _, kwargs = recording_window_mock.call_args
         self.assertIsNone(kwargs.get("reference_time"))
+
+        self._flush()
+        self.assertEqual(Run.objects.count(), 1)
 
     @override_settings(BENCHMARK_TIME_OVERRIDE_ENABLED=True)
     def test_runs_ingest_rejects_invalid_benchmark_reference_time(self):
@@ -785,7 +803,11 @@ class WeeklyAggregationTests(ReplayArchiveTests):
             {"by_comparator": [], "else_rate_by_level": []},
         )
 
-    def test_decision_time_by_card_type_merges_rollups_and_hot_rows(self):
+    def test_decision_time_by_card_type_reads_rollups_only_ignoring_hot_rows(self):
+        # decision_time_by_card_type reads rollup tables exclusively (the
+        # "no hot data in dashboard" rule). The aggregated run contributes its
+        # clipped/raw decision-time stats; the un-aggregated hot run below must
+        # be ignored entirely, not merged in.
         self.turn.card_decision_time_ms = 130000
         self.turn.save(update_fields=["card_decision_time_ms"])
         aggregate_weekly_rollups(self.run.created_at.date())
@@ -841,9 +863,10 @@ class WeeklyAggregationTests(ReplayArchiveTests):
         self.assertIn("summary_by_card_type", payload)
         self.assertIn("weekly_series_by_card_type", payload)
         conditional_summary = payload["summary_by_card_type"]["IfXMoveYElseMoveZ"]
-        self.assertEqual(conditional_summary["count"], 2)
-        self.assertEqual(conditional_summary["raw_avg"], (130000 + 800) / 2)
-        self.assertEqual(conditional_summary["avg"], (120000 + 800) / 2)
+        # Only the single aggregated turn is counted; the hot run is excluded.
+        self.assertEqual(conditional_summary["count"], 1)
+        self.assertEqual(conditional_summary["raw_avg"], 130000)
+        self.assertEqual(conditional_summary["avg"], 120000)
         self.assertEqual(conditional_summary["outlier_count"], 1)
         self.assertTrue(payload["weekly_series_by_card_type"]["IfXMoveYElseMoveZ"])
 
@@ -1383,6 +1406,9 @@ class BenchmarkToolingTests(TestCase):
         with TemporaryDirectory() as temp_dir:
             report_path = f"{temp_dir}/dataset-report.json"
 
+            # compact_weeks selects the oldest (non-hot) week explicitly: an
+            # empty --compact-weeks now means "compact nothing", so the weeks to
+            # compact must be named (1 = the oldest of the two generated weeks).
             call_command(
                 "prepare_benchmark_dataset",
                 teachers=1,
@@ -1394,6 +1420,7 @@ class BenchmarkToolingTests(TestCase):
                 card_mix_profile="balanced",
                 bag_level_ratio=0.3,
                 hot_weeks=1,
+                compact_weeks="1",
                 anchor_week_start="2026-03-09",
                 clear=True,
                 output=report_path,

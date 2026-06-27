@@ -43,6 +43,13 @@ class SchoolRegistrationForm(forms.ModelForm):
             'school_phone': 'Official school phone number',
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # The School.region model field has a "RegionPlaceholder" default so that
+        # legacy/seed rows stay non-null. That default must NOT leak into the public
+        # registration form as pre-filled text, so clear its initial value here.
+        self.fields['region'].initial = None
+
     def clean(self):
         cleaned_data = super().clean()
         address = cleaned_data.get('address')

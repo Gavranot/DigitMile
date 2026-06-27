@@ -1656,6 +1656,16 @@ tailwind.config = {
         });
     }
 
+    // Escape user-provided text (e.g. student names) before inserting via innerHTML.
+    function escapeHtml(value) {
+        return String(value)
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#39;');
+    }
+
     function createStrengthsTable(students) {
         const metrics = [
             { key: 'accuracy', label: '{% trans "Accuracy" %}', unit: '%', higher: true },
@@ -1666,7 +1676,7 @@ tailwind.config = {
         ];
 
         let tableHTML = '<table class="comparison-table w-full text-sm rounded-md overflow-hidden"><thead><tr class="border-b border-border" style="background:#171717;"><th class="p-3 text-left font-medium text-muted-foreground" style="background:#171717;color:#a3a3a3;">{% trans "Metric" %}</th>';
-        students.forEach(student => tableHTML += `<th class="p-3 text-center font-medium text-foreground" style="background:#171717;color:#fafafa;">${student.name}</th>`);
+        students.forEach(student => tableHTML += `<th class="p-3 text-center font-medium text-foreground" style="background:#171717;color:#fafafa;">${escapeHtml(student.name)}</th>`);
         tableHTML += '</tr></thead><tbody>';
 
         metrics.forEach((metric) => {

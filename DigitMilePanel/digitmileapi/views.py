@@ -301,26 +301,35 @@ class CheckClassroomKeyView(APIView):
         try:
             # Fetch the classroom using its unique classroom_key
             # select_related fetches related Teacher objects in the same DB query
-            print(Classroom.objects.count())
-
             classroom = Classroom.objects.select_related("teacher").get(
                 classroom_key=classroom_key_from_request
             )
 
-            # Now you can safely access classroom attributes
-            print(
-                f"Found classroom: ID={classroom.id}, Key={classroom.classroom_key}, Teacher={classroom.teacher.full_name}"
+            logger.debug(
+                "Classroom key verified: id=%s key=%s",
+                classroom.id,
+                classroom.classroom_key,
             )
 
-            # ... (rest of your logic to prepare response_data)
             students_queryset = Student.objects.filter(classroom=classroom)
             students = [
                 {"studentName": student.full_name, "studentID": student.pk}
                 for student in students_queryset
             ]
 
-            # Get the school directly from the classroom
+            # Get the school directly from the classroom. School is nullable, and
+            # CheckClassroomResponseSerializer nests a (non-null) SchoolSerializer,
+            # so guard against a school-less classroom instead of 500-ing.
             school = classroom.school
+            if school is None:
+                logger.warning(
+                    "Classroom %s has no school assigned; rejecting key check",
+                    classroom.id,
+                )
+                return Response(
+                    {"message": "Classroom is not fully configured (no school assigned)"},
+                    status=status.HTTP_409_CONFLICT,
+                )
 
             response_data = {
                 "school": school,
@@ -333,19 +342,17 @@ class CheckClassroomKeyView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
 
         except Classroom.DoesNotExist:
-            print(
-                f"Classroom with key '{classroom_key_from_request}' does not exist."
-            )  # More informative print
+            logger.info(
+                "Classroom key verification failed: no classroom for key '%s'",
+                classroom_key_from_request,
+            )
             return Response(
                 {"message": "Classroom key verification failed or classroom not found"},
                 status=status.HTTP_404_NOT_FOUND,
             )  # 404 is often more appropriate here
-        except Exception as e:
+        except Exception:
             # Catch any other unexpected errors
-            print(f"An unexpected error occurred: {e}")
-            import traceback
-
-            traceback.print_exc()
+            logger.exception("Unexpected error during classroom key verification")
             return Response(
                 {"error": "An internal server error occurred"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,

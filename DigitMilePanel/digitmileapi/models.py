@@ -170,7 +170,19 @@ class School(models.Model):
     objects = SchoolManager()
 
     class Meta:
-        unique_together = [["name", "municipality", "region"]]
+        constraints = [
+            # The intended business key for a school is its physical identity:
+            # address + official email + director. Enforce it at the DB level so
+            # concurrent double-submits can't create duplicates. Scoped to active
+            # (PENDING/APPROVED) rows only — REJECTED schools are kept for audit
+            # and must not block a legitimate re-registration of the same school.
+            # This mirrors SchoolRegistrationForm.clean().
+            models.UniqueConstraint(
+                fields=["address", "school_email", "director_name"],
+                condition=models.Q(status__in=["PENDING", "APPROVED"]),
+                name="unique_active_school_identity",
+            )
+        ]
 
     def __str__(self):
         status_badge = (
@@ -285,7 +297,7 @@ class Teacher(models.Model):
 
     # Basic teacher information
     full_name = models.CharField(max_length=255)
-    email = models.EmailField(unique=True, default="noemail@example.com")
+    email = models.EmailField(unique=True)
     phone_number = models.CharField(max_length=50, blank=True, default="")
     years_teaching = models.IntegerField(
         null=True, blank=True, help_text="Total years of teaching experience"
@@ -1180,3 +1192,25 @@ class ClassroomWeekStats(models.Model):
 
     def __str__(self):
         return f"Classroom weekly stats for {self.classroom_id} on {self.week_start}"
+
+
+class PendingIngest(models.Model):
+    """Durable fallback for the Redis ingest buffer.
+
+    When the ingest endpoint cannot reach Redis (after retries), the validated
+    run payload is written here instead so it is never lost. The flush worker
+    re-enqueues these rows into Redis once it is reachable again, then deletes
+    them. See digitmileapi.ingest_router and the flush_ingest_buffer command.
+    """
+
+    # run_id is unique so a client retry (or a second fallback for the same run)
+    # is idempotent — it can't create two pending copies of the same run.
+    run_id = models.CharField(max_length=64, unique=True)
+    payload = models.JSONField(help_text="The validated, normalized ingest payload")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"PendingIngest {self.run_id} (queued {self.created_at:%Y-%m-%d %H:%M:%S})"

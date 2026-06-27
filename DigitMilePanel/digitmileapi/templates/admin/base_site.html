@@ -5,7 +5,7 @@
 
 {% block branding %}
 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-    <h1 id="site-name"><a href="{% url 'admin:index' %}">{{ site_header|default:_('Django administration') }}</a></h1>
+    <h1 id="site-name"><a href="{% if user.is_authenticated %}{% url 'admin:index' %}{% else %}{% url 'home' %}{% endif %}">{{ site_header|default:_('Django administration') }}</a></h1>
 
     <!-- Language Switcher -->
     <div class="language-switcher" style="margin-right: 20px;">

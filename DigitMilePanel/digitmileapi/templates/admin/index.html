@@ -1,5 +1,6 @@
 {% extends "admin/base_site.html" %}
 {% load i18n %}
+{% load digitmile_admin %}
 
 {% block content %}
 <style>
@@ -53,6 +54,28 @@
         transform: translateY(-2px);
         box-shadow: 0 6px 16px rgba(65, 118, 144, 0.38);
         color: #fff;
+    }
+
+    /* Pending Registrations promo: amber "needs attention" accent, shown only
+       when something is actually awaiting review. */
+    .dm-promo--review {
+        border-left-color: #d97706;
+        background: linear-gradient(135deg, #fffbeb 0%, #fdf0d8 100%);
+    }
+    .dm-promo__badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 22px;
+        height: 22px;
+        margin-left: 8px;
+        padding: 0 7px;
+        border-radius: 999px;
+        background: #fff;
+        color: #b45309;
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 1;
     }
 
     /* App section */
@@ -175,6 +198,19 @@
 </style>
 
 <div id="content-main" class="dm-dash">
+    {% if request.user.is_superuser %}
+    {% pending_registration_count as pending_count %}
+    <div class="dm-promo{% if pending_count %} dm-promo--review{% endif %}">
+        <div>
+            <h2 class="dm-promo__title">{% trans "Pending Registrations" %}</h2>
+            <p class="dm-promo__text">{% trans "Review schools and teachers awaiting your approval." %}</p>
+        </div>
+        <a class="dm-promo__cta" href="{% url 'pending_registrations' %}">
+            {% trans "Review Registrations" %}{% if pending_count %} <span class="dm-promo__badge">{{ pending_count }}</span>{% endif %}
+        </a>
+    </div>
+    {% endif %}
+
     {% if request.user.is_staff and not request.user.is_superuser %}
     <div class="dm-promo">
         <div>

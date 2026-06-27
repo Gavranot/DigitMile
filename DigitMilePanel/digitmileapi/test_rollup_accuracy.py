@@ -235,34 +235,42 @@ class RollupAccuracyTest(TransactionTestCase):
     # Tests
     # ------------------------------------------------------------------
 
-    def test_rollup_matches_hot_data_analytics(self):
+    def test_analytics_unchanged_when_hot_rows_are_compacted_away(self):
         """
-        Core test: analytics from all-hot data must equal analytics from
-        all-rollup data, for every rollup_analytics function.
+        The analytics layer reads rollup tables only (the "no hot data in
+        dashboard" rule). So once a week is aggregated, deleting its hot
+        Run/TurnEvent rows during compaction must not change any analytics
+        result — the dashboard never read those rows to begin with.
+
+        (This replaces an older hot-vs-rollup parity test: there is no longer a
+        "compute from hot data" path to compare against, since every
+        rollup_analytics function is rollup-only.)
         """
-        # Step 1: all data is hot — get analytics results.
-        hot_results = self._all_analytics()
+        # Step 1: aggregate every week into the rollup tables, hot rows intact.
+        for week_start, _ in self.weeks:
+            aggregate_weekly_rollups(week_start)
 
-        # Sanity: at least some results are non-empty.
-        self.assertGreater(len(hot_results["win_rate_by_level"]), 0)
-        self.assertGreater(len(hot_results["card_accuracy_by_family_by_level"]), 0)
+        pre_compaction = self._all_analytics()
 
-        # Step 2: compact all weeks — data moves to rollup tables.
+        # Sanity: rollups are populated, so results are non-empty.
+        self.assertGreater(len(pre_compaction["win_rate_by_level"]), 0)
+        self.assertGreater(len(pre_compaction["card_accuracy_by_family_by_level"]), 0)
+
+        # Step 2: compact — delete the hot Run/TurnEvent rows.
         self._compact_all_weeks()
 
-        # Step 3: all data is now in rollups — get analytics results.
-        rollup_results = self._all_analytics()
+        # Step 3: analytics computed from the same rollups must be identical.
+        post_compaction = self._all_analytics()
 
-        # Step 4: compare every function's output.
-        for func_name in hot_results:
-            hot = self._round_floats(hot_results[func_name])
-            rollup = self._round_floats(rollup_results[func_name])
+        for func_name in pre_compaction:
+            pre = self._round_floats(pre_compaction[func_name])
+            post = self._round_floats(post_compaction[func_name])
             self.assertEqual(
-                hot,
-                rollup,
+                pre,
+                post,
                 f"\n\nMISMATCH in {func_name}:\n"
-                f"  hot    = {hot}\n"
-                f"  rollup = {rollup}",
+                f"  pre-compaction  = {pre}\n"
+                f"  post-compaction = {post}",
             )
 
     def test_partial_compaction_matches(self):

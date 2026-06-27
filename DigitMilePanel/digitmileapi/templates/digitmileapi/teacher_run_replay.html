@@ -96,13 +96,13 @@ tailwind.config = {
                     </div>
                     <div id="mapGrid" class="map-grid"></div>
                     <div class="tile-legend">
-                        <span class="tile-legend-item"><span class="tile-swatch tile-type-0"></span>0 Start/End</span>
-                        <span class="tile-legend-item"><span class="tile-swatch tile-type-1"></span>1 Earth</span>
-                        <span class="tile-legend-item"><span class="tile-swatch tile-type-2"></span>2 Ice</span>
-                        <span class="tile-legend-item"><span class="tile-swatch tile-type-3"></span>3 Water</span>
-                        <span class="tile-legend-item"><span class="tile-swatch tile-type-4"></span>4 Clown</span>
-                        <span class="tile-legend-item"><span class="tile-swatch tile-type-5"></span>5 Skateboard</span>
-                        <span class="tile-legend-item"><span class="tile-swatch tile-type-6"></span>6 Cake</span>
+                        <span class="tile-legend-item"><span class="tile-swatch tile-type-0"></span>0 {% trans "Start/End" %}</span>
+                        <span class="tile-legend-item"><span class="tile-swatch tile-type-1"></span>1 {% trans "Earth" %}</span>
+                        <span class="tile-legend-item"><span class="tile-swatch tile-type-2"></span>2 {% trans "Ice" %}</span>
+                        <span class="tile-legend-item"><span class="tile-swatch tile-type-3"></span>3 {% trans "Water" %}</span>
+                        <span class="tile-legend-item"><span class="tile-swatch tile-type-4"></span>4 {% trans "Clown" %}</span>
+                        <span class="tile-legend-item"><span class="tile-swatch tile-type-5"></span>5 {% trans "Skateboard" %}</span>
+                        <span class="tile-legend-item"><span class="tile-swatch tile-type-6"></span>6 {% trans "Cake" %}</span>
                     </div>
                 </div>
 
@@ -168,6 +168,76 @@ tailwind.config = {
 </div>
 
 <script>
+    // i18n: strings are wrapped in {percentage trans percentage} here so makemessages extracts them
+    // into the standard `django` catalog. JS reads them from T and fills the
+    // {placeholders} via fmt(). |escapejs keeps translated text safe inside the
+    // JS string literals (apostrophes, quotes, etc.).
+    const T = {
+        correct: "{% filter escapejs %}{% trans 'Correct' %}{% endfilter %}",
+        wrong: "{% filter escapejs %}{% trans 'Wrong' %}{% endfilter %}",
+        yes: "{% filter escapejs %}{% trans 'Yes' %}{% endfilter %}",
+        no: "{% filter escapejs %}{% trans 'No' %}{% endfilter %}",
+        none: "{% filter escapejs %}{% trans 'none' %}{% endfilter %}",
+        unknown: "{% filter escapejs %}{% trans 'Unknown' %}{% endfilter %}",
+        offered: "{% filter escapejs %}{% trans 'Offered' %}{% endfilter %}",
+        chosen: "{% filter escapejs %}{% trans 'Chosen' %}{% endfilter %}",
+        decision: "{% filter escapejs %}{% trans 'Decision' %}{% endfilter %}",
+        bagBeforeTurn: "{% filter escapejs %}{% trans 'Bag before turn' %}{% endfilter %}",
+        player: "{% filter escapejs %}{% trans 'Player' %}{% endfilter %}",
+        place: "{% filter escapejs %}{% trans 'Place' %}{% endfilter %}",
+        moveResult: "{% filter escapejs %}{% trans 'Move result' %}{% endfilter %}",
+        unknownBagCard: "{% filter escapejs %}{% trans 'Unknown bag card' %}{% endfilter %}",
+        noCardInsight: "{% filter escapejs %}{% trans 'No additional card-context insight for this turn.' %}{% endfilter %}",
+        tileTypeMissing: "{% filter escapejs %}{% trans 'The player chose a tile conditional card, but tile type is missing in card data.' %}{% endfilter %}",
+        invalidMissingThen: "{% filter escapejs %}{% trans 'Invalid card data: missing thenValue.' %}{% endfilter %}",
+        invalidTileConditional: "{% filter escapejs %}{% trans 'Invalid tile-conditional card data.' %}{% endfilter %}",
+        invalidBagConditional: "{% filter escapejs %}{% trans 'Invalid bag-conditional card data.' %}{% endfilter %}",
+        invalidForX: "{% filter escapejs %}{% trans 'Invalid ForXMoveY card data.' %}{% endfilter %}",
+        noCardMetadata: "{% filter escapejs %}{% trans 'No card metadata.' %}{% endfilter %}",
+
+        tt0: "{% filter escapejs %}{% trans 'Start/End' %}{% endfilter %}",
+        tt1: "{% filter escapejs %}{% trans 'Type 1' %}{% endfilter %}",
+        tt2: "{% filter escapejs %}{% trans 'Type 2' %}{% endfilter %}",
+        tt3: "{% filter escapejs %}{% trans 'Type 3' %}{% endfilter %}",
+        tt4: "{% filter escapejs %}{% trans 'Clown' %}{% endfilter %}",
+        tt5: "{% filter escapejs %}{% trans 'Skateboard' %}{% endfilter %}",
+        tt6: "{% filter escapejs %}{% trans 'Type 6' %}{% endfilter %}",
+
+        titleMove: "{% filter escapejs %}{% trans 'Move' %}{% endfilter %}",
+        titleBack: "{% filter escapejs %}{% trans 'Back' %}{% endfilter %}",
+        titleIfTile: "{% filter escapejs %}{% trans 'If Tile Then Move Else Move' %}{% endfilter %}",
+        titleIfBagEq: "{% filter escapejs %}{% trans 'If Bag = X Then Move Else Move' %}{% endfilter %}",
+        titleIfBagLt: "{% filter escapejs %}{% trans 'If Bag < X Then Move Else Move' %}{% endfilter %}",
+        titleIfBagGt: "{% filter escapejs %}{% trans 'If Bag > X Then Move Else Move' %}{% endfilter %}",
+        titleBagCount: "{% filter escapejs %}{% trans 'BagCount' %}{% endfilter %}",
+        titleForX: "{% filter escapejs %}{% trans 'For Each On Tile Type, Move' %}{% endfilter %}",
+
+        bagCountMove: "{% filter escapejs %}{% trans 'BagCount -> move by bag number ({bag})' %}{% endfilter %}",
+        ifBagEq: "{% filter escapejs %}{% trans 'If bag == {ifVal} then +{thenVal} else +{elseVal}' %}{% endfilter %}",
+        ifBagLt: "{% filter escapejs %}{% trans 'If bag < {ifVal} then +{thenVal} else +{elseVal}' %}{% endfilter %}",
+        ifBagGt: "{% filter escapejs %}{% trans 'If bag > {ifVal} then +{thenVal} else +{elseVal}' %}{% endfilter %}",
+        moveResultLine: "{% filter escapejs %}{% trans 'Move result: {result}.' %}{% endfilter %}",
+        pickedNumber: "{% filter escapejs %}{% trans 'The player picked number {number} while having a Bag card with the following conditions: {conditions}.' %}{% endfilter %}",
+        choseTileConditional: "{% filter escapejs %}{% trans 'The player chose a tile conditional card for tile type {tile}. Is a bot/the player standing on a tile of that type? {any} (player: {player}, bot: {bot}).' %}{% endfilter %}",
+        moveForward: "{% filter escapejs %}{% trans 'Move forward by {n} tile(s).' %}{% endfilter %}",
+        moveBackward: "{% filter escapejs %}{% trans 'Move backward by {n} tile(s).' %}{% endfilter %}",
+        ifPlayerOnTile: "{% filter escapejs %}{% trans 'If player is on tile type {tile} ({label}), move +{then}; otherwise move +{else}.' %}{% endfilter %}",
+        ifBagNumEq: "{% filter escapejs %}{% trans 'If bag number ({bag}) == {ifVal}, move +{then}; otherwise move +{else}.' %}{% endfilter %}",
+        ifBagNumLt: "{% filter escapejs %}{% trans 'If bag number ({bag}) < {ifVal}, move +{then}; otherwise move +{else}.' %}{% endfilter %}",
+        ifBagNumGt: "{% filter escapejs %}{% trans 'If bag number ({bag}) > {ifVal}, move +{then}; otherwise move +{else}.' %}{% endfilter %}",
+        bagCountFromPrev: "{% filter escapejs %}{% trans 'Move forward by bag number from previous turn: +{bag}.' %}{% endfilter %}",
+        forEachPlayer: "{% filter escapejs %}{% trans 'For each player on tile type {tile} ({label}), move +{then}. Players on type: {count}, total move: +{total}.' %}{% endfilter %}",
+        cardDataLabel: "{% filter escapejs %}{% trans 'Card data: {data}' %}{% endfilter %}",
+        tileTooltip: "{% filter escapejs %}{% trans 'Index {index} • Type {type} ({label})' %}{% endfilter %}",
+    };
+
+    // Replaces {name} placeholders in a translated string with values from params.
+    function fmt(template, params) {
+        return String(template).replace(/\{(\w+)\}/g, (match, key) => (
+            Object.prototype.hasOwnProperty.call(params, key) ? params[key] : match
+        ));
+    }
+
     const runData = {{ run_data_json|safe }};
     const mapGrid = document.getElementById('mapGrid');
     const slider = document.getElementById('turnSlider');
@@ -189,13 +259,13 @@ tailwind.config = {
     ]));
 
     const tileTypeLabel = {
-        0: 'Start/End',
-        1: 'Type 1',
-        2: 'Type 2',
-        3: 'Type 3',
-        4: 'Clown',
-        5: 'Skateboard',
-        6: 'Type 6',
+        0: T.tt0,
+        1: T.tt1,
+        2: T.tt2,
+        3: T.tt3,
+        4: T.tt4,
+        5: T.tt5,
+        6: T.tt6,
     };
 
     slider.max = Math.max(turns.length - 1, 0);
@@ -256,14 +326,15 @@ tailwind.config = {
 
     function cardTypeTitle(cardType) {
         const titles = {
-            MoveX: 'Move',
-            Back: 'Back',
-            IfXMoveYElseMoveZ: 'If Tile Then Move Else Move',
-            IfBagEqualXMoveYElseMoveZ: 'If Bag = X Then Move Else Move',
-            IfBagLessXMoveYElseMoveZ: 'If Bag < X Then Move Else Move',
-            IfBagGreaterXMoveYElseMoveZ: 'If Bag > X Then Move Else Move',
-            BagCount: 'BagCount',
-            ForXMoveY: 'For Each On Tile Type, Move',
+            MoveX: T.titleMove,
+            Back: T.titleBack,
+            IfXMoveYElseMoveZ: T.titleIfTile,
+            IfBagEqualXMoveYElseMoveZ: T.titleIfBagEq,
+            IfBagLessXMoveYElseMoveZ: T.titleIfBagLt,
+            IfBagGreaterXMoveYElseMoveZ: T.titleIfBagGt,
+            BagCount: T.titleBagCount,
+            ForXMoveY: T.titleForX,
+            Unknown: T.unknown,
         };
         return titles[cardType] || cardType;
     }
@@ -311,20 +382,20 @@ tailwind.config = {
         const bagBefore = bagBeforeByTurn[turnIndex] ?? 1;
 
         if (type === 'BagCount') {
-            return `BagCount -> move by bag number (${bagBefore})`;
+            return fmt(T.bagCountMove, { bag: bagBefore });
         }
 
         if (type === 'IfBagEqualXMoveYElseMoveZ') {
-            return `If bag == ${parsed.ifValue ?? '?'} then +${parsed.thenValue ?? '?'} else +${parsed.elseValue ?? '?'}`;
+            return fmt(T.ifBagEq, { ifVal: parsed.ifValue ?? '?', thenVal: parsed.thenValue ?? '?', elseVal: parsed.elseValue ?? '?' });
         }
         if (type === 'IfBagLessXMoveYElseMoveZ') {
-            return `If bag < ${parsed.ifValue ?? '?'} then +${parsed.thenValue ?? '?'} else +${parsed.elseValue ?? '?'}`;
+            return fmt(T.ifBagLt, { ifVal: parsed.ifValue ?? '?', thenVal: parsed.thenValue ?? '?', elseVal: parsed.elseValue ?? '?' });
         }
         if (type === 'IfBagGreaterXMoveYElseMoveZ') {
-            return `If bag > ${parsed.ifValue ?? '?'} then +${parsed.thenValue ?? '?'} else +${parsed.elseValue ?? '?'}`;
+            return fmt(T.ifBagGt, { ifVal: parsed.ifValue ?? '?', thenVal: parsed.thenValue ?? '?', elseVal: parsed.elseValue ?? '?' });
         }
 
-        return card?.data ? String(card.data) : 'Unknown bag card';
+        return card?.data ? String(card.data) : T.unknownBagCard;
     }
 
     function getTilePresenceOnType(turn, tileType) {
@@ -337,19 +408,17 @@ tailwind.config = {
 
     function buildTurnInsights(turn, turnIndex) {
         const lines = [];
-        lines.push(`Move result: ${turn.was_correct ? 'Correct' : 'Wrong'}.`);
+        lines.push(fmt(T.moveResultLine, { result: turn.was_correct ? T.correct : T.wrong }));
 
         const isBagLevel = runData.level === 5 || runData.level === 6;
         if (isBagLevel) {
             const bagCardsInHand = (turn.offered_cards || []).filter(card => isBagCardType(card?.type));
             if (bagCardsInHand.length > 0) {
-                const chosenNumber = turn.chosen_number == null ? 'none' : turn.chosen_number;
+                const chosenNumber = turn.chosen_number == null ? T.none : turn.chosen_number;
                 const bagCardConditions = bagCardsInHand
                     .map(card => formatBagCardCondition(card, turnIndex))
                     .join(' | ');
-                lines.push(
-                    `The player picked number ${chosenNumber} while having a Bag card with the following conditions: ${bagCardConditions}.`
-                );
+                lines.push(fmt(T.pickedNumber, { number: chosenNumber, conditions: bagCardConditions }));
             }
         }
 
@@ -357,17 +426,20 @@ tailwind.config = {
         if (isTileConditionalType(chosenType)) {
             const parsed = parseCardData(turn?.chosen_card?.data);
             if (parsed.tileType == null) {
-                lines.push('The player chose a tile conditional card, but tile type is missing in card data.');
+                lines.push(T.tileTypeMissing);
             } else {
                 const presence = getTilePresenceOnType(turn, parsed.tileType);
-                lines.push(
-                    `The player chose a tile conditional card for tile type ${parsed.tileType}. Is a bot/the player standing on a tile of that type? ${presence.any ? 'Yes' : 'No'} (player: ${presence.playerOn ? 'Yes' : 'No'}, bot: ${presence.botOn ? 'Yes' : 'No'}).`
-                );
+                lines.push(fmt(T.choseTileConditional, {
+                    tile: parsed.tileType,
+                    any: presence.any ? T.yes : T.no,
+                    player: presence.playerOn ? T.yes : T.no,
+                    bot: presence.botOn ? T.yes : T.no,
+                }));
             }
         }
 
         if (lines.length === 1) {
-            lines.push('No additional card-context insight for this turn.');
+            lines.push(T.noCardInsight);
         }
 
         return lines;
@@ -384,49 +456,49 @@ tailwind.config = {
         const bagBefore = bagBeforeByTurn[turnIndex] ?? 1;
 
         if (type === 'MoveX') {
-            if (thenValue === null) return 'Invalid card data: missing thenValue.';
-            return `Move forward by ${thenValue} tile(s).`;
+            if (thenValue === null) return T.invalidMissingThen;
+            return fmt(T.moveForward, { n: thenValue });
         }
 
         if (type === 'Back') {
             const steps = thenValue ?? 1;
-            return `Move backward by ${steps} tile(s).`;
+            return fmt(T.moveBackward, { n: steps });
         }
 
         if (type === 'IfXMoveYElseMoveZ') {
-            if (tile === null || thenValue === null || elseValue === null) return 'Invalid tile-conditional card data.';
-            return `If player is on tile type ${tile} (${tileTypeLabel[tile] || 'Unknown'}), move +${thenValue}; otherwise move +${elseValue}.`;
+            if (tile === null || thenValue === null || elseValue === null) return T.invalidTileConditional;
+            return fmt(T.ifPlayerOnTile, { tile, label: tileTypeLabel[tile] || T.unknown, then: thenValue, else: elseValue });
         }
 
         if (type === 'IfBagEqualXMoveYElseMoveZ') {
-            if (ifValue === null || thenValue === null || elseValue === null) return 'Invalid bag-conditional card data.';
-            return `If bag number (${bagBefore}) == ${ifValue}, move +${thenValue}; otherwise move +${elseValue}.`;
+            if (ifValue === null || thenValue === null || elseValue === null) return T.invalidBagConditional;
+            return fmt(T.ifBagNumEq, { bag: bagBefore, ifVal: ifValue, then: thenValue, else: elseValue });
         }
 
         if (type === 'IfBagLessXMoveYElseMoveZ') {
-            if (ifValue === null || thenValue === null || elseValue === null) return 'Invalid bag-conditional card data.';
-            return `If bag number (${bagBefore}) < ${ifValue}, move +${thenValue}; otherwise move +${elseValue}.`;
+            if (ifValue === null || thenValue === null || elseValue === null) return T.invalidBagConditional;
+            return fmt(T.ifBagNumLt, { bag: bagBefore, ifVal: ifValue, then: thenValue, else: elseValue });
         }
 
         if (type === 'IfBagGreaterXMoveYElseMoveZ') {
-            if (ifValue === null || thenValue === null || elseValue === null) return 'Invalid bag-conditional card data.';
-            return `If bag number (${bagBefore}) > ${ifValue}, move +${thenValue}; otherwise move +${elseValue}.`;
+            if (ifValue === null || thenValue === null || elseValue === null) return T.invalidBagConditional;
+            return fmt(T.ifBagNumGt, { bag: bagBefore, ifVal: ifValue, then: thenValue, else: elseValue });
         }
 
         if (type === 'BagCount') {
-            return `Move forward by bag number from previous turn: +${bagBefore}.`;
+            return fmt(T.bagCountFromPrev, { bag: bagBefore });
         }
 
         if (type === 'ForXMoveY') {
-            if (tile === null || thenValue === null) return 'Invalid ForXMoveY card data.';
+            if (tile === null || thenValue === null) return T.invalidForX;
             const playersCount = countPlayersOnTileType(turn, tile);
             const totalMove = playersCount * thenValue;
-            return `For each player on tile type ${tile} (${tileTypeLabel[tile] || 'Unknown'}), move +${thenValue}. Players on type: ${playersCount}, total move: +${totalMove}.`;
+            return fmt(T.forEachPlayer, { tile, label: tileTypeLabel[tile] || T.unknown, then: thenValue, count: playersCount, total: totalMove });
         }
 
         if (!card) return '-';
         if (typeof card === 'string') return card;
-        return card.data ? `Card data: ${card.data}` : 'No card metadata.';
+        return card.data ? fmt(T.cardDataLabel, { data: card.data }) : T.noCardMetadata;
     }
 
     function renderCard(card, turn, turnIndex) {
@@ -447,7 +519,7 @@ tailwind.config = {
             const cell = document.createElement('div');
             cell.className = `tile tile-type-${tileType}`;
             cell.dataset.index = tileIndex;
-            cell.title = `Index ${tileIndex} • Type ${tileType} (${tileTypeLabel[tileType] || 'Unknown'})`;
+            cell.title = fmt(T.tileTooltip, { index: tileIndex, type: tileType, label: tileTypeLabel[tileType] || T.unknown });
             cell.innerHTML = `<span class="index">${tileIndex}</span>`;
             mapGrid.appendChild(cell);
         });
@@ -491,16 +563,16 @@ tailwind.config = {
         const chosenNumber = turn.chosen_number == null ? '-' : turn.chosen_number;
         const numberDecision = turn.number_decision_time_ms == null ? '-' : `${turn.number_decision_time_ms} ms`;
         const bagBefore = bagBeforeByTurn[index] ?? 1;
-        numbersInfoEl.innerHTML = `Offered: ${offeredNumbers}<br>Chosen: ${chosenNumber}<br>Decision: ${numberDecision}<br>Bag before turn: ${bagBefore}`;
+        numbersInfoEl.innerHTML = `${T.offered}: ${offeredNumbers}<br>${T.chosen}: ${chosenNumber}<br>${T.decision}: ${numberDecision}<br>${T.bagBeforeTurn}: ${bagBefore}`;
 
-        const moveResult = turn.was_correct ? 'Correct' : 'Wrong';
-        positionsInfoEl.innerHTML = `Player ${turn.tile_before_index} -> ${turn.tile_after_index}<br>Place ${turn.place_before} -> ${turn.place_after}<br>Move result: ${moveResult}`;
+        const moveResult = turn.was_correct ? T.correct : T.wrong;
+        positionsInfoEl.innerHTML = `${T.player} ${turn.tile_before_index} -> ${turn.tile_after_index}<br>${T.place} ${turn.place_before} -> ${turn.place_after}<br>${T.moveResult}: ${moveResult}`;
 
         const triggers = turn.special_triggers || [];
         if (!triggers.length) {
             triggersInfoEl.textContent = '-';
         } else {
-            triggersInfoEl.innerHTML = triggers.map(t => `#${t.chain_index}: ${t.special_tile_index} (${t.effect_delta_tiles}) -> ${t.target_tile_index}`).join('<br>');
+            triggersInfoEl.innerHTML = triggers.map(t => `#${escapeHtml(t.chain_index)}: ${escapeHtml(t.special_tile_index)} (${escapeHtml(t.effect_delta_tiles)}) -> ${escapeHtml(t.target_tile_index)}`).join('<br>');
         }
 
         const insights = buildTurnInsights(turn, index);

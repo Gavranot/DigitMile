@@ -283,6 +283,12 @@ INGEST_BUFFER_REDIS_KEY = "ingest_buffer"
 INGEST_BUFFER_BATCH_SIZE = int(os.getenv("INGEST_BUFFER_BATCH_SIZE", "50"))
 INGEST_BUFFER_SLEEP_MS = int(os.getenv("INGEST_BUFFER_SLEEP_MS", "100"))
 
+# How hard the ingest endpoint tries to reach Redis before falling back to the
+# durable PendingIngest table. Total in-request stall is roughly
+# RETRIES * BACKOFF_MS * (RETRIES+1)/2, so keep these small to stay responsive.
+INGEST_REDIS_MAX_RETRIES = int(os.getenv("INGEST_REDIS_MAX_RETRIES", "3"))
+INGEST_REDIS_RETRY_BACKOFF_MS = int(os.getenv("INGEST_REDIS_RETRY_BACKOFF_MS", "100"))
+
 # Logging configuration
 LOGGING = {
     "version": 1,

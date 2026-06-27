@@ -10,3 +10,6 @@ pydot
 django-redis
 django-ninja
 django-extensions
+
+# Test-only: in-memory Redis double for deterministic ingest-durability tests.
+fakeredis

@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-19 12:15+0000\n"
+"POT-Creation-Date: 2026-06-27 14:09+0000\n"
 "PO-Revision-Date: 2026-02-15 13:45+0100\n"
 "Last-Translator: Gemini\n"
 "Language-Team: Albanian\n"
@@ -23,59 +23,71 @@ msgstr "Administrimi i faqes Django"
 msgid "Django administration"
 msgstr "Administrimi i Django-s"
 
-#: digitmileapi/templates/admin/index.html:181
+#: digitmileapi/templates/admin/index.html:205
+msgid "Pending Registrations"
+msgstr "Regjistrime në pritje"
+
+#: digitmileapi/templates/admin/index.html:206
+msgid "Review schools and teachers awaiting your approval."
+msgstr "Shqyrtoni shkollat dhe mësuesit që presin miratimin tuaj."
+
+#: digitmileapi/templates/admin/index.html:209
+msgid "Review Registrations"
+msgstr "Shqyrto regjistrimet"
+
+#: digitmileapi/templates/admin/index.html:217
 msgid "Teacher Statistics"
 msgstr "Statistikat e Mësuesit"
 
-#: digitmileapi/templates/admin/index.html:182
+#: digitmileapi/templates/admin/index.html:218
 msgid "Open the analytics dashboard for classroom and student performance."
 msgstr "Hapni panelin analitik për performancën e klasës dhe nxënësve."
 
-#: digitmileapi/templates/admin/index.html:184
+#: digitmileapi/templates/admin/index.html:220
 msgid "Go to Statistics"
 msgstr "Shko te Statistikat"
 
-#: digitmileapi/templates/admin/index.html:201
+#: digitmileapi/templates/admin/index.html:237
 msgid "View"
 msgstr "Shiko"
 
-#: digitmileapi/templates/admin/index.html:201
+#: digitmileapi/templates/admin/index.html:237
 msgid "Manage"
 msgstr "Menaxho"
 
-#: digitmileapi/templates/admin/index.html:205
+#: digitmileapi/templates/admin/index.html:241
 msgid "Add"
 msgstr "Shto"
 
-#: digitmileapi/templates/admin/index.html:213
+#: digitmileapi/templates/admin/index.html:249
 msgid "You don't have permission to view or edit anything."
 msgstr "Nuk keni leje për të parë ose modifikuar asgjë."
 
-#: digitmileapi/templates/digitmileapi/home.html:275
+#: digitmileapi/templates/digitmileapi/home.html:276
 msgid "Teacher Login"
 msgstr "Hyrja e mësuesve"
 
-#: digitmileapi/templates/digitmileapi/home.html:276
+#: digitmileapi/templates/digitmileapi/home.html:277
 msgid "Access your DigitMile dashboard"
 msgstr "Aksesoni panelin tuaj të kontrollit në DigitMile"
 
-#: digitmileapi/templates/digitmileapi/home.html:289
+#: digitmileapi/templates/digitmileapi/home.html:290
 msgid "Username"
 msgstr "Emri i përdoruesit"
 
-#: digitmileapi/templates/digitmileapi/home.html:294
+#: digitmileapi/templates/digitmileapi/home.html:295
 msgid "Password"
 msgstr "Fjalëkalimi"
 
-#: digitmileapi/templates/digitmileapi/home.html:298
+#: digitmileapi/templates/digitmileapi/home.html:299
 msgid "Sign In"
 msgstr "Identifikohu"
 
-#: digitmileapi/templates/digitmileapi/home.html:304
+#: digitmileapi/templates/digitmileapi/home.html:305
 msgid "Welcome to DigitMile"
 msgstr "Mirë se vini në DigitMile"
 
-#: digitmileapi/templates/digitmileapi/home.html:306
+#: digitmileapi/templates/digitmileapi/home.html:307
 msgid ""
 "\n"
 "            DigitMile is an educational platform that helps teachers create "
@@ -91,11 +103,11 @@ msgstr ""
 "të bazuar në lojë.\n"
 "            "
 
-#: digitmileapi/templates/digitmileapi/home.html:313
+#: digitmileapi/templates/digitmileapi/home.html:314
 msgid "For Teachers"
 msgstr "Për mësuesit"
 
-#: digitmileapi/templates/digitmileapi/home.html:315
+#: digitmileapi/templates/digitmileapi/home.html:316
 msgid ""
 "\n"
 "                If you're a teacher and want to use DigitMile, you need to "
@@ -113,11 +125,11 @@ msgstr ""
 "                shkollën përpara se të regjistroheni.\n"
 "                "
 
-#: digitmileapi/templates/digitmileapi/home.html:324
+#: digitmileapi/templates/digitmileapi/home.html:325
 msgid "For School Administrators"
 msgstr "Për administratorët e shkollës"
 
-#: digitmileapi/templates/digitmileapi/home.html:326
+#: digitmileapi/templates/digitmileapi/home.html:327
 msgid ""
 "\n"
 "                School administrators can register their institution to "
@@ -133,11 +145,11 @@ msgstr ""
 "klasa dhe të shtojnë nxënës.\n"
 "                "
 
-#: digitmileapi/templates/digitmileapi/home.html:334
+#: digitmileapi/templates/digitmileapi/home.html:335
 msgid "Create Classrooms & Add Students"
 msgstr "Krijoni klasa dhe shtoni nxënës"
 
-#: digitmileapi/templates/digitmileapi/home.html:336
+#: digitmileapi/templates/digitmileapi/home.html:337
 msgid ""
 "\n"
 "                Once you're logged in as a teacher, you can create "
@@ -156,13 +168,17 @@ msgstr ""
 "detajuara.\n"
 "                "
 
-#: digitmileapi/templates/digitmileapi/home.html:347
+#: digitmileapi/templates/digitmileapi/home.html:348
 msgid "Register School"
 msgstr "Regjistroni shkollën"
 
-#: digitmileapi/templates/digitmileapi/home.html:348
+#: digitmileapi/templates/digitmileapi/home.html:349
 msgid "Register as Teacher"
 msgstr "Regjistrohuni si mësues"
+
+#: digitmileapi/templates/digitmileapi/pending_registrations.html:38
+msgid "Pending School Registrations"
+msgstr "Regjistrimet e shkollave në pritje"
 
 #: digitmileapi/templates/digitmileapi/pending_registrations.html:42
 msgid "Name"
@@ -356,9 +372,9 @@ msgstr "Kthehu te Paneli"
 #: digitmileapi/templates/digitmileapi/teacher_statistics.html:1182
 #: digitmileapi/templates/digitmileapi/teacher_statistics.html:1195
 #: digitmileapi/templates/digitmileapi/teacher_statistics.html:1250
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1717
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1750
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1772
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1727
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1760
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1782
 msgid "Level"
 msgstr "Niveli"
 
@@ -367,8 +383,42 @@ msgid "Board"
 msgstr "Tabela"
 
 #: digitmileapi/templates/digitmileapi/teacher_run_replay.html:92
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:186
 msgid "Player"
 msgstr "Lojtari"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:99
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:198
+msgid "Start/End"
+msgstr "Fillim/Fund"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:100
+msgid "Earth"
+msgstr "Tokë"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:101
+msgid "Ice"
+msgstr "Akull"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:102
+msgid "Water"
+msgstr "Ujë"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:103
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:202
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1253
+msgid "Clown"
+msgstr "Klloun"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:104
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:203
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1252
+msgid "Skateboard"
+msgstr "Skejtbord"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:105
+msgid "Cake"
+msgstr "Tortë"
 
 #: digitmileapi/templates/digitmileapi/teacher_run_replay.html:112
 msgid "Prev"
@@ -393,8 +443,8 @@ msgstr "ID e Provës"
 #: digitmileapi/templates/digitmileapi/teacher_run_replay.html:129
 #: digitmileapi/templates/digitmileapi/teacher_statistics.html:1613
 #: digitmileapi/templates/digitmileapi/teacher_statistics.html:1654
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1704
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1801
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1714
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1811
 msgid "Score"
 msgstr "Pikët"
 
@@ -403,11 +453,13 @@ msgid "Elapsed"
 msgstr "Koha e kaluar"
 
 #: digitmileapi/templates/digitmileapi/teacher_run_replay.html:131
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:176
 #: digitmileapi/templates/digitmileapi/teacher_statistics.html:1168
 msgid "Correct"
 msgstr "Saktë"
 
 #: digitmileapi/templates/digitmileapi/teacher_run_replay.html:132
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:177
 #: digitmileapi/templates/digitmileapi/teacher_statistics.html:1169
 msgid "Wrong"
 msgstr "Gabim"
@@ -439,6 +491,238 @@ msgstr "Aktivizuesit Specialë"
 #: digitmileapi/templates/digitmileapi/teacher_run_replay.html:160
 msgid "Info"
 msgstr "Informacion"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:178
+msgid "Yes"
+msgstr "Po"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:179
+msgid "No"
+msgstr "Jo"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:180
+msgid "none"
+msgstr "asnjë"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:181
+msgid "Unknown"
+msgstr "E panjohur"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:182
+msgid "Offered"
+msgstr "Të ofruara"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:183
+msgid "Chosen"
+msgstr "Të zgjedhura"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:184
+msgid "Decision"
+msgstr "Vendimi"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:185
+msgid "Bag before turn"
+msgstr "Thesi para radhës"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:187
+msgid "Place"
+msgstr "Vendi"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:188
+msgid "Move result"
+msgstr "Rezultati i lëvizjes"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:189
+msgid "Unknown bag card"
+msgstr "Kartë thesi e panjohur"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:190
+msgid "No additional card-context insight for this turn."
+msgstr "Asnjë informacion shtesë mbi kontekstin e kartës për këtë radhë."
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:191
+msgid ""
+"The player chose a tile conditional card, but tile type is missing in card "
+"data."
+msgstr ""
+"Lojtari zgjodhi një kartë me kusht pllake, por lloji i pllakës mungon në të "
+"dhënat e kartës."
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:192
+msgid "Invalid card data: missing thenValue."
+msgstr "Të dhëna të pavlefshme të kartës: mungon thenValue."
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:193
+msgid "Invalid tile-conditional card data."
+msgstr "Të dhëna të pavlefshme të kartës me kusht pllake."
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:194
+msgid "Invalid bag-conditional card data."
+msgstr "Të dhëna të pavlefshme të kartës me kusht thesi."
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:195
+msgid "Invalid ForXMoveY card data."
+msgstr "Të dhëna të pavlefshme të kartës ForXMoveY."
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:196
+msgid "No card metadata."
+msgstr "Pa meta të dhëna karte."
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:199
+msgid "Type 1"
+msgstr "Lloji 1"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:200
+msgid "Type 2"
+msgstr "Lloji 2"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:201
+msgid "Type 3"
+msgstr "Lloji 3"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:204
+msgid "Type 6"
+msgstr "Lloji 6"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:206
+msgid "Move"
+msgstr "Lëviz"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:207
+msgid "Back"
+msgstr "Prapa"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:208
+msgid "If Tile Then Move Else Move"
+msgstr "Nëse pllakë atëherë lëviz përndryshe lëviz"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:209
+msgid "If Bag = X Then Move Else Move"
+msgstr "Nëse thesi = X atëherë lëviz përndryshe lëviz"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:210
+msgid "If Bag < X Then Move Else Move"
+msgstr "Nëse thesi < X atëherë lëviz përndryshe lëviz"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:211
+msgid "If Bag > X Then Move Else Move"
+msgstr "Nëse thesi > X atëherë lëviz përndryshe lëviz"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:212
+msgid "BagCount"
+msgstr "Numri i thesit"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:213
+msgid "For Each On Tile Type, Move"
+msgstr "Për secilin në llojin e pllakës, lëviz"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:215
+#, python-brace-format
+msgid "BagCount -> move by bag number ({bag})"
+msgstr "BagCount -> lëviz sipas numrit të thesit ({bag})"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:216
+#, python-brace-format
+msgid "If bag == {ifVal} then +{thenVal} else +{elseVal}"
+msgstr "Nëse thesi == {ifVal} atëherë +{thenVal} përndryshe +{elseVal}"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:217
+#, python-brace-format
+msgid "If bag < {ifVal} then +{thenVal} else +{elseVal}"
+msgstr "Nëse thesi < {ifVal} atëherë +{thenVal} përndryshe +{elseVal}"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:218
+#, python-brace-format
+msgid "If bag > {ifVal} then +{thenVal} else +{elseVal}"
+msgstr "Nëse thesi > {ifVal} atëherë +{thenVal} përndryshe +{elseVal}"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:219
+#, python-brace-format
+msgid "Move result: {result}."
+msgstr "Rezultati i lëvizjes: {result}."
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:220
+#, python-brace-format
+msgid ""
+"The player picked number {number} while having a Bag card with the following "
+"conditions: {conditions}."
+msgstr ""
+"Lojtari zgjodhi numrin {number} ndërsa kishte një kartë Thesi me kushtet e "
+"mëposhtme: {conditions}."
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:221
+#, python-brace-format
+msgid ""
+"The player chose a tile conditional card for tile type {tile}. Is a bot/the "
+"player standing on a tile of that type? {any} (player: {player}, bot: {bot})."
+msgstr ""
+"Lojtari zgjodhi një kartë me kusht pllake për llojin e pllakës {tile}. A "
+"ndodhet një bot/lojtari në një pllakë të atij lloji? {any} (lojtari: "
+"{player}, boti: {bot})."
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:222
+#, python-brace-format
+msgid "Move forward by {n} tile(s)."
+msgstr "Lëviz përpara me {n} pllakë."
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:223
+#, python-brace-format
+msgid "Move backward by {n} tile(s)."
+msgstr "Lëviz prapa me {n} pllakë."
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:224
+#, python-brace-format
+msgid ""
+"If player is on tile type {tile} ({label}), move +{then}; otherwise move +"
+"{else}."
+msgstr ""
+"Nëse lojtari është në llojin e pllakës {tile} ({label}), lëviz +{then}; "
+"përndryshe lëviz +{else}."
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:225
+#, python-brace-format
+msgid "If bag number ({bag}) == {ifVal}, move +{then}; otherwise move +{else}."
+msgstr ""
+"Nëse numri i thesit ({bag}) == {ifVal}, lëviz +{then}; përndryshe lëviz +"
+"{else}."
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:226
+#, python-brace-format
+msgid "If bag number ({bag}) < {ifVal}, move +{then}; otherwise move +{else}."
+msgstr ""
+"Nëse numri i thesit ({bag}) < {ifVal}, lëviz +{then}; përndryshe lëviz +"
+"{else}."
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:227
+#, python-brace-format
+msgid "If bag number ({bag}) > {ifVal}, move +{then}; otherwise move +{else}."
+msgstr ""
+"Nëse numri i thesit ({bag}) > {ifVal}, lëviz +{then}; përndryshe lëviz +"
+"{else}."
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:228
+#, python-brace-format
+msgid "Move forward by bag number from previous turn: +{bag}."
+msgstr "Lëviz përpara sipas numrit të thesit nga radha e mëparshme: +{bag}."
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:229
+#, python-brace-format
+msgid ""
+"For each player on tile type {tile} ({label}), move +{then}. Players on "
+"type: {count}, total move: +{total}."
+msgstr ""
+"Për secilin lojtar në llojin e pllakës {tile} ({label}), lëviz +{then}. "
+"Lojtarë në lloj: {count}, lëvizja totale: +{total}."
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:230
+#, python-brace-format
+msgid "Card data: {data}"
+msgstr "Të dhënat e kartës: {data}"
+
+#: digitmileapi/templates/digitmileapi/teacher_run_replay.html:231
+#, python-brace-format
+msgid "Index {index} • Type {type} ({label})"
+msgstr "Indeksi {index} • Lloji {type} ({label})"
 
 #: digitmileapi/templates/digitmileapi/teacher_statistics.html:4
 msgid "Teacher Statistics Dashboard"
@@ -676,7 +960,7 @@ msgid "Low Accuracy"
 msgstr "Saktësi e ulët"
 
 #: digitmileapi/templates/digitmileapi/teacher_statistics.html:585
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1786
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1796
 msgid "Declining"
 msgstr "Në rënie"
 
@@ -839,7 +1123,8 @@ msgstr "Analitika nuk mund të ngarkohej. Ju lutemi provoni përsëri."
 
 #: digitmileapi/templates/digitmileapi/teacher_statistics.html:958
 msgid "Unable to load turn insights. Please try again."
-msgstr "Analizat e radhëve nuk mund të ngarkoheshin. Ju lutemi provoni përsëri."
+msgstr ""
+"Analizat e radhëve nuk mund të ngarkoheshin. Ju lutemi provoni përsëri."
 
 #: digitmileapi/templates/digitmileapi/teacher_statistics.html:1119
 #: digitmileapi/templates/digitmileapi/teacher_statistics.html:1150
@@ -866,14 +1151,6 @@ msgstr "Saktësia (%%)"
 #: digitmileapi/templates/digitmileapi/teacher_statistics.html:1230
 msgid "Mistakes"
 msgstr "Gabimet"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1252
-msgid "Skateboard"
-msgstr "Skejtbord"
-
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1253
-msgid "Clown"
-msgstr "Klloun"
 
 #: digitmileapi/templates/digitmileapi/teacher_statistics.html:1269
 #: digitmileapi/templates/digitmileapi/teacher_statistics.html:1422
@@ -904,21 +1181,21 @@ msgstr "Numri i të Zgjedhurave"
 
 #: digitmileapi/templates/digitmileapi/teacher_statistics.html:1613
 #: digitmileapi/templates/digitmileapi/teacher_statistics.html:1654
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1661
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1703
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1794
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1671
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1713
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1804
 msgid "Accuracy"
 msgstr "Saktësia"
 
 #: digitmileapi/templates/digitmileapi/teacher_statistics.html:1613
 #: digitmileapi/templates/digitmileapi/teacher_statistics.html:1654
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1663
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1673
 msgid "Win Rate"
 msgstr "Shkalla e fitores"
 
 #: digitmileapi/templates/digitmileapi/teacher_statistics.html:1613
 #: digitmileapi/templates/digitmileapi/teacher_statistics.html:1654
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1705
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1715
 msgid "Speed"
 msgstr "Shpejtësia"
 
@@ -927,7 +1204,7 @@ msgid "Engagement"
 msgstr "Angazhimi"
 
 #: digitmileapi/templates/digitmileapi/teacher_statistics.html:1654
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1665
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1675
 msgid "Improvement"
 msgstr "Përmirësimi"
 
@@ -935,56 +1212,56 @@ msgstr "Përmirësimi"
 msgid "Consistency"
 msgstr "Qëndrueshmëria"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1662
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1672
 msgid "Avg Score"
 msgstr "Pikët mesatare"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1664
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1674
 msgid "Decision Time"
 msgstr "Koha e vendimmarrjes"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1668
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1678
 msgid "Metric"
 msgstr "Metrika"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1740
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1771
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1750
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1781
 msgid "Not enough data"
 msgstr "Nuk ka mjaftueshëm të dhëna"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1752
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1762
 msgid "Initial"
 msgstr "Fillestare"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1753
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1763
 msgid "Final"
 msgstr "Përfundimtare"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1760
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1770
 msgid "Excellent skill transfer detected!"
 msgstr "U diktua transferim i shkëlqyer i aftësive!"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1760
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1770
 msgid "Moderate or limited transfer"
 msgstr "Transferim i moderuar ose i kufizuar"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1786
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1796
 msgid "Improving"
 msgstr "Në përmirësim"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1786
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1796
 msgid "Plateaued"
 msgstr "E pandryshuar"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1786
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1796
 msgid "Mastered"
 msgstr "E zotëruar"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1786
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1796
 msgid "Insufficient"
 msgstr "E pamjaftueshme"
 
-#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1808
+#: digitmileapi/templates/digitmileapi/teacher_statistics.html:1818
 msgid "Time"
 msgstr "Koha"
 

@@ -1,17 +1,20 @@
 import json
 import logging
+import time
 from typing import Union
 
 import redis as redis_client
 from django.conf import settings
+from django.db import DatabaseError
 from django.http import JsonResponse
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from ninja import Router
 from pydantic import TypeAdapter, ValidationError
+from redis.exceptions import RedisError
 
 from .ingest_schemas import CanonicalIngestPayload, UnityIngestPayload
-from .models import Run, Student
+from .models import PendingIngest, Run, Student
 from .run_ingestion import (
     get_recording_window_status_for_run_finish,
     normalize_unity_run_ingestion_payload,
@@ -34,6 +37,77 @@ router = Router()
 _IngestAdapter: TypeAdapter[Union[UnityIngestPayload, CanonicalIngestPayload]] = TypeAdapter(
     Union[UnityIngestPayload, CanonicalIngestPayload]
 )
+
+
+def _enqueue_to_redis_with_retry(payload_json, *, run_id, student_id):
+    """Push the payload onto the Redis buffer, retrying a few times with linear
+    backoff. Returns True on success, False if every attempt hit a RedisError
+    (connection refused, timeout, OOM, etc.). Never raises."""
+    backoff_s = settings.INGEST_REDIS_RETRY_BACKOFF_MS / 1000.0
+    last_exc = None
+    for attempt in range(1, settings.INGEST_REDIS_MAX_RETRIES + 1):
+        try:
+            _redis.lpush(settings.INGEST_BUFFER_REDIS_KEY, payload_json)
+            return True
+        except RedisError as exc:
+            last_exc = exc
+            if attempt < settings.INGEST_REDIS_MAX_RETRIES:
+                time.sleep(backoff_s * attempt)
+    _log_run_ingest_event(
+        logging.ERROR,
+        "run_ingest_redis_unavailable",
+        run_id=run_id,
+        student_id=student_id,
+        attempts=settings.INGEST_REDIS_MAX_RETRIES,
+        error=str(last_exc),
+    )
+    return False
+
+
+def _persist_run_payload(data):
+    """Enqueue a validated run onto Redis, falling back to the durable
+    PendingIngest table if Redis is unreachable. Returns a JsonResponse:
+      202 — queued in Redis, or durably stored for later re-enqueue,
+      503 — both Redis and Postgres are unavailable; the client should retry.
+    """
+    run_id = data["run_id"]
+    student_id = data["student_id"]
+    payload_json = json.dumps(data)
+
+    if _enqueue_to_redis_with_retry(payload_json, run_id=run_id, student_id=student_id):
+        _log_run_ingest_event(
+            logging.INFO, "run_ingest_queued", run_id=run_id, student_id=student_id
+        )
+        return JsonResponse(
+            {"message": "Run accepted", "run_id": str(run_id)}, status=202
+        )
+
+    # Redis is down — write to the durable fallback so the run isn't lost.
+    # get_or_create keeps it idempotent if the client retries while Redis is out.
+    try:
+        PendingIngest.objects.get_or_create(
+            run_id=str(run_id), defaults={"payload": data}
+        )
+    except DatabaseError:
+        _log_run_ingest_event(
+            logging.ERROR,
+            "run_ingest_fallback_failed",
+            run_id=run_id,
+            student_id=student_id,
+        )
+        return JsonResponse(
+            {"error": "Ingest temporarily unavailable, please retry."}, status=503
+        )
+
+    _log_run_ingest_event(
+        logging.WARNING,
+        "run_ingest_db_fallback",
+        run_id=run_id,
+        student_id=student_id,
+    )
+    return JsonResponse(
+        {"message": "Run accepted", "run_id": str(run_id)}, status=202
+    )
 
 
 def _parse_benchmark_reference_time(request):
@@ -71,7 +145,11 @@ def ingest_run(request):
     try:
         payload = _IngestAdapter.validate_json(raw_body)
     except ValidationError as exc:
-        errs = exc.errors()
+        # include_context=False drops the non-JSON-serializable `ctx` (which holds
+        # the raw ValueError raised by model validators); without this the
+        # JsonResponse below would 500 on cross-field validation failures instead
+        # of returning a clean 400. The human-readable text stays in each "msg".
+        errs = exc.errors(include_url=False, include_context=False)
         # pydantic-core surfaces malformed JSON as a json_invalid error; map it
         # back to the prior {"error": "Invalid JSON"} 400 response shape so any
         # client that checks that exact message keeps working.
@@ -155,17 +233,6 @@ def ingest_run(request):
                 status=409,
             )
 
-    # Push validated payload to Redis write buffer
-    _redis.lpush(settings.INGEST_BUFFER_REDIS_KEY, json.dumps(data))
-
-    _log_run_ingest_event(
-        logging.INFO,
-        "run_ingest_queued",
-        run_id=run_id,
-        student_id=data["student_id"],
-    )
-
-    return JsonResponse(
-        {"message": "Run accepted", "run_id": str(run_id)},
-        status=202,
-    )
+    # Push validated payload to the Redis write buffer, with retry + a durable
+    # Postgres fallback if Redis is unreachable so the run is never lost.
+    return _persist_run_payload(data)

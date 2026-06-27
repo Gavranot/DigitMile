@@ -18,8 +18,9 @@ import redis as redis_client
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db import transaction
+from redis.exceptions import RedisError
 
-from digitmileapi.models import Run, SpecialTileTrigger, TurnEvent
+from digitmileapi.models import PendingIngest, Run, SpecialTileTrigger, TurnEvent
 from digitmileapi.rollup_incremental import apply_runs_to_dashboard_rollups
 from digitmileapi.run_ingestion import unix_ms_to_datetime
 from digitmileapi.views import _extract_card_metadata, _normalize_cards_for_ingestion
@@ -53,9 +54,35 @@ class Command(BaseCommand):
         )
 
         while True:
+            # Re-enqueue anything that landed in the durable fallback while Redis
+            # was down, then flush the Redis buffer as usual.
+            self._drain_db_fallback(r, batch_size)
             flushed = self._flush_batch(r, batch_size)
             if flushed == 0:
                 time.sleep(sleep_s)
+
+    def _drain_db_fallback(self, r, batch_size):
+        """Move runs from the PendingIngest fallback table back into the Redis
+        buffer (oldest first), deleting each once enqueued. No-op when empty or
+        when Redis is still unreachable (it retries on the next cycle)."""
+        pending = list(PendingIngest.objects.all()[:batch_size])
+        if not pending:
+            return
+
+        moved = 0
+        for row in pending:
+            try:
+                r.lpush(settings.INGEST_BUFFER_REDIS_KEY, json.dumps(row.payload))
+            except RedisError:
+                # Redis still down — stop draining and try again next cycle.
+                break
+            # Enqueued successfully; the flush loop (which dedups by run_id) owns
+            # it now, so drop the durable copy.
+            row.delete()
+            moved += 1
+
+        if moved:
+            logger.info("Re-enqueued %d run(s) from PendingIngest fallback", moved)
 
     def _flush_batch(self, r, batch_size):
         # Atomic pop of up to batch_size items
